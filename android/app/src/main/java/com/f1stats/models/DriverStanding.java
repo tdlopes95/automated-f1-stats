@@ -22,6 +22,11 @@ public class DriverStanding {
     @SerializedName("Constructors")
     private java.util.List<RaceResult.Constructor> constructors;
 
+    @SerializedName("gap_to_second")
+    private double gapToSecond;
+
+    public double getGapToSecond() { return gapToSecond; }
+
     // ── Getters ───────────────────────────────────────────────────────────────
     public String getPosition() { return position; }
     public String getPositionText() { return positionText; }
@@ -37,4 +42,5 @@ public class DriverStanding {
         }
         return "N/A";
     }
+
 }

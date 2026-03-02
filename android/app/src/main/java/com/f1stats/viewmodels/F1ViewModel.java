@@ -31,6 +31,9 @@ public class F1ViewModel extends ViewModel {
     private final MutableLiveData<Boolean> liveLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> liveError = new MutableLiveData<>();
     private final MutableLiveData<List<QualifyingResult>> qualifyingResults = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> seasonStarted = new MutableLiveData<>(true);
+
+    public LiveData<Boolean> getSeasonStarted() { return seasonStarted; }
 
     // ── Results ───────────────────────────────────────────────────────────────
     private final MutableLiveData<List<RaceResult>> raceResults = new MutableLiveData<>();
@@ -161,23 +164,26 @@ public class F1ViewModel extends ViewModel {
 
     public void fetchDriverStandings(int year) {
         standingsLoading.setValue(true);
-        driverStandings.setValue(null);  // force observers to re-trigger
+        driverStandings.setValue(null);
         api.getDriverStandings(year).enqueue(new Callback<Map<String, Object>>() {
             @Override
             public void onResponse(Call<Map<String, Object>> call,
                                    Response<Map<String, Object>> response) {
                 standingsLoading.setValue(false);
                 if (response.isSuccessful() && response.body() != null) {
-                    List<DriverStanding> parsed = parseDriverStandings(response.body());
+                    Map<String, Object> body = response.body();
+                    // Extract season_started flag
+                    Object started = body.get("season_started");
+                    if (started instanceof Boolean) {
+                        seasonStarted.setValue((Boolean) started);
+                    }
+                    List<DriverStanding> parsed = parseDriverStandings(body);
                     driverStandings.setValue(parsed);
-                } else {
-                    standingsError.setValue("Could not load standings");
                 }
             }
             @Override
             public void onFailure(Call<Map<String, Object>> call, Throwable t) {
                 standingsLoading.setValue(false);
-                standingsError.setValue("Connection error: " + t.getMessage());
             }
         });
     }

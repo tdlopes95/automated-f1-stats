@@ -31,6 +31,7 @@ public class HomeFragment extends Fragment {
     private TextView tvCountdown;
     private TextView tvLeaderName, tvLeaderTeam, tvLeaderPoints;
     private TextView tvLastWinner, tvLastRaceName;
+    private TextView tvLeaderTitle, tvLeaderGap;
 
     @Nullable
     @Override
@@ -54,6 +55,8 @@ public class HomeFragment extends Fragment {
         tvLeaderPoints    = view.findViewById(R.id.tv_leader_points);
         tvLastWinner      = view.findViewById(R.id.tv_last_winner);
         tvLastRaceName    = view.findViewById(R.id.tv_last_race_name);
+        tvLeaderTitle  = view.findViewById(R.id.tv_leader_title);
+        tvLeaderGap    = view.findViewById(R.id.tv_leader_gap);
 
         viewModel = new ViewModelProvider(requireActivity()).get(F1ViewModel.class);
 
@@ -94,12 +97,27 @@ public class HomeFragment extends Fragment {
         viewModel.getDriverStandings().observe(getViewLifecycleOwner(), standings -> {
             if (standings == null || standings.isEmpty()) return;
             var leader = standings.get(0);
-            var driver = leader.getDriver();
-            if (driver != null) {
-                tvLeaderName.setText(driver.getFullName());
+            if (leader.getDriver() != null) {
+                tvLeaderName.setText(leader.getDriver().getFullName());
             }
             tvLeaderTeam.setText(leader.getTeamName());
             tvLeaderPoints.setText(leader.getPoints() + " pts");
+
+            double gap = leader.getGapToSecond();
+            if (gap > 0) {
+                tvLeaderGap.setText("(+" + (int) gap + " from P2)");
+                tvLeaderGap.setVisibility(View.VISIBLE);
+            } else {
+                tvLeaderGap.setVisibility(View.GONE);
+            }
+        });
+
+        // Observe season started to update title label
+        viewModel.getSeasonStarted().observe(getViewLifecycleOwner(), started -> {
+            if (tvLeaderTitle != null) {
+                tvLeaderTitle.setText(started ?
+                        "CHAMPIONSHIP LEADER" : "LAST SEASON CHAMPION");
+            }
         });
 
         // ── Latest race results → winner ──────────────────────────────────────
@@ -114,10 +132,6 @@ public class HomeFragment extends Fragment {
             }
         });
 
-        viewModel.getNextRace().observe(getViewLifecycleOwner(), race -> {
-            // We reuse this to show last race name from schedule context
-            // Will be enriched later when we add round history
-        });
     }
 
     // ── Countdown timer ───────────────────────────────────────────────────────

@@ -31,6 +31,18 @@ def cache_get(key: str):
 
 def cache_set(key: str, data):
     _cache[key] = (data, time.time())
+
+def add_gap_to_second(standings: list) -> list:
+    """Add points gap from leader to second place."""
+    if not standings or len(standings) < 2:
+        return standings
+    try:
+        p1_pts = float(standings[0].get("points", 0))
+        p2_pts = float(standings[1].get("points", 0))
+        standings[0]["gap_to_second"] = round(p1_pts - p2_pts, 1)
+    except Exception:
+        standings[0]["gap_to_second"] = 0
+    return standings
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
@@ -231,36 +243,71 @@ async def get_latest_results(
     session_type: str = Query(default="Race", enum=["Race", "Qualifying", "Sprint"]),
     year: Optional[int] = None
 ):
-    """Latest stored results for a given session type."""
+    """Latest race winner — shows last race of previous year if current season hasn't started."""
     current_year = datetime.utcnow().year
 
-    # If year specified, fetch directly
-    if year and year != current_year:
-        results = await jolpica.get_race_results(year, None)
-        return {"source": "live", "results": results}
-
-    # Try current year first
-    results = await db.get_latest_results(session_type)
-    if results:
-        return results
-
-    # Current year has no results yet — fall back to last year's final race
+    # Check if current year has any races yet
     try:
-        last_year = current_year - 1
-        # Get last round of last year
-        schedule = await jolpica.get_schedule(last_year)
-        if schedule:
-            last_round = max(r["round"] for r in schedule)
-            fallback = await jolpica.get_race_results(last_year, last_round)
-            if fallback:
-                return {
-                    "source": "fallback",
-                    "year": last_year,
-                    "round": last_round,
-                    "results": fallback
-                }
+        current_schedule = await jolpica.get_schedule(current_year)
+        today = datetime.utcnow().date()
+        current_year_has_results = False
+
+        if current_schedule:
+            for race in current_schedule:
+                sessions = race.get("sessions", [])
+                for session in sessions:
+                    if session.get("name") == "Race":
+                        dt_str = session.get("datetime", "")
+                        if dt_str:
+                            race_date = datetime.fromisoformat(dt_str[:10]).date()
+                            if race_date <= today:
+                                current_year_has_results = True
+                                break
+                if current_year_has_results:
+                    break
     except Exception as e:
-        logger.error(f"Fallback results error: {e}")
+        logger.error(f"Schedule check error: {e}")
+        current_year_has_results = False
+
+    # Pick which year to fetch from
+    target_year = current_year if current_year_has_results else current_year - 1
+
+    try:
+        schedule = await jolpica.get_schedule(target_year)
+        if not schedule:
+            raise HTTPException(status_code=404, detail="No schedule found")
+
+        # Find last completed race
+        today = datetime.utcnow().date()
+        last_round = 0
+        for race in schedule:
+            sessions = race.get("sessions", [])
+            for session in sessions:
+                if session.get("name") == "Race":
+                    dt_str = session.get("datetime", "")
+                    if dt_str:
+                        race_date = datetime.fromisoformat(dt_str[:10]).date()
+                        if race_date <= today:
+                            rnd = race.get("round")
+                            if rnd and int(rnd) > last_round:
+                                last_round = int(rnd)
+
+        if last_round == 0:
+            # No completed races this year either — take absolute last round
+            last_round = max(r["round"] for r in schedule)
+
+        results = await jolpica.get_race_results(target_year, last_round)
+        if results:
+            return {
+                "source": "live",
+                "year": target_year,
+                "round": last_round,
+                "results": results
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Latest results error: {e}")
 
     raise HTTPException(status_code=404, detail="No results found")
 
@@ -294,27 +341,44 @@ async def get_results(
 
 @app.get("/standings/drivers")
 async def get_driver_standings(year: Optional[int] = None):
-    target_year = year or datetime.utcnow().year
-    # Always fetch from Jolpica when a specific year is requested
-    # Only use cache for current year
-    if year is None or year == datetime.utcnow().year:
+    current_year = datetime.utcnow().year
+    target_year = year or current_year
+
+    if target_year == current_year:
         cached = await db.get_latest_driver_standings()
         if cached:
-            return {"source": "cache", "standings": cached}
+            return {"source": "cache", "season_started": True, "standings": cached}
+
     standings = await jolpica.get_driver_standings(target_year)
+
+    if not standings and target_year == current_year:
+        standings = await jolpica.get_driver_standings(current_year - 1)
+        standings = add_gap_to_second(standings)
+        return {"source": "fallback", "year": current_year - 1,
+                "season_started": False, "standings": standings}
+
+    standings = add_gap_to_second(standings)
     if standings:
         await db.save_driver_standings(target_year, None, standings)
-    return {"source": "live", "standings": standings}
+    return {"source": "live", "season_started": True, "standings": standings}
 
 
 @app.get("/standings/constructors")
 async def get_constructor_standings(year: Optional[int] = None):
-    target_year = year or datetime.utcnow().year
-    if year is None or year == datetime.utcnow().year:
+    current_year = datetime.utcnow().year
+    target_year = year or current_year
+
+    if target_year == current_year:
         cached = await db.get_latest_constructor_standings()
         if cached:
             return {"source": "cache", "standings": cached}
+
     standings = await jolpica.get_constructor_standings(target_year)
+
+    if not standings and target_year == current_year:
+        standings = await jolpica.get_constructor_standings(current_year - 1)
+        return {"source": "fallback", "year": current_year - 1, "standings": standings}
+
     if standings:
         await db.save_constructor_standings(target_year, None, standings)
     return {"source": "live", "standings": standings}
