@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:gravity="center_vertical">
+
+    <!-- Rank -->
+    <TextView
+        android:id="@+id/tv_rank"
+        android:layout_width="32dp"
+        android:layout_height="wrap_content"
+        android:text="1"
+        android:textColor="#AAAAAA"
+        android:textSize="14sp" />
+
+    <!-- Team colour strip -->
+    <View
+        android:id="@+id/view_team_colour"
+        android:layout_width="4dp"
+        android:layout_height="36dp"
+        android:layout_marginEnd="10dp"
+        android:background="#FFFFFF" />
+
+    <!-- Driver + team -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_driver_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Max Verstappen"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_team_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Red Bull Racing"
+            android:textColor="#AAAAAA"
+            android:textSize="11sp" />
+
+    </LinearLayout>
+
+    <!-- Lap number -->
+    <TextView
+        android:id="@+id/tv_lap"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Lap 24"
+        android:textColor="#AAAAAA"
+        android:textSize="12sp"
+        android:layout_marginEnd="12dp" />
+
+    <!-- Stop duration -->
+    <TextView
+        android:id="@+id/tv_duration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2.345s"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+</LinearLayout>

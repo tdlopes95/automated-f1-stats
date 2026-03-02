@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:gravity="center_vertical">
+
+    <!-- Team colour strip -->
+    <View
+        android:id="@+id/view_team_colour"
+        android:layout_width="4dp"
+        android:layout_height="36dp"
+        android:layout_marginEnd="10dp"
+        android:background="#FFFFFF" />
+
+    <!-- Position -->
+    <TextView
+        android:id="@+id/tv_position"
+        android:layout_width="28dp"
+        android:layout_height="wrap_content"
+        android:text="1"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+    <!-- Driver acronym + name -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_driver_acronym"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="VER"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_team_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Red Bull Racing"
+            android:textColor="#AAAAAA"
+            android:textSize="11sp" />
+
+    </LinearLayout>
+
+    <!-- Gap to leader -->
+    <TextView
+        android:id="@+id/tv_gap"
+        android:layout_width="72dp"
+        android:layout_height="wrap_content"
+        android:text="+1.234"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:gravity="end" />
+
+    <!-- Tyre compound badge -->
+    <TextView
+        android:id="@+id/tv_tyre"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginStart="8dp"
+        android:text="S"
+        android:textColor="#121212"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:background="@drawable/tyre_badge_background" />
+
+    <!-- Tyre age -->
+    <TextView
+        android:id="@+id/tv_tyre_age"
+        android:layout_width="24dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="2dp"
+        android:text="5"
+        android:textColor="#AAAAAA"
+        android:textSize="11sp"
+        android:gravity="center" />
+
+    <!-- Pit stop count -->
+    <TextView
+        android:id="@+id/tv_pits"
+        android:layout_width="30dp"
+        android:layout_height="wrap_content"
+        android:text="1"
+        android:textColor="#AAAAAA"
+        android:textSize="13sp"
+        android:gravity="center" />
+
+</LinearLayout>

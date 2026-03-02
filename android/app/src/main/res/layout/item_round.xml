@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp"
+    android:gravity="center_vertical"
+    android:background="?attr/selectableItemBackground">
+
+    <!-- Round number -->
+    <TextView
+        android:id="@+id/tv_round_number"
+        android:layout_width="40dp"
+        android:layout_height="wrap_content"
+        android:text="R1"
+        android:textColor="#E10600"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <!-- Race name + circuit -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_race_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bahrain Grand Prix"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_circuit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bahrain International Circuit"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:layout_marginTop="2dp" />
+
+    </LinearLayout>
+
+    <!-- Date + arrow -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="end">
+
+        <TextView
+            android:id="@+id/tv_race_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="16 Mar"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:gravity="end" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="›"
+            android:textColor="#E10600"
+            android:textSize="20sp"
+            android:gravity="end" />
+
+    </LinearLayout>
+
+</LinearLayout>

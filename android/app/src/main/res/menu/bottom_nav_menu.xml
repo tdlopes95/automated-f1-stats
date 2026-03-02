@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@android:drawable/ic_menu_today"
+        android:title="Home" />
+
+    <item
+        android:id="@+id/nav_live"
+        android:icon="@android:drawable/ic_menu_view"
+        android:title="Live" />
+
+    <item
+        android:id="@+id/nav_results"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="Results" />
+
+    <item
+        android:id="@+id/nav_standings"
+        android:icon="@android:drawable/ic_menu_sort_by_size"
+        android:title="Standings" />
+
+    <item
+        android:id="@+id/nav_schedule"
+        android:icon="@android:drawable/ic_menu_my_calendar"
+        android:title="Schedule" />
+
+</menu>

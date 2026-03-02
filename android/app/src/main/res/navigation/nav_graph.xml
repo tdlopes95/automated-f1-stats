@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/nav_home">
+
+    <fragment
+        android:id="@+id/nav_home"
+        android:name="com.f1stats.ui.home.HomeFragment"
+        android:label="Home" />
+
+    <fragment
+        android:id="@+id/nav_live"
+        android:name="com.f1stats.ui.live.LiveFragment"
+        android:label="Live" />
+
+    <fragment
+        android:id="@+id/nav_results"
+        android:name="com.f1stats.ui.results.ResultsFragment"
+        android:label="Results" />
+
+    <fragment
+        android:id="@+id/nav_standings"
+        android:name="com.f1stats.ui.standings.StandingsFragment"
+        android:label="Standings" />
+
+    <fragment
+        android:id="@+id/nav_schedule"
+        android:name="com.f1stats.ui.schedule.ScheduleFragment"
+        android:label="Schedule" />
+
+</navigation>

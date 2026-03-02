@@ -1,0 +1,142 @@
+# F1 Backend API
+
+Personal F1 data backend — race results, qualifying, sprint, live timing.
+
+Built with **FastAPI** + **APScheduler** + **OpenF1** + **Jolpica**.
+
+---
+
+## Stack
+
+| Layer | Tech |
+|---|---|
+| API server | FastAPI + uvicorn |
+| Live data | OpenF1 REST API |
+| Calendar / Results | Jolpica (Ergast fork) |
+| Scheduler | APScheduler 3.x |
+| Database | SQLite (aiosqlite) |
+
+---
+
+## Setup
+
+```bash
+# 1. Clone / navigate to project
+cd f1-backend
+
+# 2. Create virtual environment
+python -m venv venv
+source venv/bin/activate   # Windows: venv\Scripts\activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Configure environment
+cp .env.example .env
+# Edit .env — add OPENF1_TOKEN if you have a sponsor tier account
+
+# 5. Run
+uvicorn app.main:app --reload --port 8000
+```
+
+The API will be live at `http://localhost:8000`
+Auto-generated docs at `http://localhost:8000/docs`
+
+---
+
+## API Endpoints
+
+### Schedule
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/schedule` | Full race calendar |
+| GET | `/schedule?year=2025` | Calendar for a specific year |
+| GET | `/schedule/next` | Next upcoming race weekend |
+| GET | `/schedule/upcoming-sessions` | Sessions in the next 14 days |
+
+### Live
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/live` | Live race snapshot (auto session key) |
+| GET | `/live/{session_key}` | Live snapshot for specific session |
+
+### Results
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/results/latest` | Latest race results |
+| GET | `/results/latest?session_type=Qualifying` | Latest qualifying results |
+| GET | `/results/{year}/{round}` | Results for specific round |
+| GET | `/results/{year}/{round}?session_type=Sprint` | Sprint results |
+
+### Standings
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/standings/drivers` | Driver championship standings |
+| GET | `/standings/constructors` | Constructor standings |
+
+### Session Details
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/sessions` | All sessions |
+| GET | `/sessions/{session_key}/laps` | Lap times for a session |
+| GET | `/sessions/{session_key}/fastest-laps` | Fastest lap per driver |
+| GET | `/sessions/{session_key}/stints` | Tyre stints |
+| GET | `/sessions/{session_key}/pit-stops` | Pit stops |
+| GET | `/sessions/{session_key}/race-control` | Flags, SC, VSC messages |
+| GET | `/sessions/{session_key}/weather` | Weather data |
+| GET | `/sessions/{session_key}/drivers` | Driver info for session |
+
+---
+
+## Live Data
+
+### Free tier (no token)
+- Historical data works fully
+- During a live session: polling still works but OpenF1 may rate-limit — works fine for personal use
+
+### Sponsor tier (€9.90/mo)
+- Add `OPENF1_TOKEN=your_token` to `.env`
+- Enables true real-time via MQTT/WebSocket (future upgrade path)
+- Higher rate limits
+
+---
+
+## How the Scheduler Works
+
+On startup, the scheduler:
+1. Pulls the race calendar from Jolpica
+2. Finds all sessions within the next 14 days
+3. Arms a **live polling job** (every 15s) to run during each session
+4. Arms a **results fetch job** to run 15–30min after each session ends
+5. Refreshes the schedule every Monday at 06:00 UTC
+
+```
+Session starts  →  live polling begins (every 15s) → snapshots saved to DB
+Session ends    →  results fetch fires after delay → final results saved to DB
+```
+
+---
+
+## Android App Integration
+
+Your Android Java app just calls these endpoints via Retrofit:
+
+```java
+// Example: get live race state
+Call<LiveSnapshot> getLive();
+
+// Example: get latest race results  
+Call<ResultsResponse> getLatestResults(@Query("session_type") String type);
+```
+
+Point Retrofit base URL at `http://your-server-ip:8000/`
+
+---
+
+## Deploying
+
+For personal use, easiest options:
+- **Raspberry Pi** on your home network
+- **Railway.app** (free tier, easy Python deploy)
+- **Render.com** (free tier)
+- **Fly.io** (free tier)
