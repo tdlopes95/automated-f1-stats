@@ -18,22 +18,38 @@ from .jolpica_client import JolpicaClient
 from .openf1_client import OpenF1Client
 from .scheduler import F1Scheduler
 
-# Simple in-memory cache: key → (data, timestamp)
+# ── Logging ───────────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# ── In-memory cache ───────────────────────────────────────────────────────────
 _cache: dict = {}
-CACHE_TTL = 300  # 5 minutes
+CACHE_TTL         = 300        # 5 minutes  — live/current data
+CACHE_TTL_FOREVER = 86400 * 7  # 7 days     — historical data (never changes)
 
 def cache_get(key: str):
     if key in _cache:
-        data, ts = _cache[key]
-        if time.time() - ts < CACHE_TTL:
+        entry = _cache[key]
+        ttl  = entry[2] if len(entry) == 3 else CACHE_TTL
+        data, ts = entry[0], entry[1]
+        if time.time() - ts < ttl:
             return data
+        del _cache[key]
     return None
 
 def cache_set(key: str, data):
+    """Short-lived cache (5 min) for current/live data."""
     _cache[key] = (data, time.time())
 
+def cache_set_historical(key: str, data):
+    """Long-lived cache (7 days) for historical data that never changes."""
+    _cache[key] = (data, time.time(), CACHE_TTL_FOREVER)
+
 def add_gap_to_second(standings: list) -> list:
-    """Add points gap from leader to second place."""
+    """Annotate the leader with their points gap over P2."""
     if not standings or len(standings) < 2:
         return standings
     try:
@@ -43,36 +59,25 @@ def add_gap_to_second(standings: list) -> list:
     except Exception:
         standings[0]["gap_to_second"] = 0
     return standings
-# ── Logging ───────────────────────────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
-)
-logger = logging.getLogger(__name__)
 
 # ── Globals (set during startup) ─────────────────────────────────────────────
-db: Database = None
-jolpica: JolpicaClient = None
-openf1: OpenF1Client = None
-scheduler: F1Scheduler = None
-
-# OpenF1 session key cache: stores the active session_key for live polling
+db: Database        = None
+jolpica: JolpicaClient  = None
+openf1: OpenF1Client    = None
+scheduler: F1Scheduler  = None
 _active_session_key: Optional[int] = None
 
 
 # ── Scheduler callbacks ───────────────────────────────────────────────────────
 
 async def on_live_poll(session_name: str, race_name: str):
-    """Called every 15s during an active session."""
     global _active_session_key
     try:
-        # Resolve session key from OpenF1 if we don't have it
         if _active_session_key is None:
             session = await openf1.get_latest_session()
             if session:
                 _active_session_key = session.get("session_key")
                 await db.upsert_session(session)
-
         if _active_session_key:
             snapshot = await openf1.get_live_snapshot(_active_session_key)
             snapshot["session_name"] = session_name
@@ -84,32 +89,24 @@ async def on_live_poll(session_name: str, race_name: str):
 
 
 async def on_session_ended(session_name: str, race_name: str, round_number: int):
-    """Called after a session ends — fetches and stores final results."""
     global _active_session_key
     try:
         year = datetime.utcnow().year
-
         if session_name == "Race":
             results = await jolpica.get_race_results(year, round_number)
             await db.save_results(year, round_number, "Race", results)
-            # Also refresh standings after a race
             standings = await jolpica.get_driver_standings(year)
             await db.save_driver_standings(year, round_number, standings)
             c_standings = await jolpica.get_constructor_standings(year)
             await db.save_constructor_standings(year, round_number, c_standings)
-
         elif session_name == "Qualifying":
             results = await jolpica.get_qualifying_results(year, round_number)
             await db.save_results(year, round_number, "Qualifying", results)
-
         elif session_name == "Sprint":
             results = await jolpica.get_sprint_results(year, round_number)
             await db.save_results(year, round_number, "Sprint", results)
-
-        # Reset active session key after session ends
         _active_session_key = None
         logger.info(f"[RESULTS] {session_name} results saved for {race_name} R{round_number}")
-
     except Exception as e:
         logger.error(f"on_session_ended error: {e}")
 
@@ -119,28 +116,18 @@ async def on_session_ended(session_name: str, race_name: str, round_number: int)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global db, jolpica, openf1, scheduler
-
-    # Init clients
     db = Database()
     await db.connect()
-
-    jolpica = JolpicaClient()
-    openf1 = OpenF1Client(
-        access_token=os.getenv("OPENF1_TOKEN")  # None = free tier
-    )
-
-    # Start scheduler
+    jolpica  = JolpicaClient()
+    openf1   = OpenF1Client(access_token=os.getenv("OPENF1_TOKEN"))
     scheduler = F1Scheduler(
         jolpica=jolpica,
         on_live_poll=on_live_poll,
         on_session_ended=on_session_ended,
     )
     await scheduler.start()
-
     logger.info("F1 Backend started and ready.")
     yield
-
-    # Cleanup
     scheduler.stop()
     await jolpica.close()
     await openf1.close()
@@ -148,7 +135,7 @@ async def lifespan(app: FastAPI):
     logger.info("F1 Backend shut down.")
 
 
-# ── FastAPI App ────────────────────────────────────────────────────────────────
+# ── FastAPI App ───────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="F1 Backend API",
@@ -159,7 +146,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],      # Restrict this in production
+    allow_origins=["*"],
     allow_methods=["GET"],
     allow_headers=["*"],
 )
@@ -176,13 +163,23 @@ async def root():
 
 @app.get("/schedule")
 async def get_schedule(year: Optional[int] = None):
-    """Full race calendar for a season."""
-    return await jolpica.get_schedule(year)
+    cache_key = f"schedule_{year or 'current'}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+    result = await jolpica.get_schedule(year)
+    if result:
+        # Historical schedules never change — cache longer
+        current_year = datetime.utcnow().year
+        if year and year < current_year:
+            cache_set_historical(cache_key, result)
+        else:
+            cache_set(cache_key, result)
+    return result
 
 
 @app.get("/schedule/next")
 async def get_next_race():
-    """Next upcoming race weekend."""
     race = await jolpica.get_next_race()
     if not race:
         raise HTTPException(status_code=404, detail="No upcoming race found")
@@ -191,7 +188,6 @@ async def get_next_race():
 
 @app.get("/schedule/upcoming-sessions")
 async def get_upcoming_sessions(days: int = Query(default=14, le=30)):
-    """All sessions in the next N days — useful for the app's home screen."""
     return await jolpica.get_upcoming_sessions(days_ahead=days)
 
 
@@ -199,34 +195,22 @@ async def get_upcoming_sessions(days: int = Query(default=14, le=30)):
 
 @app.get("/live")
 async def get_live_session():
-    """
-    Returns the latest live snapshot.
-    During a session: near-real-time data (15s delay from our polling).
-    Between sessions: last saved snapshot.
-    """
     global _active_session_key
-
-    # Try to find an active session
     if _active_session_key is None:
         session = await openf1.get_latest_session()
         if session:
             _active_session_key = session.get("session_key")
-
     if not _active_session_key:
         raise HTTPException(status_code=404, detail="No active session found")
-
     snapshot = await db.get_latest_snapshot(_active_session_key)
     if not snapshot:
-        # Nothing cached yet — fetch live right now
         snapshot = await openf1.get_live_snapshot(_active_session_key)
         await db.save_snapshot(_active_session_key, snapshot)
-
     return snapshot
 
 
 @app.get("/live/{session_key}")
 async def get_live_by_session(session_key: int):
-    """Get live/cached snapshot for a specific session key."""
     snapshot = await db.get_latest_snapshot(session_key)
     if not snapshot:
         snapshot = await openf1.get_live_snapshot(session_key)
@@ -243,19 +227,17 @@ async def get_latest_results(
     session_type: str = Query(default="Race", enum=["Race", "Qualifying", "Sprint"]),
     year: Optional[int] = None
 ):
-    """Latest race winner — shows last race of previous year if current season hasn't started."""
+    """Latest race winner — falls back to previous year if season hasn't started."""
     current_year = datetime.utcnow().year
 
-    # Check if current year has any races yet
+    # Check if current year has any completed races
     try:
         current_schedule = await jolpica.get_schedule(current_year)
         today = datetime.utcnow().date()
         current_year_has_results = False
-
         if current_schedule:
             for race in current_schedule:
-                sessions = race.get("sessions", [])
-                for session in sessions:
+                for session in race.get("sessions", []):
                     if session.get("name") == "Race":
                         dt_str = session.get("datetime", "")
                         if dt_str:
@@ -269,7 +251,6 @@ async def get_latest_results(
         logger.error(f"Schedule check error: {e}")
         current_year_has_results = False
 
-    # Pick which year to fetch from
     target_year = current_year if current_year_has_results else current_year - 1
 
     try:
@@ -277,12 +258,10 @@ async def get_latest_results(
         if not schedule:
             raise HTTPException(status_code=404, detail="No schedule found")
 
-        # Find last completed race
         today = datetime.utcnow().date()
         last_round = 0
         for race in schedule:
-            sessions = race.get("sessions", [])
-            for session in sessions:
+            for session in race.get("sessions", []):
                 if session.get("name") == "Race":
                     dt_str = session.get("datetime", "")
                     if dt_str:
@@ -293,17 +272,12 @@ async def get_latest_results(
                                 last_round = int(rnd)
 
         if last_round == 0:
-            # No completed races this year either — take absolute last round
             last_round = max(r["round"] for r in schedule)
 
         results = await jolpica.get_race_results(target_year, last_round)
         if results:
-            return {
-                "source": "live",
-                "year": target_year,
-                "round": last_round,
-                "results": results
-            }
+            return {"source": "live", "year": target_year,
+                    "round": last_round, "results": results}
     except HTTPException:
         raise
     except Exception as e:
@@ -318,10 +292,19 @@ async def get_results(
     round: int,
     session_type: str = Query(default="Race", enum=["Race", "Qualifying", "Sprint"])
 ):
-    """Results for a specific round."""
+    # SQLite cache first
     cached = await db.get_results(year, round, session_type)
     if cached:
-        return {"source": "cache", "year": year, "round": round, "session_type": session_type, "results": cached}
+        return {"source": "cache", "year": year, "round": round,
+                "session_type": session_type, "results": cached}
+
+    # Memory cache for historical rounds
+    current_year = datetime.utcnow().year
+    if year < current_year:
+        cache_key = f"results_{year}_{round}_{session_type}"
+        mem_cached = cache_get(cache_key)
+        if mem_cached:
+            return mem_cached
 
     # Fetch from Jolpica
     if session_type == "Race":
@@ -333,8 +316,15 @@ async def get_results(
 
     if results:
         await db.save_results(year, round, session_type, results)
+        if year < current_year:
+            cache_set_historical(
+                f"results_{year}_{round}_{session_type}",
+                {"source": "cache", "year": year, "round": round,
+                 "session_type": session_type, "results": results}
+            )
 
-    return {"source": "live", "year": year, "round": round, "session_type": session_type, "results": results}
+    return {"source": "live", "year": year, "round": round,
+            "session_type": session_type, "results": results}
 
 
 # ── Standings ─────────────────────────────────────────────────────────────────
@@ -342,15 +332,23 @@ async def get_results(
 @app.get("/standings/drivers")
 async def get_driver_standings(year: Optional[int] = None):
     current_year = datetime.utcnow().year
-    target_year = year or current_year
+    target_year  = year or current_year
 
+    # Current year → use SQLite cache
     if target_year == current_year:
         cached = await db.get_latest_driver_standings()
         if cached:
             return {"source": "cache", "season_started": True, "standings": cached}
+    else:
+        # Historical year → use memory cache
+        cache_key = f"driver_standings_{target_year}"
+        cached = cache_get(cache_key)
+        if cached:
+            return cached
 
     standings = await jolpica.get_driver_standings(target_year)
 
+    # Fallback to last year if current season hasn't started
     if not standings and target_year == current_year:
         standings = await jolpica.get_driver_standings(current_year - 1)
         standings = add_gap_to_second(standings)
@@ -358,20 +356,33 @@ async def get_driver_standings(year: Optional[int] = None):
                 "season_started": False, "standings": standings}
 
     standings = add_gap_to_second(standings)
+
     if standings:
-        await db.save_driver_standings(target_year, None, standings)
+        if target_year == current_year:
+            await db.save_driver_standings(target_year, None, standings)
+        else:
+            cache_set_historical(
+                f"driver_standings_{target_year}",
+                {"source": "cache", "season_started": True, "standings": standings}
+            )
+
     return {"source": "live", "season_started": True, "standings": standings}
 
 
 @app.get("/standings/constructors")
 async def get_constructor_standings(year: Optional[int] = None):
     current_year = datetime.utcnow().year
-    target_year = year or current_year
+    target_year  = year or current_year
 
     if target_year == current_year:
         cached = await db.get_latest_constructor_standings()
         if cached:
             return {"source": "cache", "standings": cached}
+    else:
+        cache_key = f"constructor_standings_{target_year}"
+        cached = cache_get(cache_key)
+        if cached:
+            return cached
 
     standings = await jolpica.get_constructor_standings(target_year)
 
@@ -380,7 +391,14 @@ async def get_constructor_standings(year: Optional[int] = None):
         return {"source": "fallback", "year": current_year - 1, "standings": standings}
 
     if standings:
-        await db.save_constructor_standings(target_year, None, standings)
+        if target_year == current_year:
+            await db.save_constructor_standings(target_year, None, standings)
+        else:
+            cache_set_historical(
+                f"constructor_standings_{target_year}",
+                {"source": "cache", "standings": standings}
+            )
+
     return {"source": "live", "standings": standings}
 
 
@@ -388,7 +406,6 @@ async def get_constructor_standings(year: Optional[int] = None):
 
 @app.get("/sessions")
 async def get_sessions(year: Optional[int] = None, session_type: Optional[str] = None):
-    """All OpenF1 sessions, optionally filtered."""
     return await openf1.get_sessions(year=year, session_type=session_type)
 
 
@@ -414,7 +431,6 @@ async def get_pit_stops(session_key: int):
     if cached:
         return cached
 
-    # Single fetch — no duplicates
     pit_stops_raw = await openf1.get_pit_stops(session_key)
     drivers_raw   = await openf1.get_drivers(session_key)
 
@@ -430,7 +446,7 @@ async def get_pit_stops(session_key: int):
 
     fastest = {}
     for stop in real_stops:
-        num = stop["driver_number"]
+        num      = stop["driver_number"]
         duration = stop.get("stop_duration", 999)
         if num not in fastest or duration < fastest[num]["stop_duration"]:
             fastest[num] = stop
@@ -453,7 +469,6 @@ async def get_pit_stops(session_key: int):
     return result
 
 
-
 @app.get("/sessions/{session_key}/race-control")
 async def get_race_control(session_key: int):
     return await openf1.get_race_control(session_key)
@@ -468,9 +483,9 @@ async def get_weather(session_key: int):
 async def get_drivers(session_key: int):
     return await openf1.get_drivers(session_key)
 
+
 @app.get("/session-key/{year}/{round}")
 async def get_session_key(year: int, round: int):
-    """Get OpenF1 session key for a specific race round."""
     cache_key = f"session_key_{year}_{round}"
     cached = cache_get(cache_key)
     if cached:
@@ -494,8 +509,7 @@ async def get_session_key(year: int, round: int):
     for session in sessions:
         if session.get("date_start", "").startswith(race_date):
             result = {"session_key": session["session_key"]}
-            cache_set(cache_key, result)
+            cache_set_historical(cache_key, result)
             return result
 
     raise HTTPException(status_code=404, detail="Session key not found")
-    
