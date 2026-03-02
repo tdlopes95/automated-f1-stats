@@ -350,13 +350,10 @@ async def get_pit_stops(session_key: int):
     if cached:
         return cached
 
-    pit_stops_raw = await openf1.get_pit_stops(session_key)
-    drivers_raw   = await openf1.get_drivers(session_key)
-    # Get pit stops and drivers in parallel
+    # Single fetch — no duplicates
     pit_stops_raw = await openf1.get_pit_stops(session_key)
     drivers_raw   = await openf1.get_drivers(session_key)
 
-    # Build driver lookup: number → {name, team, colour}
     driver_lookup = {}
     for d in drivers_raw:
         driver_lookup[d["driver_number"]] = {
@@ -365,11 +362,8 @@ async def get_pit_stops(session_key: int):
             "colour": "#" + d.get("team_colour", "FFFFFF")
         }
 
-    # Filter out formation/installation laps (stop_duration is None)
-    # Real pit stops always have a stop_duration value
     real_stops = [p for p in pit_stops_raw if p.get("stop_duration") is not None]
 
-    # Keep only fastest stop per driver
     fastest = {}
     for stop in real_stops:
         num = stop["driver_number"]
@@ -377,7 +371,6 @@ async def get_pit_stops(session_key: int):
         if num not in fastest or duration < fastest[num]["stop_duration"]:
             fastest[num] = stop
 
-    # Enrich with driver info and sort by fastest time
     result = []
     for num, stop in fastest.items():
         driver_info = driver_lookup.get(num, {})
@@ -413,35 +406,32 @@ async def get_drivers(session_key: int):
 
 @app.get("/session-key/{year}/{round}")
 async def get_session_key(year: int, round: int):
+    """Get OpenF1 session key for a specific race round."""
     cache_key = f"session_key_{year}_{round}"
     cached = cache_get(cache_key)
     if cached:
         return cached
-    """Get OpenF1 session key for a specific race round."""
-    # Get race date from Jolpica
+
     schedule = await jolpica.get_schedule(year)
     race = next((r for r in schedule if r["round"] == round), None)
     if not race:
         raise HTTPException(status_code=404, detail="Round not found")
 
-    # Find race session datetime
     race_date = None
     for session in race.get("sessions", []):
         if session["name"] == "Race":
-            race_date = session["datetime"][:10]  # just the date part YYYY-MM-DD
+            race_date = session["datetime"][:10]
             break
 
     if not race_date:
         raise HTTPException(status_code=404, detail="Race date not found")
 
-    # Find matching OpenF1 session by date
     sessions = await openf1.get_sessions(year=year, session_type="Race")
     for session in sessions:
         if session.get("date_start", "").startswith(race_date):
-            return {"session_key": session["session_key"]}
+            result = {"session_key": session["session_key"]}
+            cache_set(cache_key, result)
+            return result
 
-    result = {"session_key": session["session_key"]}
-    cache_set(cache_key, result)
-    return result
     raise HTTPException(status_code=404, detail="Session key not found")
     

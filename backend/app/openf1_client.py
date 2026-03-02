@@ -38,23 +38,26 @@ class OpenF1Client:
         )
 
     async def _get(self, endpoint: str, params: dict = None):
-    for attempt in range(3):  # retry up to 3 times
-        try:
-            response = await self._client.get(
-                f"{self.BASE_URL}{endpoint}",
-                params=params
-            )
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                wait = 2 ** attempt  # 1s, 2s, 4s backoff
-                logger.warning(f"Rate limited, retrying in {wait}s...")
-                await asyncio.sleep(wait)
-            else:
-                logger.error(f"OpenF1 HTTP error {e.response.status_code} on {endpoint}: {e}")
+        for attempt in range(3):
+            try:
+                response = await self._client.get(
+                    f"/{endpoint}",
+                    params=params
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    wait = 2 ** attempt
+                    logger.warning(f"Rate limited, retrying in {wait}s...")
+                    await asyncio.sleep(wait)
+                else:
+                    logger.error(f"OpenF1 HTTP error {e.response.status_code} on {endpoint}: {e}")
+                    return []
+            except Exception as e:
+                logger.error(f"OpenF1 request failed on {endpoint}: {e}")
                 return []
-    return []
+        return []
 
     # ── Sessions & Meetings ──────────────────────────────────────────────────
 
