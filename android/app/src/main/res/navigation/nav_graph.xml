@@ -30,4 +30,9 @@
         android:name="com.f1stats.ui.schedule.ScheduleFragment"
         android:label="Schedule" />
 
+    <fragment
+        android:id="@+id/nav_settings"
+        android:name="com.f1stats.ui.settings.SettingsFragment"
+        android:label="Settings" />
+
 </navigation>

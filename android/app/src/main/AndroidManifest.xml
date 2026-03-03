@@ -12,6 +12,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:name=".F1App"
         android:theme="@style/Theme.F1Stats">
         <activity
             android:name=".RoundDetailActivity"

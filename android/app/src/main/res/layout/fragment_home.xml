@@ -238,10 +238,19 @@
                             android:layout_marginTop="4dp" />
 
                         <TextView
-                            android:id="@+id/tv_last_race_name"
+                            android:id="@+id/tv_last_race_team"
                             android:text=""
                             android:textColor="#AAAAAA"
                             android:textSize="14sp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp" />
+
+                        <TextView
+                            android:id="@+id/tv_last_race_name"
+                            android:text=""
+                            android:textColor="#666666"
+                            android:textSize="12sp"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp" />

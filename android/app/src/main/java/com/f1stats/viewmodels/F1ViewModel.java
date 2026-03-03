@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.f1stats.F1App;
 import com.f1stats.api.F1ApiClient;
 import com.f1stats.api.F1ApiService;
 import com.f1stats.models.ConstructorStanding;
@@ -24,12 +25,14 @@ import retrofit2.Response;
 
 public class F1ViewModel extends ViewModel {
 
-    private final F1ApiService api = F1ApiClient.getInstance().getService();
+    private final F1ApiService api = F1ApiClient.getInstance(F1App.get()).getService();
 
     // ── Live Session ──────────────────────────────────────────────────────────
     private final MutableLiveData<LiveSession> liveSession = new MutableLiveData<>();
     private final MutableLiveData<Boolean> liveLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> liveError = new MutableLiveData<>();
+    private final MutableLiveData<String> lastRaceName = new MutableLiveData<>();
+    public LiveData<String> getLastRaceName() { return lastRaceName; }
 
     // ── Results ───────────────────────────────────────────────────────────────
     private final MutableLiveData<List<RaceResult>> raceResults = new MutableLiveData<>();
@@ -99,7 +102,10 @@ public class F1ViewModel extends ViewModel {
                                    Response<Map<String, Object>> response) {
                 resultsLoading.setValue(false);
                 if (response.isSuccessful() && response.body() != null) {
-                    raceResults.setValue(parseRaceResults(response.body()));
+                    Map<String, Object> body = response.body();
+                    Object rn = body.get("race_name");
+                    if (rn != null) lastRaceName.setValue(rn.toString());
+                    raceResults.setValue(parseRaceResults(body));
                 } else {
                     resultsError.setValue("Could not load results");
                     homeError.setValue("Could not load data.\nCheck your connection and\nrestart the app if ngrok changed.");

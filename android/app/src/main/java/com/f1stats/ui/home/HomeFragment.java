@@ -34,7 +34,7 @@ public class HomeFragment extends Fragment {
     private TextView tvNextRaceName, tvNextRaceCircuit, tvNextRaceDate;
     private TextView tvCountdown;
     private TextView tvLeaderName, tvLeaderTeam, tvLeaderPoints;
-    private TextView tvLastWinner, tvLastRaceName;
+    private TextView tvLastWinner, tvLastRaceName, tvLastRaceTeam;
     private TextView tvLeaderTitle, tvLeaderGap;
     private ShimmerFrameLayout shimmerLayout;
     private SwipeRefreshLayout swipeRefresh;
@@ -65,6 +65,7 @@ public class HomeFragment extends Fragment {
         tvLeaderPoints    = view.findViewById(R.id.tv_leader_points);
         tvLastWinner      = view.findViewById(R.id.tv_last_winner);
         tvLastRaceName    = view.findViewById(R.id.tv_last_race_name);
+        tvLastRaceTeam    = view.findViewById(R.id.tv_last_race_team);
         tvLeaderTitle     = view.findViewById(R.id.tv_leader_title);
         tvLeaderGap       = view.findViewById(R.id.tv_leader_gap);
         shimmerLayout     = view.findViewById(R.id.shimmer_layout);
@@ -179,10 +180,16 @@ public class HomeFragment extends Fragment {
                 tvLastWinner.setText(winner.getDriver().getFullName());
             }
             if (winner.getConstructor() != null) {
-                tvLastRaceName.setText(winner.getConstructor().getName());
+                tvLastRaceTeam.setText(winner.getConstructor().getName());
             }
             lastWinnerLoaded = true;
             checkAllLoaded();
+        });
+
+        viewModel.getLastRaceName().observe(getViewLifecycleOwner(), raceName -> {
+            if (raceName != null && !raceName.isEmpty()) {
+                tvLastRaceName.setText(raceName);
+            }
         });
 
         viewModel.getHomeError().observe(getViewLifecycleOwner(), error -> {

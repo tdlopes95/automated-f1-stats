@@ -334,17 +334,41 @@ async def get_driver_standings(year: Optional[int] = None):
     current_year = datetime.utcnow().year
     target_year  = year or current_year
 
-    # Current year → use SQLite cache
+    # Check if current season has started (needed for correct season_started flag)
+    season_started = True
     if target_year == current_year:
-        cached = await db.get_latest_driver_standings()
-        if cached:
-            return {"source": "cache", "season_started": True, "standings": cached}
-    else:
-        # Historical year → use memory cache
+        try:
+            current_schedule = await jolpica.get_schedule(current_year)
+            today = datetime.utcnow().date()
+            season_started = False
+            if current_schedule:
+                for race in current_schedule:
+                    for session in race.get("sessions", []):
+                        if session.get("name") == "Race":
+                            dt_str = session.get("datetime", "")
+                            if dt_str:
+                                race_date = datetime.fromisoformat(dt_str[:10]).date()
+                                if race_date <= today:
+                                    season_started = True
+                                    break
+                    if season_started:
+                        break
+        except Exception as e:
+            logger.error(f"Season check error: {e}")
+            season_started = True  # assume started on error
+
+    # Historical year → use memory cache
+    if target_year != current_year:
         cache_key = f"driver_standings_{target_year}"
         cached = cache_get(cache_key)
         if cached:
             return cached
+
+    # Current year → use SQLite cache (with correct season_started flag)
+    if target_year == current_year:
+        cached = await db.get_latest_driver_standings()
+        if cached and season_started:
+            return {"source": "cache", "season_started": True, "standings": cached}
 
     standings = await jolpica.get_driver_standings(target_year)
 
@@ -366,7 +390,7 @@ async def get_driver_standings(year: Optional[int] = None):
                 {"source": "cache", "season_started": True, "standings": standings}
             )
 
-    return {"source": "live", "season_started": True, "standings": standings}
+    return {"source": "live", "season_started": season_started, "standings": standings}
 
 
 @app.get("/standings/constructors")
