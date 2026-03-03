@@ -1,20 +1,24 @@
 package com.f1stats.ui.home;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.f1stats.R;
-import com.f1stats.viewmodels.F1ViewModel;
 import com.f1stats.SeasonHelper;
+import com.f1stats.viewmodels.F1ViewModel;
+import com.facebook.shimmer.ShimmerFrameLayout;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -32,6 +36,13 @@ public class HomeFragment extends Fragment {
     private TextView tvLeaderName, tvLeaderTeam, tvLeaderPoints;
     private TextView tvLastWinner, tvLastRaceName;
     private TextView tvLeaderTitle, tvLeaderGap;
+    private ShimmerFrameLayout shimmerLayout;
+    private SwipeRefreshLayout swipeRefresh;
+    private LinearLayout layoutError;
+    private boolean nextRaceLoaded   = false;
+    private boolean standingsLoaded  = false;
+    private boolean lastWinnerLoaded = false;
+    private int failCount = 0;
 
     @Nullable
     @Override
@@ -45,7 +56,6 @@ public class HomeFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Bind views
         tvNextRaceName    = view.findViewById(R.id.tv_next_race_name);
         tvNextRaceCircuit = view.findViewById(R.id.tv_next_race_circuit);
         tvNextRaceDate    = view.findViewById(R.id.tv_next_race_date);
@@ -55,30 +65,71 @@ public class HomeFragment extends Fragment {
         tvLeaderPoints    = view.findViewById(R.id.tv_leader_points);
         tvLastWinner      = view.findViewById(R.id.tv_last_winner);
         tvLastRaceName    = view.findViewById(R.id.tv_last_race_name);
-        tvLeaderTitle  = view.findViewById(R.id.tv_leader_title);
-        tvLeaderGap    = view.findViewById(R.id.tv_leader_gap);
+        tvLeaderTitle     = view.findViewById(R.id.tv_leader_title);
+        tvLeaderGap       = view.findViewById(R.id.tv_leader_gap);
+        shimmerLayout     = view.findViewById(R.id.shimmer_layout);
+        swipeRefresh      = view.findViewById(R.id.swipe_refresh_home);
+        layoutError       = view.findViewById(R.id.layout_error);
+
+        view.findViewById(R.id.btn_retry).setOnClickListener(v -> {
+            layoutError.setVisibility(View.GONE);
+            failCount      = 0;
+            nextRaceLoaded = false;
+            standingsLoaded = false;
+            lastWinnerLoaded = false;
+            showSkeleton();
+            fetchData();
+        });
+
+        swipeRefresh.setColorSchemeColors(Color.parseColor("#E10600"));
+        swipeRefresh.setBackgroundColor(Color.parseColor("#121212"));
+        swipeRefresh.setOnRefreshListener(this::refreshData);
+
+        showSkeleton();
 
         viewModel = new ViewModelProvider(requireActivity()).get(F1ViewModel.class);
-
         observeViewModel();
+        fetchData();
+    }
 
-        // Fetch data
+    private void fetchData() {
         viewModel.fetchNextRace();
         viewModel.fetchDriverStandings(SeasonHelper.getCurrentYear());
         viewModel.fetchLatestResults("Race", SeasonHelper.getCurrentYear());
     }
 
+    private void refreshData() {
+        failCount        = 0;
+        nextRaceLoaded   = false;
+        standingsLoaded  = false;
+        lastWinnerLoaded = false;
+        layoutError.setVisibility(View.GONE);
+        fetchData();
+    }
+
+    private void showSkeleton() {
+        shimmerLayout.startShimmer();
+        shimmerLayout.setVisibility(View.VISIBLE);
+        swipeRefresh.setVisibility(View.GONE);
+    }
+
+    private void checkAllLoaded() {
+        if (nextRaceLoaded && standingsLoaded && lastWinnerLoaded) {
+            shimmerLayout.stopShimmer();
+            shimmerLayout.setVisibility(View.GONE);
+            swipeRefresh.setVisibility(View.VISIBLE);
+            swipeRefresh.setRefreshing(false);
+        }
+    }
+
     private void observeViewModel() {
 
-        // ── Next race ─────────────────────────────────────────────────────────
         viewModel.getNextRace().observe(getViewLifecycleOwner(), race -> {
             if (race == null) return;
-
             tvNextRaceName.setText(getString(race, "race_name", "Unknown Race"));
             tvNextRaceCircuit.setText(getString(race, "circuit", ""));
-
-            // Find race session datetime
-            List<Map<String, Object>> sessions = (List<Map<String, Object>>) race.get("sessions");
+            List<Map<String, Object>> sessions =
+                    (List<Map<String, Object>>) race.get("sessions");
             if (sessions != null) {
                 for (Map<String, Object> session : sessions) {
                     if ("Race".equals(session.get("name"))) {
@@ -91,9 +142,10 @@ public class HomeFragment extends Fragment {
                     }
                 }
             }
+            nextRaceLoaded = true;
+            checkAllLoaded();
         });
 
-        // ── Driver standings → championship leader ────────────────────────────
         viewModel.getDriverStandings().observe(getViewLifecycleOwner(), standings -> {
             if (standings == null || standings.isEmpty()) return;
             var leader = standings.get(0);
@@ -102,7 +154,6 @@ public class HomeFragment extends Fragment {
             }
             tvLeaderTeam.setText(leader.getTeamName());
             tvLeaderPoints.setText(leader.getPoints() + " pts");
-
             double gap = leader.getGapToSecond();
             if (gap > 0) {
                 tvLeaderGap.setText("(+" + (int) gap + " from P2)");
@@ -110,9 +161,10 @@ public class HomeFragment extends Fragment {
             } else {
                 tvLeaderGap.setVisibility(View.GONE);
             }
+            standingsLoaded = true;
+            checkAllLoaded();
         });
 
-        // Observe season started to update title label
         viewModel.getSeasonStarted().observe(getViewLifecycleOwner(), started -> {
             if (tvLeaderTitle != null) {
                 tvLeaderTitle.setText(started ?
@@ -120,7 +172,6 @@ public class HomeFragment extends Fragment {
             }
         });
 
-        // ── Latest race results → winner ──────────────────────────────────────
         viewModel.getRaceResults().observe(getViewLifecycleOwner(), results -> {
             if (results == null || results.isEmpty()) return;
             var winner = results.get(0);
@@ -130,27 +181,38 @@ public class HomeFragment extends Fragment {
             if (winner.getConstructor() != null) {
                 tvLastRaceName.setText(winner.getConstructor().getName());
             }
+            lastWinnerLoaded = true;
+            checkAllLoaded();
         });
 
+        viewModel.getHomeError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null) {
+                failCount++;
+                swipeRefresh.setRefreshing(false);
+                if (failCount >= 3) {
+                    shimmerLayout.stopShimmer();
+                    shimmerLayout.setVisibility(View.GONE);
+                    swipeRefresh.setVisibility(View.GONE);
+                    layoutError.setVisibility(View.VISIBLE);
+                    failCount = 0;
+                }
+                viewModel.clearHomeError();
+            }
+        });
     }
-
-    // ── Countdown timer ───────────────────────────────────────────────────────
 
     private void startCountdown(String isoDateStr) {
         try {
-            // Parse ISO datetime — backend sends e.g. "2026-03-15T15:00:00"
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+            SimpleDateFormat sdf = new SimpleDateFormat(
+                    "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
             Date raceDate = sdf.parse(isoDateStr);
             if (raceDate == null) return;
-
             long diff = raceDate.getTime() - System.currentTimeMillis();
             if (diff <= 0) {
                 tvCountdown.setText("Race started!");
                 return;
             }
-
             if (countDownTimer != null) countDownTimer.cancel();
-
             countDownTimer = new CountDownTimer(diff, 1000) {
                 @Override
                 public void onTick(long millisUntilFinished) {
@@ -158,18 +220,14 @@ public class HomeFragment extends Fragment {
                     long hours   = (millisUntilFinished % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60);
                     long minutes = (millisUntilFinished % (1000 * 60 * 60)) / (1000 * 60);
                     long seconds = (millisUntilFinished % (1000 * 60)) / 1000;
-                    tvCountdown.setText(
-                            String.format(Locale.getDefault(), "%dd %02dh %02dm %02ds",
-                                    days, hours, minutes, seconds)
-                    );
+                    tvCountdown.setText(String.format(Locale.getDefault(),
+                            "%dd %02dh %02dm %02ds", days, hours, minutes, seconds));
                 }
-
                 @Override
                 public void onFinish() {
                     tvCountdown.setText("Race started!");
                 }
             }.start();
-
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -177,8 +235,10 @@ public class HomeFragment extends Fragment {
 
     private String formatDate(String isoDateStr) {
         try {
-            SimpleDateFormat input  = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-            SimpleDateFormat output = new SimpleDateFormat("EEE dd MMM yyyy, HH:mm", Locale.getDefault());
+            SimpleDateFormat input  = new SimpleDateFormat(
+                    "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+            SimpleDateFormat output = new SimpleDateFormat(
+                    "EEE dd MMM yyyy, HH:mm", Locale.getDefault());
             Date date = input.parse(isoDateStr);
             return date != null ? output.format(date) : isoDateStr;
         } catch (Exception e) {

@@ -55,8 +55,11 @@ dependencies {
     implementation ("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation(libs.activity)
 
-    // Testing (keep defaults)
+    // Testing
     testImplementation ("junit:junit:4.13.2")
     androidTestImplementation ("androidx.test.ext:junit:1.2.1")
     androidTestImplementation ("androidx.test.espresso:espresso-core:3.6.1")
+
+    // Shimmer for "loading..."
+    implementation("com.facebook.shimmer:shimmer:0.5.0")
 }

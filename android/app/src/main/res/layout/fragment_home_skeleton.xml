@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.facebook.shimmer.ShimmerFrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/shimmer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Next Race skeleton card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Label -->
+                <View
+                    android:layout_width="80dp"
+                    android:layout_height="10dp"
+                    android:background="#2D2D2D" />
+
+                <!-- Race name -->
+                <View
+                    android:layout_width="200dp"
+                    android:layout_height="20dp"
+                    android:layout_marginTop="10dp"
+                    android:background="#2D2D2D" />
+
+                <!-- Circuit -->
+                <View
+                    android:layout_width="140dp"
+                    android:layout_height="14dp"
+                    android:layout_marginTop="8dp"
+                    android:background="#2D2D2D" />
+
+                <!-- Date -->
+                <View
+                    android:layout_width="160dp"
+                    android:layout_height="14dp"
+                    android:layout_marginTop="8dp"
+                    android:background="#2D2D2D" />
+
+                <!-- Countdown -->
+                <View
+                    android:layout_width="180dp"
+                    android:layout_height="28dp"
+                    android:layout_marginTop="10dp"
+                    android:background="#2D2D2D" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Championship Leader skeleton card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <View
+                    android:layout_width="120dp"
+                    android:layout_height="10dp"
+                    android:background="#2D2D2D" />
+
+                <View
+                    android:layout_width="180dp"
+                    android:layout_height="20dp"
+                    android:layout_marginTop="10dp"
+                    android:background="#2D2D2D" />
+
+                <View
+                    android:layout_width="100dp"
+                    android:layout_height="14dp"
+                    android:layout_marginTop="8dp"
+                    android:background="#2D2D2D" />
+
+                <View
+                    android:layout_width="80dp"
+                    android:layout_height="14dp"
+                    android:layout_marginTop="8dp"
+                    android:background="#2D2D2D" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Last Race skeleton card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <View
+                    android:layout_width="100dp"
+                    android:layout_height="10dp"
+                    android:background="#2D2D2D" />
+
+                <View
+                    android:layout_width="160dp"
+                    android:layout_height="20dp"
+                    android:layout_marginTop="10dp"
+                    android:background="#2D2D2D" />
+
+                <View
+                    android:layout_width="120dp"
+                    android:layout_height="14dp"
+                    android:layout_marginTop="8dp"
+                    android:background="#2D2D2D" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </LinearLayout>
+</com.facebook.shimmer.ShimmerFrameLayout>
