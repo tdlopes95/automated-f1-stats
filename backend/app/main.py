@@ -274,10 +274,16 @@ async def get_latest_results(
         if last_round == 0:
             last_round = max(r["round"] for r in schedule)
 
+        race_name = ""
+        for race in schedule:
+            if int(race.get("round", 0)) == last_round:
+                race_name = race.get("race_name", "")
+                break
+
         results = await jolpica.get_race_results(target_year, last_round)
         if results:
             return {"source": "live", "year": target_year,
-                    "round": last_round, "results": results}
+                    "round": last_round, "race_name": race_name, "results": results}
     except HTTPException:
         raise
     except Exception as e:

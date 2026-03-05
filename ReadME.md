@@ -1,6 +1,6 @@
 # 🏎️ automated-f1-stats
 
-A personal F1 companion app — live race timing, results, qualifying, sprint, and standings, all in one place.
+A personal F1 companion app — live race timing, results, qualifying, sprint, standings, and schedule, all in one place.
 
 > **Unofficial project. Not affiliated with Formula 1 or FOM.**
 
@@ -11,7 +11,7 @@ A personal F1 companion app — live race timing, results, qualifying, sprint, a
 ```
 automated-f1-stats/
 ├── backend/        # Python FastAPI server (data engine)
-├── android/        # Android app — Java + Material Design (coming soon)
+├── android/        # Android app — Java + Material Design
 ├── .gitignore
 └── README.md       ← you are here
 ```
@@ -29,13 +29,12 @@ Jolpica API ──┘     (APScheduler)         JSON
 - **OpenF1** provides live timing during sessions (~1–3s delay)
 - **Jolpica** provides the race calendar, final results, and standings
 - **APScheduler** arms polling jobs automatically based on real session times
-- **Android app** calls your backend over your local network (or deployed server)
+- **Android app** calls your backend over your local network or a deployed server
+- **ngrok** (optional) tunnels the backend to a public URL for remote access — configurable inside the app without rebuilding
 
 ---
 
 ## Software You Will Need
-
-This section tells you everything you need to install before each part of the project works.
 
 ### 🐍 Backend (Python)
 
@@ -46,8 +45,9 @@ This section tells you everything you need to install before each part of the pr
 | **Git** | Any | Version control | [git-scm.com](https://git-scm.com) |
 
 > **Optional but recommended:**
-> A code editor — [VS Code](https://code.visualstudio.com) is free and works great for both Python and the project overall.
-> Install the **Python extension** inside VS Code for syntax highlighting and debugging.
+> A code editor — [VS Code](https://code.visualstudio.com) is free and works great.
+> Install the **Python extension** for syntax highlighting and debugging.
+> ⚠️ If you install the VS Code Java extension, make sure Android Studio's Gradle JDK is not accidentally pointing to the VS Code JRE. Set `org.gradle.java.home=C:/Program Files/Android/Android Studio/jbr` in `gradle.properties` if needed.
 
 Once Python is installed, everything else is handled by `pip install -r requirements.txt`.
 
@@ -57,32 +57,29 @@ Once Python is installed, everything else is handled by `pip install -r requirem
 
 | Software | Version | Why | Download |
 |---|---|---|---|
-| **Android Studio** | Hedgehog (2023.1.1) or newer | Full Android IDE, includes everything below | [developer.android.com/studio](https://developer.android.com/studio) |
-| **JDK (Java)** | 17+ | Bundled inside Android Studio — no separate install needed | — |
+| **Android Studio** | Hedgehog (2023.1.1) or newer | Full Android IDE | [developer.android.com/studio](https://developer.android.com/studio) |
+| **JDK (Java)** | 17+ | Bundled inside Android Studio | — |
 | **Android SDK** | API 26+ (Android 8.0) | Bundled inside Android Studio | — |
 | **Gradle** | Bundled | Build tool | — |
 
-> ⚠️ **Android Studio is a large download (~1GB installer, ~3–4GB once set up).** Plan accordingly.
-> When you first open it, it will download the Android SDK automatically — this takes a few minutes on first run.
+> ⚠️ Android Studio is a large download (~1GB installer, ~3–4GB once set up).
 > You do **not** need to install Java/JDK separately — Android Studio bundles it.
-
-> **Optional:** A physical Android phone with **USB Debugging enabled** is much better for testing than the emulator. The emulator works but is slower.
+> A physical Android phone with **USB Debugging enabled** is recommended over the emulator.
 
 ---
 
-### 🌐 Deployment (Optional — run backend beyond your local machine)
+### 🌐 Deployment (Optional)
 
-If you want the app to reach your backend when you're not on the same Wi-Fi:
+If you want the app to reach your backend when away from home Wi-Fi:
 
 | Option | Cost | Difficulty | Notes |
 |---|---|---|---|
 | **Local only (Wi-Fi)** | Free | ⭐ Easy | Phone and backend on same network |
+| **ngrok** | Free tier | ⭐ Easy | Tunnel to public URL, configure in app settings |
 | **Raspberry Pi** | ~€40 one-time | ⭐⭐ Medium | Always-on home server |
 | **Railway.app** | Free tier | ⭐⭐ Easy | Push to GitHub, auto-deploys |
 | **Render.com** | Free tier | ⭐⭐ Easy | Similar to Railway |
 | **Fly.io** | Free tier | ⭐⭐⭐ Medium | More control, more setup |
-
-> For a personal project, **local Wi-Fi** is the easiest to start with. You run the backend on your PC/laptop and your phone calls it over the home network.
 
 ---
 
@@ -90,18 +87,15 @@ If you want the app to reach your backend when you're not on the same Wi-Fi:
 
 ### 1. Clone the repo
 ```bash
-# Requires: Git
 git clone https://github.com/YOUR_USERNAME/automated-f1-stats.git
 cd automated-f1-stats
 ```
 
 ### 2. Set up the backend
 ```bash
-# Requires: Python 3.11+
-
 cd backend
 
-# Create a virtual environment (keeps dependencies isolated)
+# Create a virtual environment
 python -m venv venv
 
 # Activate it
@@ -124,11 +118,39 @@ Interactive API docs at **http://localhost:8000/docs**
 
 ---
 
-### 3. Set up the Android app *(coming soon)*
+### 3. Set up the Android app
+
 ```
 Requires: Android Studio
-Instructions will be added when the Android module is built.
+1. Open the /android folder in Android Studio
+2. Let Gradle sync and download dependencies
+3. Open the app and go to Settings (gear icon, top right)
+4. Enter your backend URL (local IP or ngrok URL)
+5. Run on your device or emulator
 ```
+
+> The backend URL is saved in SharedPreferences — no rebuild needed when the URL changes (e.g. when ngrok restarts).
+
+---
+
+## Android App — Features
+
+| Screen | Features |
+|---|---|
+| **Home** | Next race countdown, championship leader, last race winner with race name and team |
+| **Live** | Live session timing, positions, gaps, tyre compounds |
+| **Results** | Full season round list, race results, qualifying (Q1/Q2/Q3), sprint |
+| **Standings** | Driver and constructor championship tables with DNF counts and podiums |
+| **Schedule** | Full season calendar with session times |
+| **Settings** | Configure backend URL without rebuilding the app |
+
+### UX Details
+- Animated shimmer skeleton on home screen while data loads
+- Pull-to-refresh on all screens
+- Error state with retry button when all endpoints fail
+- Season selector on Results and Standings (back to 1950)
+- Championship leader shows points gap to P2
+- Off-season: shows last season's champion with correct label
 
 ---
 
@@ -139,7 +161,7 @@ Instructions will be added when the Android module is built.
 | `GET /schedule` | Full race calendar |
 | `GET /schedule/next` | Next race weekend |
 | `GET /live` | Live race snapshot |
-| `GET /results/latest` | Latest race results |
+| `GET /results/latest` | Latest race results with race name |
 | `GET /results/{year}/{round}` | Results for a specific round |
 | `GET /standings/drivers` | Driver championship standings |
 | `GET /standings/constructors` | Constructor standings |
@@ -149,6 +171,11 @@ Instructions will be added when the Android module is built.
 | `GET /sessions/{key}/race-control` | Flags, safety car messages |
 
 Full docs auto-generated at `/docs` when the server is running.
+
+### Caching Strategy
+- **5 minutes** — live/current data (standings, next race, latest results)
+- **7 days** — historical data (past seasons, completed rounds)
+- **SQLite** — standings and results persisted across restarts
 
 ---
 
@@ -163,13 +190,25 @@ Full docs auto-generated at `/docs` when the server is running.
 
 ## Roadmap
 
-- [x] Python backend — FastAPI + scheduler + database
-- [ ] Android app — results screen
-- [ ] Android app — live timing screen
-- [ ] Android app — standings screen
-- [ ] Android app — schedule / countdown screen
-- [ ] Notifications for session start / results available
-- [ ] Optional: deploy backend to cloud
+- [x] Python backend — FastAPI + APScheduler + SQLite cache
+- [x] Dual-tier caching (5-min live, 7-day historical)
+- [x] Android app — home screen with countdown, leader, last winner
+- [x] Android app — live timing screen
+- [x] Android app — results screen (race, qualifying, sprint)
+- [x] Android app — standings screen (drivers + constructors)
+- [x] Android app — schedule screen
+- [x] Android app — shimmer loading skeleton
+- [x] Android app — pull-to-refresh on all screens
+- [x] Android app — error state with retry button
+- [x] Android app — settings screen (configure backend URL without rebuild)
+- [x] Android app — season selector (back to 1950)
+- [x] Off-season fallback (shows last season champion with correct label)
+- [ ] Cache home screen data for instant load on reopen
+- [ ] Handle ngrok 429 rate limit errors with specific message
+- [ ] Snackbar toast on pull-to-refresh complete
+- [ ] App icon + splash screen
+- [ ] Deploy backend to cloud (Railway / Render)
+- [ ] Push notifications for session start / results available
 
 ---
 

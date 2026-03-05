@@ -29,7 +29,7 @@ public class StandingsFragment extends Fragment {
     private StandingsAdapter adapter;
     private SwipeRefreshLayout swipeRefresh;
 
-    private static final String[] TABS = {"Drivers", "Constructors", "Pit Stops"};
+    private static final String[] TABS = {"Drivers", "Constructors"};
     private String currentTab = "Drivers";
     private int selectedYear = SeasonHelper.getCurrentYear();
 
@@ -53,7 +53,6 @@ public class StandingsFragment extends Fragment {
         adapter = new StandingsAdapter();
         rv.setAdapter(adapter);
 
-        // ViewModel first
         viewModel = new ViewModelProvider(requireActivity()).get(F1ViewModel.class);
 
         swipeRefresh.setColorSchemeColors(Color.parseColor("#E10600"));
@@ -118,52 +117,14 @@ public class StandingsFragment extends Fragment {
     }
 
     private void loadCurrentTab() {
+        viewModel.clearStandings();
         switch (currentTab) {
             case "Drivers":
-                viewModel.clearStandings();
                 viewModel.fetchDriverStandings(selectedYear);
                 viewModel.fetchSeasonStats(selectedYear);
                 break;
             case "Constructors":
-                viewModel.clearStandings();
                 viewModel.fetchConstructorStandings(selectedYear);
-                break;
-            case "Pit Stops":
-                viewModel.getSchedule().observe(getViewLifecycleOwner(), schedule -> {
-                    if (schedule == null || schedule.isEmpty()) return;
-                    int lastRound = 0;
-                    String today = new java.text.SimpleDateFormat(
-                            "yyyy-MM-dd", java.util.Locale.getDefault())
-                            .format(new java.util.Date());
-                    for (java.util.Map<String, Object> race : schedule) {
-                        Object roundObj = race.get("round");
-                        if (roundObj == null) continue;
-                        java.util.List<java.util.Map<String, Object>> sessions =
-                                (java.util.List<java.util.Map<String, Object>>)
-                                        race.get("sessions");
-                        if (sessions != null) {
-                            for (java.util.Map<String, Object> session : sessions) {
-                                if ("Race".equals(session.get("name"))) {
-                                    String dt = (String) session.get("datetime");
-                                    if (dt != null &&
-                                            dt.substring(0, 10).compareTo(today) <= 0) {
-                                        lastRound = ((Double) roundObj).intValue();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (lastRound > 0) {
-                        final int round = lastRound;
-                        viewModel.fetchPitStopsForRace(selectedYear, round);
-                        viewModel.getPitStops().removeObservers(getViewLifecycleOwner());
-                        viewModel.getPitStops().observe(getViewLifecycleOwner(), stops -> {
-                            if (stops != null) adapter.setPitStopMode(stops);
-                            swipeRefresh.setRefreshing(false);
-                        });
-                    }
-                });
-                viewModel.fetchSchedule(selectedYear);
                 break;
         }
     }
