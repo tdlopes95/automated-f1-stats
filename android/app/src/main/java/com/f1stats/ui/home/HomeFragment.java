@@ -15,10 +15,12 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.f1stats.HomeCacheManager;
 import com.f1stats.R;
 import com.f1stats.SeasonHelper;
 import com.f1stats.viewmodels.F1ViewModel;
 import com.facebook.shimmer.ShimmerFrameLayout;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -29,6 +31,7 @@ import java.util.Map;
 public class HomeFragment extends Fragment {
 
     private F1ViewModel viewModel;
+    private HomeCacheManager cache;
     private CountDownTimer countDownTimer;
 
     private TextView tvNextRaceName, tvNextRaceCircuit, tvNextRaceDate;
@@ -72,11 +75,13 @@ public class HomeFragment extends Fragment {
         swipeRefresh      = view.findViewById(R.id.swipe_refresh_home);
         layoutError       = view.findViewById(R.id.layout_error);
 
+        cache = HomeCacheManager.getInstance(requireContext());
+
         view.findViewById(R.id.btn_retry).setOnClickListener(v -> {
             layoutError.setVisibility(View.GONE);
-            failCount      = 0;
-            nextRaceLoaded = false;
-            standingsLoaded = false;
+            failCount        = 0;
+            nextRaceLoaded   = false;
+            standingsLoaded  = false;
             lastWinnerLoaded = false;
             showSkeleton();
             fetchData();
@@ -86,12 +91,76 @@ public class HomeFragment extends Fragment {
         swipeRefresh.setBackgroundColor(Color.parseColor("#121212"));
         swipeRefresh.setOnRefreshListener(this::refreshData);
 
-        showSkeleton();
-
         viewModel = new ViewModelProvider(requireActivity()).get(F1ViewModel.class);
         observeViewModel();
-        fetchData();
+
+        // Show cached data instantly, skip skeleton if cache exists
+        if (cache.hasCache()) {
+            loadFromCache();
+            showContent();
+            // Still fetch fresh data silently in background
+            fetchData();
+        } else {
+            showSkeleton();
+            fetchData();
+        }
     }
+
+    // ── Cache ─────────────────────────────────────────────────────────────────
+
+    private void loadFromCache() {
+        // Leader
+        tvLeaderName.setText(cache.loadLeaderName());
+        tvLeaderTeam.setText(cache.loadLeaderTeam());
+        tvLeaderPoints.setText(cache.loadLeaderPoints());
+        tvLeaderTitle.setText(cache.loadSeasonStarted() ?
+                "CHAMPIONSHIP LEADER" : "LAST SEASON CHAMPION");
+        float gap = cache.loadLeaderGap();
+        if (gap > 0) {
+            tvLeaderGap.setText("(+" + (int) gap + " from P2)");
+            tvLeaderGap.setVisibility(View.VISIBLE);
+        } else {
+            tvLeaderGap.setVisibility(View.GONE);
+        }
+
+        // Last winner
+        tvLastWinner.setText(cache.loadLastWinner());
+        tvLastRaceTeam.setText(cache.loadLastTeam());
+        tvLastRaceName.setText(cache.loadLastRaceName());
+
+        // Next race
+        Map<String, Object> race = cache.loadNextRace();
+        if (race != null) {
+            tvNextRaceName.setText(getString(race, "race_name", ""));
+            tvNextRaceCircuit.setText(getString(race, "circuit", ""));
+            List<Map<String, Object>> sessions =
+                    (List<Map<String, Object>>) race.get("sessions");
+            if (sessions != null) {
+                for (Map<String, Object> session : sessions) {
+                    if ("Race".equals(session.get("name"))) {
+                        String dateStr = (String) session.get("datetime");
+                        if (dateStr != null) {
+                            tvNextRaceDate.setText(formatDate(dateStr));
+                            startCountdown(dateStr);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private void showContent() {
+        shimmerLayout.stopShimmer();
+        shimmerLayout.setVisibility(View.GONE);
+        swipeRefresh.setVisibility(View.VISIBLE);
+        // Mark all as loaded so checkAllLoaded() transitions correctly
+        nextRaceLoaded   = true;
+        standingsLoaded  = true;
+        lastWinnerLoaded = true;
+    }
+
+    // ── Data ──────────────────────────────────────────────────────────────────
 
     private void fetchData() {
         viewModel.fetchNextRace();
@@ -119,9 +188,19 @@ public class HomeFragment extends Fragment {
             shimmerLayout.stopShimmer();
             shimmerLayout.setVisibility(View.GONE);
             swipeRefresh.setVisibility(View.VISIBLE);
+            // Check BEFORE setting to false
+            boolean wasRefreshing = swipeRefresh.isRefreshing();
             swipeRefresh.setRefreshing(false);
+            if (wasRefreshing) {
+                com.google.android.material.snackbar.Snackbar
+                        .make(requireView(), "Refresh OK", Snackbar.LENGTH_SHORT)
+                        .setAnchorView(requireActivity().findViewById(R.id.bottom_navigation))
+                        .show();
+            }
         }
     }
+
+    // ── Observers ─────────────────────────────────────────────────────────────
 
     private void observeViewModel() {
 
@@ -143,6 +222,7 @@ public class HomeFragment extends Fragment {
                     }
                 }
             }
+            cache.saveNextRace(race);
             nextRaceLoaded = true;
             checkAllLoaded();
         });
@@ -150,12 +230,14 @@ public class HomeFragment extends Fragment {
         viewModel.getDriverStandings().observe(getViewLifecycleOwner(), standings -> {
             if (standings == null || standings.isEmpty()) return;
             var leader = standings.get(0);
-            if (leader.getDriver() != null) {
-                tvLeaderName.setText(leader.getDriver().getFullName());
-            }
-            tvLeaderTeam.setText(leader.getTeamName());
-            tvLeaderPoints.setText(leader.getPoints() + " pts");
-            double gap = leader.getGapToSecond();
+            String name   = leader.getDriver() != null ? leader.getDriver().getFullName() : "";
+            String team   = leader.getTeamName();
+            String points = leader.getPoints() + " pts";
+            double gap    = leader.getGapToSecond();
+
+            tvLeaderName.setText(name);
+            tvLeaderTeam.setText(team);
+            tvLeaderPoints.setText(points);
             if (gap > 0) {
                 tvLeaderGap.setText("(+" + (int) gap + " from P2)");
                 tvLeaderGap.setVisibility(View.VISIBLE);
@@ -168,20 +250,28 @@ public class HomeFragment extends Fragment {
 
         viewModel.getSeasonStarted().observe(getViewLifecycleOwner(), started -> {
             if (tvLeaderTitle != null) {
-                tvLeaderTitle.setText(started ?
+                tvLeaderTitle.setText(started != null && started ?
                         "CHAMPIONSHIP LEADER" : "LAST SEASON CHAMPION");
+            }
+            // Save leader to cache with latest values
+            String name   = tvLeaderName.getText() != null ? tvLeaderName.getText().toString() : "";
+            String team   = tvLeaderTeam.getText() != null ? tvLeaderTeam.getText().toString() : "";
+            String points = tvLeaderPoints.getText() != null ? tvLeaderPoints.getText().toString() : "";
+            if (!name.isEmpty()) {
+                cache.saveLeader(name, team, points, cache.loadLeaderGap(),
+                        started != null && started);
             }
         });
 
         viewModel.getRaceResults().observe(getViewLifecycleOwner(), results -> {
             if (results == null || results.isEmpty()) return;
             var winner = results.get(0);
-            if (winner.getDriver() != null) {
-                tvLastWinner.setText(winner.getDriver().getFullName());
-            }
-            if (winner.getConstructor() != null) {
-                tvLastRaceTeam.setText(winner.getConstructor().getName());
-            }
+            String winnerName = winner.getDriver() != null ?
+                    winner.getDriver().getFullName() : "";
+            String team = winner.getConstructor() != null ?
+                    winner.getConstructor().getName() : "";
+            tvLastWinner.setText(winnerName);
+            tvLastRaceTeam.setText(team);
             lastWinnerLoaded = true;
             checkAllLoaded();
         });
@@ -189,6 +279,12 @@ public class HomeFragment extends Fragment {
         viewModel.getLastRaceName().observe(getViewLifecycleOwner(), raceName -> {
             if (raceName != null && !raceName.isEmpty()) {
                 tvLastRaceName.setText(raceName);
+                // Save last winner once race name arrives
+                String winnerName = tvLastWinner.getText() != null ?
+                        tvLastWinner.getText().toString() : "";
+                String team = tvLastRaceTeam.getText() != null ?
+                        tvLastRaceTeam.getText().toString() : "";
+                cache.saveLastWinner(winnerName, team, raceName);
             }
         });
 
@@ -197,16 +293,21 @@ public class HomeFragment extends Fragment {
                 failCount++;
                 swipeRefresh.setRefreshing(false);
                 if (failCount >= 3) {
-                    shimmerLayout.stopShimmer();
-                    shimmerLayout.setVisibility(View.GONE);
-                    swipeRefresh.setVisibility(View.GONE);
-                    layoutError.setVisibility(View.VISIBLE);
+                    // Only show error screen if we have no cached data to show
+                    if (!cache.hasCache()) {
+                        shimmerLayout.stopShimmer();
+                        shimmerLayout.setVisibility(View.GONE);
+                        swipeRefresh.setVisibility(View.GONE);
+                        layoutError.setVisibility(View.VISIBLE);
+                    }
                     failCount = 0;
                 }
                 viewModel.clearHomeError();
             }
         });
     }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private void startCountdown(String isoDateStr) {
         try {
