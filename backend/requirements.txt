@@ -5,3 +5,4 @@ aiosqlite>=0.20.0
 apscheduler>=3.10.4
 pydantic>=2.7.0
 python-dotenv>=1.0.0
+slowapi

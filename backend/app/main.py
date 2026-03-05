@@ -10,13 +10,19 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import Database
 from .jolpica_client import JolpicaClient
 from .openf1_client import OpenF1Client
 from .scheduler import F1Scheduler
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(key_func=get_remote_address)
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -41,15 +47,12 @@ def cache_get(key: str):
     return None
 
 def cache_set(key: str, data):
-    """Short-lived cache (5 min) for current/live data."""
     _cache[key] = (data, time.time())
 
 def cache_set_historical(key: str, data):
-    """Long-lived cache (7 days) for historical data that never changes."""
     _cache[key] = (data, time.time(), CACHE_TTL_FOREVER)
 
 def add_gap_to_second(standings: list) -> list:
-    """Annotate the leader with their points gap over P2."""
     if not standings or len(standings) < 2:
         return standings
     try:
@@ -60,13 +63,12 @@ def add_gap_to_second(standings: list) -> list:
         standings[0]["gap_to_second"] = 0
     return standings
 
-# ── Globals (set during startup) ─────────────────────────────────────────────
+# ── Globals ───────────────────────────────────────────────────────────────────
 db: Database        = None
 jolpica: JolpicaClient  = None
 openf1: OpenF1Client    = None
 scheduler: F1Scheduler  = None
 _active_session_key: Optional[int] = None
-
 
 # ── Scheduler callbacks ───────────────────────────────────────────────────────
 
@@ -144,6 +146,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -162,14 +167,14 @@ async def root():
 # ── Schedule ──────────────────────────────────────────────────────────────────
 
 @app.get("/schedule")
-async def get_schedule(year: Optional[int] = None):
+@limiter.limit("30/minute")
+async def get_schedule(request: Request, year: Optional[int] = None):
     cache_key = f"schedule_{year or 'current'}"
     cached = cache_get(cache_key)
     if cached:
         return cached
     result = await jolpica.get_schedule(year)
     if result:
-        # Historical schedules never change — cache longer
         current_year = datetime.utcnow().year
         if year and year < current_year:
             cache_set_historical(cache_key, result)
@@ -179,7 +184,8 @@ async def get_schedule(year: Optional[int] = None):
 
 
 @app.get("/schedule/next")
-async def get_next_race():
+@limiter.limit("30/minute")
+async def get_next_race(request: Request):
     race = await jolpica.get_next_race()
     if not race:
         raise HTTPException(status_code=404, detail="No upcoming race found")
@@ -194,7 +200,8 @@ async def get_upcoming_sessions(days: int = Query(default=14, le=30)):
 # ── Live Session ──────────────────────────────────────────────────────────────
 
 @app.get("/live")
-async def get_live_session():
+@limiter.limit("60/minute")
+async def get_live_session(request: Request):
     global _active_session_key
     if _active_session_key is None:
         session = await openf1.get_latest_session()
@@ -210,7 +217,8 @@ async def get_live_session():
 
 
 @app.get("/live/{session_key}")
-async def get_live_by_session(session_key: int):
+@limiter.limit("60/minute")
+async def get_live_by_session(request: Request, session_key: int):
     snapshot = await db.get_latest_snapshot(session_key)
     if not snapshot:
         snapshot = await openf1.get_live_snapshot(session_key)
@@ -223,14 +231,15 @@ async def get_live_by_session(session_key: int):
 # ── Results ───────────────────────────────────────────────────────────────────
 
 @app.get("/results/latest")
+@limiter.limit("30/minute")
 async def get_latest_results(
+    request: Request,
     session_type: str = Query(default="Race", enum=["Race", "Qualifying", "Sprint"]),
     year: Optional[int] = None
 ):
     """Latest race winner — falls back to previous year if season hasn't started."""
     current_year = datetime.utcnow().year
 
-    # Check if current year has any completed races
     try:
         current_schedule = await jolpica.get_schedule(current_year)
         today = datetime.utcnow().date()
@@ -293,18 +302,18 @@ async def get_latest_results(
 
 
 @app.get("/results/{year}/{round}")
+@limiter.limit("60/minute")
 async def get_results(
+    request: Request,
     year: int,
     round: int,
     session_type: str = Query(default="Race", enum=["Race", "Qualifying", "Sprint"])
 ):
-    # SQLite cache first
     cached = await db.get_results(year, round, session_type)
     if cached:
         return {"source": "cache", "year": year, "round": round,
                 "session_type": session_type, "results": cached}
 
-    # Memory cache for historical rounds
     current_year = datetime.utcnow().year
     if year < current_year:
         cache_key = f"results_{year}_{round}_{session_type}"
@@ -312,7 +321,6 @@ async def get_results(
         if mem_cached:
             return mem_cached
 
-    # Fetch from Jolpica
     if session_type == "Race":
         results = await jolpica.get_race_results(year, round)
     elif session_type == "Qualifying":
@@ -336,11 +344,11 @@ async def get_results(
 # ── Standings ─────────────────────────────────────────────────────────────────
 
 @app.get("/standings/drivers")
-async def get_driver_standings(year: Optional[int] = None):
+@limiter.limit("30/minute")
+async def get_driver_standings(request: Request, year: Optional[int] = None):
     current_year = datetime.utcnow().year
     target_year  = year or current_year
 
-    # Check if current season has started (needed for correct season_started flag)
     season_started = True
     if target_year == current_year:
         try:
@@ -361,16 +369,14 @@ async def get_driver_standings(year: Optional[int] = None):
                         break
         except Exception as e:
             logger.error(f"Season check error: {e}")
-            season_started = True  # assume started on error
+            season_started = True
 
-    # Historical year → use memory cache
     if target_year != current_year:
         cache_key = f"driver_standings_{target_year}"
         cached = cache_get(cache_key)
         if cached:
             return cached
 
-    # Current year → use SQLite cache (with correct season_started flag)
     if target_year == current_year:
         cached = await db.get_latest_driver_standings()
         if cached and season_started:
@@ -378,7 +384,6 @@ async def get_driver_standings(year: Optional[int] = None):
 
     standings = await jolpica.get_driver_standings(target_year)
 
-    # Fallback to last year if current season hasn't started
     if not standings and target_year == current_year:
         standings = await jolpica.get_driver_standings(current_year - 1)
         standings = add_gap_to_second(standings)
@@ -400,7 +405,8 @@ async def get_driver_standings(year: Optional[int] = None):
 
 
 @app.get("/standings/constructors")
-async def get_constructor_standings(year: Optional[int] = None):
+@limiter.limit("30/minute")
+async def get_constructor_standings(request: Request, year: Optional[int] = None):
     current_year = datetime.utcnow().year
     target_year  = year or current_year
 
@@ -455,7 +461,8 @@ async def get_stints(session_key: int, driver_number: Optional[int] = None):
 
 
 @app.get("/sessions/{session_key}/pit-stops")
-async def get_pit_stops(session_key: int):
+@limiter.limit("30/minute")
+async def get_pit_stops(request: Request, session_key: int):
     cache_key = f"pit_stops_{session_key}"
     cached = cache_get(cache_key)
     if cached:
@@ -515,7 +522,8 @@ async def get_drivers(session_key: int):
 
 
 @app.get("/session-key/{year}/{round}")
-async def get_session_key(year: int, round: int):
+@limiter.limit("30/minute")
+async def get_session_key(request: Request, year: int, round: int):
     cache_key = f"session_key_{year}_{round}"
     cached = cache_get(cache_key)
     if cached:

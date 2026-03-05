@@ -13,7 +13,7 @@ import aiosqlite
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = "f1_data.db"
+DB_PATH = "/app/data/f1_data.db"
 
 
 class Database:
