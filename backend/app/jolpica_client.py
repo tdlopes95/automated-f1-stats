@@ -6,7 +6,7 @@ No API key needed. Free for non-commercial use.
 """
 
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional
 
 import httpx
@@ -97,7 +97,7 @@ class JolpicaClient:
             return None
         try:
             if time_str:
-                time_str = time_str.rstrip("Z")
+                time_str = time_str.replace("Z", "+00:00")
                 return datetime.fromisoformat(f"{date_str}T{time_str}")
             return datetime.fromisoformat(date_str)
         except ValueError:
@@ -122,7 +122,7 @@ class JolpicaClient:
         """
         from datetime import timedelta
         schedule = await self.get_schedule()
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         cutoff = now + timedelta(days=days_ahead)
         upcoming = []
         for race in schedule:

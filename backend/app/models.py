@@ -5,7 +5,7 @@ Pydantic models for API responses
 
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # ── Session / Meeting ──────────────────────────────────────────────────────────
@@ -169,4 +169,4 @@ class LiveSessionState(BaseModel):
     vsc_active: bool = False
     drivers: list[LiveDriverState] = []
     weather: Optional[Weather] = None
-    last_updated: datetime = datetime.utcnow()
+    last_updated: datetime = datetime.now(timezone.utc)

@@ -7,7 +7,7 @@ Sponsor tier: live data during sessions (requires token - see auth setup)
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import httpx
@@ -297,7 +297,7 @@ class OpenF1Client:
             "vsc_active": vsc_active,
             "drivers": driver_states,
             "weather": weather,
-            "last_updated": datetime.utcnow().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
 
     async def close(self):

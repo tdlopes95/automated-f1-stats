@@ -6,7 +6,7 @@ Easy to swap to PostgreSQL later by changing the driver.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import aiosqlite
@@ -119,7 +119,7 @@ class Database:
             ON CONFLICT(year, round, session_type) DO UPDATE SET
                 fetched_at=excluded.fetched_at,
                 results_json=excluded.results_json
-        """, (year, round_number, session_type, datetime.utcnow().isoformat(), json.dumps(results)))
+        """, (year, round_number, session_type, datetime.now(timezone.utc).isoformat(), json.dumps(results)))
         await self._db.commit()
         logger.info(f"Saved {session_type} results for {year} R{round_number}")
 
@@ -155,7 +155,7 @@ class Database:
         await self._db.execute("""
             INSERT INTO live_snapshots (session_key, captured_at, snapshot_json)
             VALUES (?, ?, ?)
-        """, (session_key, datetime.utcnow().isoformat(), json.dumps(snapshot)))
+        """, (session_key, datetime.now(timezone.utc).isoformat(), json.dumps(snapshot)))
         await self._db.commit()
 
     async def get_latest_snapshot(self, session_key: int) -> Optional[dict]:
@@ -174,7 +174,7 @@ class Database:
         await self._db.execute("""
             INSERT INTO driver_standings (year, round, fetched_at, standings_json)
             VALUES (?, ?, ?, ?)
-        """, (year, round_number, datetime.utcnow().isoformat(), json.dumps(standings)))
+        """, (year, round_number, datetime.now(timezone.utc).isoformat(), json.dumps(standings)))
         await self._db.commit()
 
     async def get_latest_driver_standings(self) -> Optional[list]:
@@ -190,7 +190,7 @@ class Database:
         await self._db.execute("""
             INSERT INTO constructor_standings (year, round, fetched_at, standings_json)
             VALUES (?, ?, ?, ?)
-        """, (year, round_number, datetime.utcnow().isoformat(), json.dumps(standings)))
+        """, (year, round_number, datetime.now(timezone.utc).isoformat(), json.dumps(standings)))
         await self._db.commit()
 
     async def get_latest_constructor_standings(self) -> Optional[list]:

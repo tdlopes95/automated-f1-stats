@@ -12,7 +12,7 @@ Strategy:
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -115,7 +115,7 @@ class F1Scheduler:
         session_end = session_dt + timedelta(minutes=duration_min)
         results_time = session_end + timedelta(minutes=RESULTS_FETCH_DELAY.get(session_name, 20))
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # ── Job 1: Live polling during session ────────────────────────────────
         if session_end > now:

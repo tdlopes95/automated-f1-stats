@@ -7,7 +7,7 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -93,7 +93,7 @@ async def on_live_poll(session_name: str, race_name: str):
 async def on_session_ended(session_name: str, race_name: str, round_number: int):
     global _active_session_key
     try:
-        year = datetime.utcnow().year
+        year = datetime.now(timezone.utc).year
         if session_name == "Race":
             results = await jolpica.get_race_results(year, round_number)
             await db.save_results(year, round_number, "Race", results)
@@ -175,7 +175,7 @@ async def get_schedule(request: Request, year: Optional[int] = None):
         return cached
     result = await jolpica.get_schedule(year)
     if result:
-        current_year = datetime.utcnow().year
+        current_year = datetime.now(timezone.utc).year
         if year and year < current_year:
             cache_set_historical(cache_key, result)
         else:
@@ -238,11 +238,11 @@ async def get_latest_results(
     year: Optional[int] = None
 ):
     """Latest race winner — falls back to previous year if season hasn't started."""
-    current_year = datetime.utcnow().year
+    current_year = datetime.now(timezone.utc).year
 
     try:
         current_schedule = await jolpica.get_schedule(current_year)
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         current_year_has_results = False
         if current_schedule:
             for race in current_schedule:
@@ -267,7 +267,7 @@ async def get_latest_results(
         if not schedule:
             raise HTTPException(status_code=404, detail="No schedule found")
 
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         last_round = 0
         for race in schedule:
             for session in race.get("sessions", []):
@@ -314,7 +314,7 @@ async def get_results(
         return {"source": "cache", "year": year, "round": round,
                 "session_type": session_type, "results": cached}
 
-    current_year = datetime.utcnow().year
+    current_year = datetime.now(timezone.utc).year
     if year < current_year:
         cache_key = f"results_{year}_{round}_{session_type}"
         mem_cached = cache_get(cache_key)
@@ -346,14 +346,14 @@ async def get_results(
 @app.get("/standings/drivers")
 @limiter.limit("30/minute")
 async def get_driver_standings(request: Request, year: Optional[int] = None):
-    current_year = datetime.utcnow().year
+    current_year = datetime.now(timezone.utc).year
     target_year  = year or current_year
 
     season_started = True
     if target_year == current_year:
         try:
             current_schedule = await jolpica.get_schedule(current_year)
-            today = datetime.utcnow().date()
+            today = datetime.now(timezone.utc).date()
             season_started = False
             if current_schedule:
                 for race in current_schedule:
@@ -407,7 +407,7 @@ async def get_driver_standings(request: Request, year: Optional[int] = None):
 @app.get("/standings/constructors")
 @limiter.limit("30/minute")
 async def get_constructor_standings(request: Request, year: Optional[int] = None):
-    current_year = datetime.utcnow().year
+    current_year = datetime.now(timezone.utc).year
     target_year  = year or current_year
 
     if target_year == current_year:
