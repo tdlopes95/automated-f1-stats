@@ -8,14 +8,12 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.f1stats.DateHelper;
 import com.f1stats.R;
 import com.f1stats.models.RoundSchedule;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 public class RoundAdapter extends RecyclerView.Adapter<RoundAdapter.ViewHolder> {
 
@@ -74,17 +72,7 @@ public class RoundAdapter extends RecyclerView.Adapter<RoundAdapter.ViewHolder> 
         }
 
         private String formatDate(String isoStr) {
-            if (isoStr == null) return "--";
-            try {
-                SimpleDateFormat input  = new SimpleDateFormat(
-                        "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-                SimpleDateFormat output = new SimpleDateFormat(
-                        "dd MMM", Locale.getDefault());
-                Date date = input.parse(isoStr);
-                return date != null ? output.format(date) : isoStr;
-            } catch (Exception e) {
-                return isoStr;
-            }
+            return DateHelper.formatForDisplay(isoStr, "dd MMM");
         }
     }
 }

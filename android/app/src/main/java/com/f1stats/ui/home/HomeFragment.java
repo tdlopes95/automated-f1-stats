@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.f1stats.DateHelper;
 import com.f1stats.HomeCacheManager;
 import com.f1stats.R;
 import com.f1stats.SeasonHelper;
@@ -22,10 +23,7 @@ import com.f1stats.viewmodels.F1ViewModel;
 import com.facebook.shimmer.ShimmerFrameLayout;
 import com.google.android.material.snackbar.Snackbar;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 public class HomeFragment extends Fragment {
@@ -311,11 +309,9 @@ public class HomeFragment extends Fragment {
 
     private void startCountdown(String isoDateStr) {
         try {
-            SimpleDateFormat sdf = new SimpleDateFormat(
-                    "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-            Date raceDate = sdf.parse(isoDateStr);
-            if (raceDate == null) return;
-            long diff = raceDate.getTime() - System.currentTimeMillis();
+            long millis = DateHelper.toMillis(isoDateStr);
+            if (millis == -1) return;
+            long diff = millis - System.currentTimeMillis();
             if (diff <= 0) {
                 tvCountdown.setText("Race started!");
                 return;
@@ -342,16 +338,7 @@ public class HomeFragment extends Fragment {
     }
 
     private String formatDate(String isoDateStr) {
-        try {
-            SimpleDateFormat input  = new SimpleDateFormat(
-                    "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-            SimpleDateFormat output = new SimpleDateFormat(
-                    "EEE dd MMM yyyy, HH:mm", Locale.getDefault());
-            Date date = input.parse(isoDateStr);
-            return date != null ? output.format(date) : isoDateStr;
-        } catch (Exception e) {
-            return isoDateStr;
-        }
+        return DateHelper.formatFull(isoDateStr);
     }
 
     private String getString(Map<String, Object> map, String key, String fallback) {

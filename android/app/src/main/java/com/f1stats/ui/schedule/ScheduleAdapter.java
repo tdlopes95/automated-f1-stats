@@ -9,13 +9,11 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.f1stats.DateHelper;
 import com.f1stats.R;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHolder> {
@@ -103,17 +101,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
         }
 
         private String formatDate(String isoStr) {
-            if (isoStr == null) return "--";
-            try {
-                SimpleDateFormat input  = new SimpleDateFormat(
-                        "yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-                SimpleDateFormat output = new SimpleDateFormat(
-                        "EEE dd MMM, HH:mm", Locale.getDefault());
-                Date date = input.parse(isoStr);
-                return date != null ? output.format(date) : isoStr;
-            } catch (Exception e) {
-                return isoStr;
-            }
+            return DateHelper.formatShort(isoStr);
         }
 
         private String getString(Map<String, Object> map, String key, String fallback) {

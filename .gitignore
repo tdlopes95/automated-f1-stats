@@ -51,3 +51,8 @@ logs/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# ── CLAUDE ────────────────────────────
+CLAUDE.md
+F1-Stats-Implementation-Plan.md
+.*
