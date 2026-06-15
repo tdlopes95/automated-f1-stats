@@ -17,7 +17,7 @@
         android:layout_width="40dp"
         android:layout_height="wrap_content"
         android:text="R1"
-        android:textColor="#E10600"
+        android:textColor="@color/f1_red"
         android:textSize="12sp"
         android:textStyle="bold" />
 
@@ -33,7 +33,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Bahrain Grand Prix"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_primary"
             android:textSize="15sp"
             android:textStyle="bold" />
 
@@ -42,7 +42,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Bahrain International Circuit"
-            android:textColor="#AAAAAA"
+            android:textColor="@color/text_secondary"
             android:textSize="12sp"
             android:layout_marginTop="2dp" />
 
@@ -60,7 +60,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="16 Mar"
-            android:textColor="#AAAAAA"
+            android:textColor="@color/text_secondary"
             android:textSize="12sp"
             android:gravity="end" />
 
@@ -68,7 +68,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="›"
-            android:textColor="#E10600"
+            android:textColor="@color/f1_red"
             android:textSize="20sp"
             android:gravity="end" />
 

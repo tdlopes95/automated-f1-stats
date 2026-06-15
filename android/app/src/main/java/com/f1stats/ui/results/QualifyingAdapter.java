@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.f1stats.R;
@@ -83,7 +84,8 @@ public class QualifyingAdapter extends RecyclerView.Adapter<QualifyingAdapter.Vi
                     tvQ2Time.setText(result.getQ2().equals("--") ?
                             "eliminated Q1" : result.getQ2());
                     tvQ2Time.setTextColor(result.getQ2().equals("--") ?
-                            Color.parseColor("#FF4444") : Color.parseColor("#AAAAAA"));
+                            ContextCompat.getColor(itemView.getContext(), R.color.color_eliminated) :
+                            ContextCompat.getColor(itemView.getContext(), R.color.text_secondary));
                     tvQ2Time.setVisibility(View.VISIBLE);
                     tvQ3Time.setVisibility(View.GONE);
                     break;
@@ -93,7 +95,8 @@ public class QualifyingAdapter extends RecyclerView.Adapter<QualifyingAdapter.Vi
                     tvQ3Time.setText(result.getQ3().equals("--") ?
                             "eliminated Q2" : result.getQ3());
                     tvQ3Time.setTextColor(result.getQ3().equals("--") ?
-                            Color.parseColor("#FF4444") : Color.WHITE);
+                            ContextCompat.getColor(itemView.getContext(), R.color.color_eliminated) :
+                            Color.WHITE);
                     tvQ3Time.setVisibility(View.VISIBLE);
                     break;
                 default: // ALL

@@ -3,4 +3,33 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="ic_launcher_background">#E10600</color>
+
+    <!-- Brand -->
+    <color name="f1_red">#E10600</color>
+
+    <!-- Backgrounds -->
+    <color name="bg_dark">#121212</color>
+    <color name="bg_surface">#1E1E1E</color>
+    <color name="bg_toolbar">#1A1A1A</color>
+    <color name="bg_divider">#2A2A2A</color>
+    <color name="bg_shimmer">#2D2D2D</color>
+
+    <!-- Text -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#AAAAAA</color>
+    <color name="text_tertiary">#888888</color>
+    <color name="text_hint">#666666</color>
+    <color name="text_disabled">#555555</color>
+
+    <!-- Status indicators -->
+    <color name="status_green">#39B54A</color>
+    <color name="status_orange">#FFA500</color>
+    <color name="status_red">#FF0000</color>
+    <color name="status_yellow">#FFD700</color>
+    <color name="no_session_gray">#333333</color>
+
+    <!-- Semantic -->
+    <color name="color_eliminated">#FF4444</color>
+    <color name="color_fastest_lap">#B84FDB</color>
+    <color name="color_race_live">#4CAF50</color>
 </resources>

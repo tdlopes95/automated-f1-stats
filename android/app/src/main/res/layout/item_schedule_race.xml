@@ -7,7 +7,7 @@
     android:layout_marginStart="12dp"
     android:layout_marginEnd="12dp"
     android:layout_marginBottom="10dp"
-    app:cardBackgroundColor="#1E1E1E"
+    app:cardBackgroundColor="@color/bg_surface"
     app:cardCornerRadius="10dp">
 
     <LinearLayout
@@ -28,7 +28,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="R1"
-                android:textColor="#E10600"
+                android:textColor="@color/f1_red"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:layout_marginEnd="8dp" />
@@ -39,7 +39,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Bahrain Grand Prix"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/text_primary"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
@@ -48,7 +48,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="16 Mar"
-                android:textColor="#AAAAAA"
+                android:textColor="@color/text_secondary"
                 android:textSize="12sp" />
 
         </LinearLayout>
@@ -59,7 +59,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Bahrain International Circuit"
-            android:textColor="#AAAAAA"
+            android:textColor="@color/text_secondary"
             android:textSize="12sp"
             android:layout_marginTop="2dp" />
 
@@ -78,7 +78,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="▼ Sessions"
-            android:textColor="#E10600"
+            android:textColor="@color/f1_red"
             android:textSize="12sp"
             android:layout_marginTop="8dp" />
 

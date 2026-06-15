@@ -16,7 +16,7 @@
         android:layout_width="28dp"
         android:layout_height="wrap_content"
         android:text="1"
-        android:textColor="#AAAAAA"
+        android:textColor="@color/text_secondary"
         android:textSize="14sp" />
 
     <!-- Team colour strip -->
@@ -25,7 +25,7 @@
         android:layout_width="4dp"
         android:layout_height="40dp"
         android:layout_marginEnd="10dp"
-        android:background="#FFFFFF" />
+        android:background="@color/text_primary" />
 
     <!-- Flag + name + team -->
     <LinearLayout
@@ -54,7 +54,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Lando Norris"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/text_primary"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
@@ -63,7 +63,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="#4"
-                android:textColor="#AAAAAA"
+                android:textColor="@color/text_secondary"
                 android:textSize="12sp"
                 android:layout_marginStart="6dp" />
 
@@ -82,7 +82,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="McLaren"
-                android:textColor="#AAAAAA"
+                android:textColor="@color/text_secondary"
                 android:textSize="12sp" />
 
             <TextView
@@ -90,7 +90,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=""
-                android:textColor="#FF4444"
+                android:textColor="@color/color_eliminated"
                 android:textSize="11sp"
                 android:layout_marginStart="8dp"
                 android:visibility="gone" />
@@ -111,7 +111,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="423"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_primary"
             android:textSize="18sp"
             android:textStyle="bold"
             android:gravity="end" />
@@ -127,7 +127,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="7 wins"
-                android:textColor="#AAAAAA"
+                android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:gravity="end" />
 
@@ -136,7 +136,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=""
-                android:textColor="#FFD700"
+                android:textColor="@color/status_yellow"
                 android:textSize="11sp"
                 android:layout_marginStart="6dp"
                 android:gravity="end" />

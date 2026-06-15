@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -68,8 +69,8 @@ public class LiveFragment extends Fragment {
         viewModel = new ViewModelProvider(requireActivity()).get(F1ViewModel.class);
 
         // Pull to refresh
-        swipeRefresh.setColorSchemeColors(Color.parseColor("#E10600"));
-        swipeRefresh.setBackgroundColor(Color.parseColor("#121212"));
+        swipeRefresh.setColorSchemeColors(ContextCompat.getColor(requireContext(), R.color.f1_red));
+        swipeRefresh.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.bg_dark));
         swipeRefresh.setOnRefreshListener(() -> viewModel.fetchLiveSession());
 
         observeViewModel();
@@ -87,7 +88,7 @@ public class LiveFragment extends Fragment {
         viewModel.getLiveError().observe(getViewLifecycleOwner(), error -> {
             if (error != null) {
                 tvSessionStatus.setText("NO ACTIVE SESSION");
-                tvSessionStatus.setBackgroundColor(Color.parseColor("#333333"));
+                tvSessionStatus.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.no_session_gray));
             }
         });
     }
@@ -100,7 +101,7 @@ public class LiveFragment extends Fragment {
         try {
             tvSessionStatus.setBackgroundColor(Color.parseColor(session.getStatusColour()));
         } catch (Exception e) {
-            tvSessionStatus.setBackgroundColor(Color.parseColor("#39B54A"));
+            tvSessionStatus.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.status_green));
         }
 
         // Session name

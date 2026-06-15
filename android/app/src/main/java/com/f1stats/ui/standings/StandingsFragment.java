@@ -1,6 +1,5 @@
 package com.f1stats.ui.standings;
 
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
@@ -55,8 +55,8 @@ public class StandingsFragment extends Fragment {
 
         viewModel = new ViewModelProvider(requireActivity()).get(F1ViewModel.class);
 
-        swipeRefresh.setColorSchemeColors(Color.parseColor("#E10600"));
-        swipeRefresh.setBackgroundColor(Color.parseColor("#121212"));
+        swipeRefresh.setColorSchemeColors(ContextCompat.getColor(requireContext(), R.color.f1_red));
+        swipeRefresh.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.bg_dark));
         swipeRefresh.setOnRefreshListener(this::loadCurrentTab);
 
         // Tabs

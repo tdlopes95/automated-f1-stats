@@ -16,7 +16,7 @@
         android:layout_width="4dp"
         android:layout_height="36dp"
         android:layout_marginEnd="10dp"
-        android:background="#FFFFFF" />
+        android:background="@color/text_primary" />
 
     <!-- Position -->
     <TextView
@@ -24,7 +24,7 @@
         android:layout_width="28dp"
         android:layout_height="wrap_content"
         android:text="1"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/text_primary"
         android:textSize="15sp"
         android:textStyle="bold" />
 
@@ -40,7 +40,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="VER"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_primary"
             android:textSize="15sp"
             android:textStyle="bold" />
 
@@ -49,7 +49,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Red Bull Racing"
-            android:textColor="#AAAAAA"
+            android:textColor="@color/text_secondary"
             android:textSize="11sp" />
 
     </LinearLayout>
@@ -60,7 +60,7 @@
         android:layout_width="72dp"
         android:layout_height="wrap_content"
         android:text="+1.234"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/text_primary"
         android:textSize="13sp"
         android:gravity="end" />
 
@@ -71,7 +71,7 @@
         android:layout_height="28dp"
         android:layout_marginStart="8dp"
         android:text="S"
-        android:textColor="#121212"
+        android:textColor="@color/bg_dark"
         android:textSize="12sp"
         android:textStyle="bold"
         android:gravity="center"
@@ -84,7 +84,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="2dp"
         android:text="5"
-        android:textColor="#AAAAAA"
+        android:textColor="@color/text_secondary"
         android:textSize="11sp"
         android:gravity="center" />
 
@@ -94,7 +94,7 @@
         android:layout_width="30dp"
         android:layout_height="wrap_content"
         android:text="1"
-        android:textColor="#AAAAAA"
+        android:textColor="@color/text_secondary"
         android:textSize="13sp"
         android:gravity="center" />
 

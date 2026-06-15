@@ -17,7 +17,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="#1E1E1E"
+            app:cardBackgroundColor="@color/bg_surface"
             app:cardCornerRadius="12dp">
 
             <LinearLayout
@@ -30,35 +30,35 @@
                 <View
                     android:layout_width="80dp"
                     android:layout_height="10dp"
-                    android:background="#2D2D2D" />
+                    android:background="@color/bg_shimmer" />
 
                 <!-- Race name -->
                 <View
                     android:layout_width="200dp"
                     android:layout_height="20dp"
                     android:layout_marginTop="10dp"
-                    android:background="#2D2D2D" />
+                    android:background="@color/bg_shimmer" />
 
                 <!-- Circuit -->
                 <View
                     android:layout_width="140dp"
                     android:layout_height="14dp"
                     android:layout_marginTop="8dp"
-                    android:background="#2D2D2D" />
+                    android:background="@color/bg_shimmer" />
 
                 <!-- Date -->
                 <View
                     android:layout_width="160dp"
                     android:layout_height="14dp"
                     android:layout_marginTop="8dp"
-                    android:background="#2D2D2D" />
+                    android:background="@color/bg_shimmer" />
 
                 <!-- Countdown -->
                 <View
                     android:layout_width="180dp"
                     android:layout_height="28dp"
                     android:layout_marginTop="10dp"
-                    android:background="#2D2D2D" />
+                    android:background="@color/bg_shimmer" />
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -68,7 +68,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="#1E1E1E"
+            app:cardBackgroundColor="@color/bg_surface"
             app:cardCornerRadius="12dp">
 
             <LinearLayout
@@ -80,25 +80,25 @@
                 <View
                     android:layout_width="120dp"
                     android:layout_height="10dp"
-                    android:background="#2D2D2D" />
+                    android:background="@color/bg_shimmer" />
 
                 <View
                     android:layout_width="180dp"
                     android:layout_height="20dp"
                     android:layout_marginTop="10dp"
-                    android:background="#2D2D2D" />
+                    android:background="@color/bg_shimmer" />
 
                 <View
                     android:layout_width="100dp"
                     android:layout_height="14dp"
                     android:layout_marginTop="8dp"
-                    android:background="#2D2D2D" />
+                    android:background="@color/bg_shimmer" />
 
                 <View
                     android:layout_width="80dp"
                     android:layout_height="14dp"
                     android:layout_marginTop="8dp"
-                    android:background="#2D2D2D" />
+                    android:background="@color/bg_shimmer" />
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -107,7 +107,7 @@
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="#1E1E1E"
+            app:cardBackgroundColor="@color/bg_surface"
             app:cardCornerRadius="12dp">
 
             <LinearLayout
@@ -119,19 +119,19 @@
                 <View
                     android:layout_width="100dp"
                     android:layout_height="10dp"
-                    android:background="#2D2D2D" />
+                    android:background="@color/bg_shimmer" />
 
                 <View
                     android:layout_width="160dp"
                     android:layout_height="20dp"
                     android:layout_marginTop="10dp"
-                    android:background="#2D2D2D" />
+                    android:background="@color/bg_shimmer" />
 
                 <View
                     android:layout_width="120dp"
                     android:layout_height="14dp"
                     android:layout_marginTop="8dp"
-                    android:background="#2D2D2D" />
+                    android:background="@color/bg_shimmer" />
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>

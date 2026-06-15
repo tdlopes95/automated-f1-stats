@@ -1,10 +1,10 @@
 package com.f1stats;
 
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.MenuItem;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -38,6 +38,7 @@ public class RoundDetailActivity extends AppCompatActivity {
             "Race", "Q1", "Q2", "Q3", "Sprint", "Pit Stops"
     };
     private String currentTab = "Race";
+    private String currentQualiSession = "Q3";
     private QualifyingAdapter qualifyingAdapter;
 
     @Override
@@ -69,8 +70,8 @@ public class RoundDetailActivity extends AppCompatActivity {
         qualifyingAdapter = new QualifyingAdapter();
         recyclerView.setAdapter(resultsAdapter);
 
-        swipeRefresh.setColorSchemeColors(Color.parseColor("#E10600"));
-        swipeRefresh.setBackgroundColor(Color.parseColor("#121212"));
+        swipeRefresh.setColorSchemeColors(ContextCompat.getColor(this, R.color.f1_red));
+        swipeRefresh.setBackgroundColor(ContextCompat.getColor(this, R.color.bg_dark));
         swipeRefresh.setOnRefreshListener(this::loadCurrentTab);
 
         // Tabs
@@ -101,37 +102,19 @@ public class RoundDetailActivity extends AppCompatActivity {
                 viewModel.fetchResults(year, round, "Race");
                 break;
             case "Q1":
+                currentQualiSession = "Q1";
                 recyclerView.setAdapter(qualifyingAdapter);
                 viewModel.fetchQualifyingResults(year, round);
-                viewModel.getQualifyingResults().observe(this, results -> {
-                    if (results != null) {
-                        qualifyingAdapter.setResults(results,
-                                QualifyingAdapter.QualiSession.Q1);
-                    }
-                    swipeRefresh.setRefreshing(false);
-                });
                 break;
             case "Q2":
+                currentQualiSession = "Q2";
                 recyclerView.setAdapter(qualifyingAdapter);
                 viewModel.fetchQualifyingResults(year, round);
-                viewModel.getQualifyingResults().observe(this, results -> {
-                    if (results != null) {
-                        qualifyingAdapter.setResults(results,
-                                QualifyingAdapter.QualiSession.Q2);
-                    }
-                    swipeRefresh.setRefreshing(false);
-                });
                 break;
             case "Q3":
+                currentQualiSession = "Q3";
                 recyclerView.setAdapter(qualifyingAdapter);
                 viewModel.fetchQualifyingResults(year, round);
-                viewModel.getQualifyingResults().observe(this, results -> {
-                    if (results != null) {
-                        qualifyingAdapter.setResults(results,
-                                QualifyingAdapter.QualiSession.Q3);
-                    }
-                    swipeRefresh.setRefreshing(false);
-                });
                 break;
             case "Sprint":
                 recyclerView.setAdapter(resultsAdapter);
@@ -140,11 +123,6 @@ public class RoundDetailActivity extends AppCompatActivity {
             case "Pit Stops":
                 recyclerView.setAdapter(pitStopAdapter);
                 viewModel.fetchPitStopsForRace(year, round);
-                viewModel.getPitStops().removeObservers(this);
-                viewModel.getPitStops().observe(this, stops -> {
-                    if (stops != null) pitStopAdapter.setPitStops(stops);
-                    swipeRefresh.setRefreshing(false);
-                });
                 break;
         }
     }
@@ -155,6 +133,24 @@ public class RoundDetailActivity extends AppCompatActivity {
             if (results != null) resultsAdapter.setResults(results);
         });
         viewModel.getResultsLoading().observe(this, loading ->
+                swipeRefresh.setRefreshing(loading));
+        viewModel.getQualifyingResults().observe(this, results -> {
+            if (results != null) {
+                QualifyingAdapter.QualiSession session;
+                switch (currentQualiSession) {
+                    case "Q1": session = QualifyingAdapter.QualiSession.Q1; break;
+                    case "Q2": session = QualifyingAdapter.QualiSession.Q2; break;
+                    default:   session = QualifyingAdapter.QualiSession.Q3; break;
+                }
+                qualifyingAdapter.setResults(results, session);
+            }
+            swipeRefresh.setRefreshing(false);
+        });
+        viewModel.getPitStops().observe(this, stops -> {
+            if (stops != null) pitStopAdapter.setPitStops(stops);
+            swipeRefresh.setRefreshing(false);
+        });
+        viewModel.getPitStopsLoading().observe(this, loading ->
                 swipeRefresh.setRefreshing(loading));
     }
 

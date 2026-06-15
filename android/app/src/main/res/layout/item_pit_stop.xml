@@ -16,7 +16,7 @@
         android:layout_width="32dp"
         android:layout_height="wrap_content"
         android:text="1"
-        android:textColor="#AAAAAA"
+        android:textColor="@color/text_secondary"
         android:textSize="14sp" />
 
     <!-- Team colour strip -->
@@ -25,7 +25,7 @@
         android:layout_width="4dp"
         android:layout_height="36dp"
         android:layout_marginEnd="10dp"
-        android:background="#FFFFFF" />
+        android:background="@color/text_primary" />
 
     <!-- Driver + team -->
     <LinearLayout
@@ -39,7 +39,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Max Verstappen"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_primary"
             android:textSize="14sp"
             android:textStyle="bold" />
 
@@ -48,7 +48,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Red Bull Racing"
-            android:textColor="#AAAAAA"
+            android:textColor="@color/text_secondary"
             android:textSize="11sp" />
 
     </LinearLayout>
@@ -59,7 +59,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Lap 24"
-        android:textColor="#AAAAAA"
+        android:textColor="@color/text_secondary"
         android:textSize="12sp"
         android:layout_marginEnd="12dp" />
 
@@ -69,7 +69,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="2.345s"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/text_primary"
         android:textSize="16sp"
         android:textStyle="bold" />
 

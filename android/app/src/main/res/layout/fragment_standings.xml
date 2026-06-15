@@ -4,17 +4,17 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#121212">
+    android:background="@color/bg_dark">
 
     <!-- Tab row: Drivers / Constructors / Pit Stops -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tab_layout_standings"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#1E1E1E"
-        app:tabTextColor="#AAAAAA"
-        app:tabSelectedTextColor="#FFFFFF"
-        app:tabIndicatorColor="#E10600"
+        android:background="@color/bg_surface"
+        app:tabTextColor="@color/text_secondary"
+        app:tabSelectedTextColor="@color/text_primary"
+        app:tabIndicatorColor="@color/f1_red"
         xmlns:app="http://schemas.android.com/apk/res-auto" />
 
     <!-- Season selector -->
@@ -22,7 +22,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="#1E1E1E"
+        android:background="@color/bg_surface"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
         android:paddingTop="8dp"
@@ -33,7 +33,7 @@
 
         <TextView
             android:text="Season"
-            android:textColor="#AAAAAA"
+            android:textColor="@color/text_secondary"
             android:textSize="13sp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -51,7 +51,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="none"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/text_primary"
                 android:textSize="14sp" />
 
         </com.google.android.material.textfield.TextInputLayout>

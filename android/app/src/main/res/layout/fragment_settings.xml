@@ -6,11 +6,11 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="24dp"
-    android:background="#121212">
+    android:background="@color/bg_dark">
 
     <TextView
         android:text="SETTINGS"
-        android:textColor="#E10600"
+        android:textColor="@color/f1_red"
         android:textSize="11sp"
         android:letterSpacing="0.1"
         android:layout_width="wrap_content"
@@ -21,16 +21,16 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Backend URL"
-        app:boxBackgroundColor="#1E1E1E"
-        app:hintTextColor="#AAAAAA"
-        app:boxStrokeColor="#E10600"
+        app:boxBackgroundColor="@color/bg_surface"
+        app:hintTextColor="@color/text_secondary"
+        app:boxStrokeColor="@color/f1_red"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_base_url"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_primary"
             android:inputType="textUri"
             android:singleLine="true" />
 
@@ -38,7 +38,7 @@
 
     <TextView
         android:text="Include full URL with https:// — no trailing slash needed."
-        android:textColor="#666666"
+        android:textColor="@color/text_hint"
         android:textSize="12sp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -51,6 +51,6 @@
         android:text="Save URL"
         android:layout_marginTop="24dp"
         style="@style/Widget.Material3.Button"
-        android:backgroundTint="#E10600" />
+        android:backgroundTint="@color/f1_red" />
 
 </LinearLayout>

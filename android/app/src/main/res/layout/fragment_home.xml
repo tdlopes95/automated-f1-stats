@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121212">
+    android:background="@color/bg_dark">
 
     <!-- Skeleton shown while loading -->
     <include
@@ -33,7 +33,7 @@
         <TextView
             android:id="@+id/tv_error_message"
             android:text="Could not load data.\nCheck your connection."
-            android:textColor="#AAAAAA"
+            android:textColor="@color/text_secondary"
             android:textSize="16sp"
             android:textAlignment="center"
             android:layout_width="wrap_content"
@@ -47,7 +47,7 @@
             android:text="Retry"
             android:layout_marginTop="24dp"
             style="@style/Widget.Material3.Button"
-            android:backgroundTint="#E10600" />
+            android:backgroundTint="@color/f1_red" />
 
     </LinearLayout>
 
@@ -75,7 +75,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="#1E1E1E"
+                    app:cardBackgroundColor="@color/bg_surface"
                     app:cardCornerRadius="12dp">
 
                     <LinearLayout
@@ -86,7 +86,7 @@
 
                         <TextView
                             android:text="NEXT RACE"
-                            android:textColor="#E10600"
+                            android:textColor="@color/f1_red"
                             android:textSize="11sp"
                             android:letterSpacing="0.1"
                             android:layout_width="wrap_content"
@@ -95,7 +95,7 @@
                         <TextView
                             android:id="@+id/tv_next_race_name"
                             android:text=""
-                            android:textColor="#FFFFFF"
+                            android:textColor="@color/text_primary"
                             android:textSize="20sp"
                             android:textStyle="bold"
                             android:layout_width="wrap_content"
@@ -105,7 +105,7 @@
                         <TextView
                             android:id="@+id/tv_next_race_circuit"
                             android:text=""
-                            android:textColor="#AAAAAA"
+                            android:textColor="@color/text_secondary"
                             android:textSize="14sp"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -114,7 +114,7 @@
                         <TextView
                             android:id="@+id/tv_next_race_date"
                             android:text=""
-                            android:textColor="#FFFFFF"
+                            android:textColor="@color/text_primary"
                             android:textSize="14sp"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -123,7 +123,7 @@
                         <TextView
                             android:id="@+id/tv_countdown"
                             android:text=""
-                            android:textColor="#E10600"
+                            android:textColor="@color/f1_red"
                             android:textSize="28sp"
                             android:textStyle="bold"
                             android:layout_width="wrap_content"
@@ -139,7 +139,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="#1E1E1E"
+                    app:cardBackgroundColor="@color/bg_surface"
                     app:cardCornerRadius="12dp">
 
                     <LinearLayout
@@ -151,7 +151,7 @@
                         <TextView
                             android:id="@+id/tv_leader_title"
                             android:text="CHAMPIONSHIP LEADER"
-                            android:textColor="#E10600"
+                            android:textColor="@color/f1_red"
                             android:textSize="11sp"
                             android:letterSpacing="0.1"
                             android:layout_width="wrap_content"
@@ -160,7 +160,7 @@
                         <TextView
                             android:id="@+id/tv_leader_name"
                             android:text=""
-                            android:textColor="#FFFFFF"
+                            android:textColor="@color/text_primary"
                             android:textSize="20sp"
                             android:textStyle="bold"
                             android:layout_width="wrap_content"
@@ -170,7 +170,7 @@
                         <TextView
                             android:id="@+id/tv_leader_team"
                             android:text=""
-                            android:textColor="#AAAAAA"
+                            android:textColor="@color/text_secondary"
                             android:textSize="14sp"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -186,7 +186,7 @@
                             <TextView
                                 android:id="@+id/tv_leader_points"
                                 android:text=""
-                                android:textColor="#FFFFFF"
+                                android:textColor="@color/text_primary"
                                 android:textSize="14sp"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content" />
@@ -194,7 +194,7 @@
                             <TextView
                                 android:id="@+id/tv_leader_gap"
                                 android:text=""
-                                android:textColor="#4CAF50"
+                                android:textColor="@color/color_race_live"
                                 android:textSize="12sp"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
@@ -210,7 +210,7 @@
                     android:id="@+id/card_last_race"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="#1E1E1E"
+                    app:cardBackgroundColor="@color/bg_surface"
                     app:cardCornerRadius="12dp">
 
                     <LinearLayout
@@ -221,7 +221,7 @@
 
                         <TextView
                             android:text="LAST RACE WINNER"
-                            android:textColor="#E10600"
+                            android:textColor="@color/f1_red"
                             android:textSize="11sp"
                             android:letterSpacing="0.1"
                             android:layout_width="wrap_content"
@@ -230,7 +230,7 @@
                         <TextView
                             android:id="@+id/tv_last_winner"
                             android:text=""
-                            android:textColor="#FFFFFF"
+                            android:textColor="@color/text_primary"
                             android:textSize="20sp"
                             android:textStyle="bold"
                             android:layout_width="wrap_content"
@@ -240,7 +240,7 @@
                         <TextView
                             android:id="@+id/tv_last_race_team"
                             android:text=""
-                            android:textColor="#AAAAAA"
+                            android:textColor="@color/text_secondary"
                             android:textSize="14sp"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -249,7 +249,7 @@
                         <TextView
                             android:id="@+id/tv_last_race_name"
                             android:text=""
-                            android:textColor="#666666"
+                            android:textColor="@color/text_hint"
                             android:textSize="12sp"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"

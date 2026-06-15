@@ -16,7 +16,7 @@
         android:layout_width="4dp"
         android:layout_height="36dp"
         android:layout_marginEnd="10dp"
-        android:background="#FFFFFF" />
+        android:background="@color/text_primary" />
 
     <!-- Position -->
     <TextView
@@ -24,7 +24,7 @@
         android:layout_width="28dp"
         android:layout_height="wrap_content"
         android:text="1"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/text_primary"
         android:textSize="15sp"
         android:textStyle="bold" />
 
@@ -40,7 +40,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Max Verstappen"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_primary"
             android:textSize="14sp"
             android:textStyle="bold" />
 
@@ -49,7 +49,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Red Bull Racing"
-            android:textColor="#AAAAAA"
+            android:textColor="@color/text_secondary"
             android:textSize="11sp" />
 
     </LinearLayout>
@@ -66,7 +66,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Q1: 1:28.123"
-            android:textColor="#AAAAAA"
+            android:textColor="@color/text_secondary"
             android:textSize="11sp"
             android:gravity="end" />
 
@@ -75,7 +75,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Q2: 1:27.456"
-            android:textColor="#AAAAAA"
+            android:textColor="@color/text_secondary"
             android:textSize="11sp"
             android:gravity="end" />
 
@@ -84,7 +84,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Q3: 1:26.789"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_primary"
             android:textSize="12sp"
             android:textStyle="bold"
             android:gravity="end" />
