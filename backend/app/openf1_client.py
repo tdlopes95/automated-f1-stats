@@ -161,12 +161,6 @@ class OpenF1Client:
             params["driver_number"] = driver_number
         return await self._get("pit", params)
 
-    # ── Starting Grid ─────────────────────────────────────────────────────────
-
-    async def get_starting_grid(self, session_key: int) -> list[dict]:
-        """Get the starting grid positions for a race session."""
-        return await self._get("starting_grid", {"session_key": session_key})
-
     # ── Stints / Tyre Strategy ────────────────────────────────────────────────
 
     async def get_stints(self, session_key: int, driver_number: Optional[int] = None) -> list[dict]:

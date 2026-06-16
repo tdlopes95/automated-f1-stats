@@ -368,34 +368,19 @@ public class F1ViewModel extends ViewModel {
 
     // ── Starting Grid ─────────────────────────────────────────────────────────
 
-    public void fetchStartingGrid(int sessionKey) {
-        startingGridLoading.setValue(true);
-        api.getStartingGrid(sessionKey).enqueue(new Callback<List<Map<String, Object>>>() {
-            @Override
-            public void onResponse(Call<List<Map<String, Object>>> call,
-                                   Response<List<Map<String, Object>>> response) {
-                startingGridLoading.setValue(false);
-                startingGrid.setValue(response.isSuccessful() && response.body() != null
-                        ? response.body() : new ArrayList<>());
-            }
-            @Override
-            public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {
-                startingGridLoading.setValue(false);
-                startingGrid.setValue(new ArrayList<>());
-            }
-        });
-    }
-
     public void fetchStartingGridForRace(int year, int round) {
         startingGridLoading.setValue(true);
         startingGrid.setValue(null);
-        repo.getSessionKey(year, round, new F1Repository.RepositoryCallback<Integer>() {
+        repo.getStartingGridFromResults(year, round,
+                new F1Repository.RepositoryCallback<List<Map<String, Object>>>() {
             @Override
-            public void onSuccess(Integer sessionKey) {
-                fetchStartingGrid(sessionKey);
+            public void onSuccess(List<Map<String, Object>> grid) {
+                startingGridLoading.setValue(false);
+                startingGrid.setValue(grid);
             }
             @Override
             public void onError(String error) {
+                android.util.Log.e("F1ViewModel", "Starting grid error: " + error);
                 startingGridLoading.setValue(false);
                 startingGrid.setValue(new ArrayList<>());
             }

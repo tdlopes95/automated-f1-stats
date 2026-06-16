@@ -309,6 +309,9 @@ public class RoundDetailActivity extends AppCompatActivity {
 
         viewModel.getStartingGrid().observe(this, grid -> {
             if (grid != null && "Grid".equals(currentTab)) {
+                if (grid.isEmpty()) {
+                    android.util.Log.e("RoundDetailActivity", "Grid empty for year=" + year + " round=" + round);
+                }
                 buildGridView(grid);
             }
         });

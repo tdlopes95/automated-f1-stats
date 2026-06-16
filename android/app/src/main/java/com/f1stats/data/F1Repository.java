@@ -440,6 +440,143 @@ public class F1Repository {
         });
     }
 
+    // ── Starting Grid (from Jolpica race results) ─────────────────────────────
+
+    public void getStartingGridFromResults(int year, int round,
+                                            RepositoryCallback<List<Map<String, Object>>> callback) {
+        getResults(year, round, "Race", new RepositoryCallback<Map<String, Object>>() {
+            @Override
+            public void onSuccess(Map<String, Object> data) {
+                executor.execute(() -> {
+                    Object resultsObj = data.get("results");
+                    if (!(resultsObj instanceof List)) {
+                        mainHandler.post(() -> callback.onSuccess(new ArrayList<>()));
+                        return;
+                    }
+                    try {
+                        Type listType = new TypeToken<List<RaceResult>>(){}.getType();
+                        List<RaceResult> results = gson.fromJson(gson.toJson(resultsObj), listType);
+                        if (results == null) {
+                            mainHandler.post(() -> callback.onSuccess(new ArrayList<>()));
+                            return;
+                        }
+
+                        List<Map<String, Object>> grid = new ArrayList<>();
+                        for (RaceResult r : results) {
+                            if (r.getDriver() == null) continue;
+                            int gridPos;
+                            try { gridPos = Integer.parseInt(r.getGridPosition()); }
+                            catch (Exception e) { continue; }
+                            if (gridPos <= 0) continue;
+
+                            String code       = r.getDriver().getCode();
+                            String teamName   = r.getConstructor() != null ? r.getConstructor().getName() : "";
+                            String teamColour = "#FFFFFF";
+                            String headshotUrl = null;
+
+                            if (code != null) {
+                                CachedDriver cached = db.driverDao().getByCode(code, year);
+                                if (cached != null) {
+                                    if (cached.teamColour != null) teamColour = cached.teamColour;
+                                    headshotUrl = cached.headshotUrl;
+                                }
+                            }
+
+                            Map<String, Object> entry = new HashMap<>();
+                            entry.put("position",      gridPos);
+                            entry.put("driver_number", r.getDriverNumber() != null ? r.getDriverNumber() : "");
+                            entry.put("name_acronym",  code != null ? code : "???");
+                            entry.put("full_name",     r.getDriver().getFullName() != null ? r.getDriver().getFullName() : "");
+                            entry.put("team_name",     teamName != null ? teamName : "");
+                            entry.put("team_colour",   teamColour);
+                            entry.put("headshot_url",  headshotUrl);
+                            grid.add(entry);
+                        }
+
+                        grid.sort((a, b) -> {
+                            int pa = a.get("position") instanceof Number ? ((Number) a.get("position")).intValue() : 99;
+                            int pb = b.get("position") instanceof Number ? ((Number) b.get("position")).intValue() : 99;
+                            return Integer.compare(pa, pb);
+                        });
+
+                        mainHandler.post(() -> callback.onSuccess(grid));
+                    } catch (Exception e) {
+                        android.util.Log.e("F1Repository", "Failed to build starting grid", e);
+                        mainHandler.post(() -> callback.onSuccess(new ArrayList<>()));
+                    }
+                });
+            }
+            @Override
+            public void onError(String error) {
+                android.util.Log.e("F1Repository", "Race results error for grid: " + error);
+                callback.onError(error);
+            }
+        });
+    }
+
+    // ── Ensure all Race results cached for season ─────────────────────────────
+
+    public void ensureSeasonResultsCached(int year, RepositoryCallback<Void> callback) {
+        getSchedule(year, new RepositoryCallback<List<Map<String, Object>>>() {
+            @Override
+            public void onSuccess(List<Map<String, Object>> races) {
+                executor.execute(() -> {
+                    List<Integer> missingRounds = new ArrayList<>();
+                    for (Map<String, Object> race : races) {
+                        int round = toInt(race.get("round"));
+                        if (round == 0) continue;
+                        CachedResult hit = db.resultDao().get(year, round, "Race");
+                        if (hit == null) missingRounds.add(round);
+                    }
+
+                    if (missingRounds.isEmpty()) {
+                        mainHandler.post(() -> callback.onSuccess(null));
+                        return;
+                    }
+
+                    AtomicInteger pending = new AtomicInteger(missingRounds.size());
+                    mainHandler.post(() -> {
+                        for (int round : missingRounds) {
+                            api.getResults(year, round, "Race").enqueue(
+                                new Callback<Map<String, Object>>() {
+                                    @Override
+                                    public void onResponse(Call<Map<String, Object>> call,
+                                                           Response<Map<String, Object>> response) {
+                                        if (response.isSuccessful() && response.body() != null) {
+                                            Map<String, Object> body = response.body();
+                                            executor.execute(() -> {
+                                                CachedResult row = new CachedResult();
+                                                row.year        = year;
+                                                row.round       = round;
+                                                row.sessionType = "Race";
+                                                row.resultsJson = gson.toJson(body);
+                                                row.fetchedAt   = System.currentTimeMillis();
+                                                db.resultDao().upsert(row);
+                                            });
+                                        }
+                                        if (pending.decrementAndGet() == 0) {
+                                            mainHandler.post(() -> callback.onSuccess(null));
+                                        }
+                                    }
+                                    @Override
+                                    public void onFailure(Call<Map<String, Object>> call, Throwable t) {
+                                        if (pending.decrementAndGet() == 0) {
+                                            mainHandler.post(() -> callback.onSuccess(null));
+                                        }
+                                    }
+                                }
+                            );
+                        }
+                    });
+                });
+            }
+            @Override
+            public void onError(String error) {
+                callback.onSuccess(null);
+            }
+        });
+    }
+
     // ── Misc helpers ──────────────────────────────────────────────────────────
 
     private int toInt(Object val) {

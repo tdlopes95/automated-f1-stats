@@ -17,6 +17,8 @@ import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
+import com.f1stats.api.F1ApiClient;
+import com.f1stats.data.F1Repository;
 import com.f1stats.db.CachedDriver;
 import com.f1stats.db.CachedResult;
 import com.f1stats.models.RaceResult;
@@ -28,7 +30,6 @@ import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
 
 public class CompareDriversActivity extends AppCompatActivity
         implements DriverPickerBottomSheet.OnDriverSelectedListener {
@@ -237,8 +238,26 @@ public class CompareDriversActivity extends AppCompatActivity
         String driverId1 = driver1.driverId;
         String driverId2 = driver2.driverId;
 
-        Executors.newSingleThreadExecutor().execute(() -> {
+        F1Repository repo = new F1Repository(
+                F1App.get().getDatabase(),
+                F1ApiClient.getInstance(F1App.get()).getService());
+
+        repo.ensureSeasonResultsCached(year, new F1Repository.RepositoryCallback<Void>() {
+            @Override
+            public void onSuccess(Void ignored) {
+                computeStatsFromRoom(driverId1, driverId2);
+            }
+            @Override
+            public void onError(String error) {
+                computeStatsFromRoom(driverId1, driverId2);
+            }
+        });
+    }
+
+    private void computeStatsFromRoom(String driverId1, String driverId2) {
+        new Thread(() -> {
             List<CachedResult> allResults = F1App.get().getDatabase().resultDao().getByYear(year);
+
 
             DriverStats stats1 = new DriverStats();
             DriverStats stats2 = new DriverStats();
@@ -314,7 +333,7 @@ public class CompareDriversActivity extends AppCompatActivity
                 pbLoading.setVisibility(View.GONE);
                 displayStats(fStats1, fStats2);
             });
-        });
+        }).start();
     }
 
     private void displayStats(DriverStats s1, DriverStats s2) {

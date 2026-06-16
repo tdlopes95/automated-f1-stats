@@ -103,8 +103,4 @@ public interface F1ApiService {
     @GET("drivers/{year}")
     Call<List<Map<String, Object>>> getDriversByYear(@Path("year") int year);
 
-    // ── Starting Grid ─────────────────────────────────────────────────────────
-
-    @GET("starting-grid")
-    Call<List<Map<String, Object>>> getStartingGrid(@Query("session_key") int sessionKey);
 }
