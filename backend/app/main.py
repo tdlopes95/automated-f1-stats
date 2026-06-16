@@ -551,3 +551,37 @@ async def get_session_key(request: Request, year: int, round: int):
             return result
 
     raise HTTPException(status_code=404, detail="Session key not found")
+
+
+# ── Meetings (OpenF1) ─────────────────────────────────────────────────────────
+
+@app.get("/meetings")
+@limiter.limit("30/minute")
+async def get_meetings(request: Request, year: Optional[int] = None):
+    current_year = datetime.now(timezone.utc).year
+    target_year = year or current_year
+    cache_key = f"meetings_{target_year}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+    meetings = await openf1.get_meetings(target_year)
+    result = []
+    for m in meetings:
+        result.append({
+            "meeting_key":        m.get("meeting_key"),
+            "meeting_name":       m.get("meeting_name"),
+            "location":           m.get("location"),
+            "country_name":       m.get("country_name"),
+            "country_flag":       m.get("country_flag"),
+            "circuit_short_name": m.get("circuit_short_name"),
+            "circuit_type":       m.get("circuit_type"),
+            "circuit_image":      m.get("circuit_image"),
+            "gmt_offset":         m.get("gmt_offset"),
+            "date_start":         m.get("date_start"),
+            "year":               m.get("year"),
+        })
+    if target_year < current_year:
+        cache_set_historical(cache_key, result)
+    else:
+        cache_set(cache_key, result)
+    return result

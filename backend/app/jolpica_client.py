@@ -5,6 +5,7 @@ https://api.jolpi.ca/ergast/f1/
 No API key needed. Free for non-commercial use.
 """
 
+import asyncio
 import logging
 from datetime import datetime, date, timezone
 from typing import Optional
@@ -21,17 +22,28 @@ class JolpicaClient:
             base_url=BASE_URL,
             timeout=15.0
         )
+        self._semaphore = asyncio.Semaphore(4)
 
     async def _get(self, path: str, params: dict = None) -> dict:
-        try:
-            response = await self._client.get(path, params=params)
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            logger.error(f"Jolpica HTTP error {e.response.status_code} on {path}: {e}")
-            return {}
-        except httpx.RequestError as e:
-            logger.error(f"Jolpica request error on {path}: {e}")
+        async with self._semaphore:
+            for attempt in range(4):
+                try:
+                    response = await self._client.get(path, params=params)
+                    if response.status_code == 429:
+                        wait = 2 ** attempt
+                        logger.warning(f"Jolpica 429 on {path}, retrying in {wait}s")
+                        await asyncio.sleep(wait)
+                        continue
+                    response.raise_for_status()
+                    await asyncio.sleep(0.3)
+                    return response.json()
+                except httpx.HTTPStatusError as e:
+                    logger.error(f"Jolpica HTTP error {e.response.status_code} on {path}: {e}")
+                    return {}
+                except httpx.RequestError as e:
+                    logger.error(f"Jolpica request error on {path}: {e}")
+                    return {}
+            logger.error(f"Jolpica: exhausted retries on {path}")
             return {}
 
     # ── Race Schedule / Calendar ─────────────────────────────────────────────

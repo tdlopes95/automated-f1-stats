@@ -92,4 +92,9 @@ public interface F1ApiService {
             @Path("year") int year,
             @Path("round") int round
     );
+
+    // ── Meetings ──────────────────────────────────────────────────────────────
+
+    @GET("meetings")
+    Call<List<Map<String, Object>>> getMeetings(@Query("year") int year);
 }
