@@ -21,6 +21,9 @@ public interface DriverDao {
     @Query("SELECT * FROM cached_drivers WHERE seasonYear = :seasonYear")
     List<CachedDriver> getBySeason(int seasonYear);
 
+    @Query("SELECT * FROM cached_drivers WHERE code = :code AND seasonYear = :seasonYear LIMIT 1")
+    CachedDriver getByCode(String code, int seasonYear);
+
     @Query("DELETE FROM cached_drivers WHERE seasonYear = :seasonYear")
     void deleteBySeason(int seasonYear);
 }

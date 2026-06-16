@@ -49,6 +49,7 @@ public class DriverProfileActivity extends AppCompatActivity {
     private TextView tvStatDnfs, tvStatBestGrid, tvStatPoles;
     private DriverResultAdapter resultsAdapter;
     private ProgressBar pbLoading;
+    private String driverCode;
 
     private final Gson gson = new Gson();
     private static final int BATCH_SIZE = 3;
@@ -71,6 +72,7 @@ public class DriverProfileActivity extends AppCompatActivity {
         setContentView(R.layout.activity_driver_profile);
 
         String driverId    = getIntent().getStringExtra(EXTRA_DRIVER_ID);
+        driverCode         = getIntent().getStringExtra(EXTRA_DRIVER_CODE);
         String driverName  = getIntent().getStringExtra(EXTRA_DRIVER_NAME);
         int year           = getIntent().getIntExtra(EXTRA_YEAR, 2026);
         String headshotUrl = getIntent().getStringExtra(EXTRA_HEADSHOT_URL);
@@ -225,6 +227,9 @@ public class DriverProfileActivity extends AppCompatActivity {
                                       List<Object[]> collected, String existingHeadshotUrl) {
         Executors.newSingleThreadExecutor().execute(() -> {
             CachedDriver cachedDriver = F1App.get().getDatabase().driverDao().get(driverId, year);
+            if (cachedDriver == null && driverCode != null) {
+                cachedDriver = F1App.get().getDatabase().driverDao().getByCode(driverCode, year);
+            }
 
             Type listType = new TypeToken<List<RaceResult>>() {}.getType();
             double totalPoints = 0;
@@ -288,6 +293,9 @@ public class DriverProfileActivity extends AppCompatActivity {
             final int fBestGrid = bestGrid == Integer.MAX_VALUE ? 0 : bestGrid;
             final List<DriverResultAdapter.DriverRaceResult> fResults = raceResults;
             final CachedDriver fDriver = cachedDriver;
+            final boolean needsHeadshotFetch = (fDriver == null || fDriver.headshotUrl == null
+                    || fDriver.headshotUrl.isEmpty()) && driverCode != null
+                    && (existingHeadshotUrl == null || existingHeadshotUrl.isEmpty());
 
             if (isFinishing() || isDestroyed()) return;
             runOnUiThread(() -> {
@@ -312,6 +320,32 @@ public class DriverProfileActivity extends AppCompatActivity {
                         tvDob.setText("Born: " + formatDob(fDriver.dateOfBirth));
                         tvDob.setVisibility(View.VISIBLE);
                     }
+                }
+
+                if (needsHeadshotFetch) {
+                    F1Repository fetchRepo = new F1Repository(
+                            F1App.get().getDatabase(),
+                            F1ApiClient.getInstance(F1App.get()).getService()
+                    );
+                    fetchRepo.fetchDrivers(year, new F1Repository.RepositoryCallback<java.util.List<com.f1stats.db.CachedDriver>>() {
+                        @Override
+                        public void onSuccess(java.util.List<com.f1stats.db.CachedDriver> drivers) {
+                            for (com.f1stats.db.CachedDriver d : drivers) {
+                                if (driverCode.equals(d.code) && d.headshotUrl != null
+                                        && !d.headshotUrl.isEmpty()) {
+                                    if (!isFinishing() && !isDestroyed()) {
+                                        Glide.with(DriverProfileActivity.this)
+                                                .load(d.headshotUrl)
+                                                .apply(RequestOptions.circleCropTransform())
+                                                .into(ivHeadshot);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        @Override
+                        public void onError(String error) {}
+                    });
                 }
             });
         });

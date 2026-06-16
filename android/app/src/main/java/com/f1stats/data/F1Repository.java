@@ -5,6 +5,7 @@ import android.os.Looper;
 
 import com.f1stats.api.F1ApiService;
 import com.f1stats.db.AppDatabase;
+import com.f1stats.db.CachedDriver;
 import com.f1stats.db.CachedResult;
 import com.f1stats.db.CachedSchedule;
 import com.f1stats.db.CachedSessionKey;
@@ -379,6 +380,64 @@ public class F1Repository {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    // ── Drivers (headshots) ───────────────────────────────────────────────────
+
+    public void fetchDrivers(int year, RepositoryCallback<List<CachedDriver>> callback) {
+        executor.execute(() -> {
+            List<CachedDriver> cached = db.driverDao().getBySeason(year);
+            if (!cached.isEmpty()) {
+                mainHandler.post(() -> callback.onSuccess(cached));
+                return;
+            }
+
+            mainHandler.post(() ->
+                api.getDriversByYear(year).enqueue(new Callback<List<Map<String, Object>>>() {
+                    @Override
+                    public void onResponse(Call<List<Map<String, Object>>> call,
+                                           Response<List<Map<String, Object>>> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            List<Map<String, Object>> raw = response.body();
+                            long now = System.currentTimeMillis();
+                            executor.execute(() -> {
+                                List<CachedDriver> drivers = new ArrayList<>();
+                                for (Map<String, Object> d : raw) {
+                                    CachedDriver driver = new CachedDriver();
+                                    String acronym = toStr(d.get("name_acronym"));
+                                    driver.driverId = acronym != null ? acronym.toLowerCase() : "";
+                                    driver.code = acronym;
+                                    driver.headshotUrl = toStr(d.get("headshot_url"));
+                                    driver.teamName = toStr(d.get("team_name"));
+                                    driver.teamColour = toStr(d.get("team_colour"));
+                                    driver.seasonYear = year;
+                                    driver.fetchedAt = now;
+                                    String fullName = toStr(d.get("full_name"));
+                                    if (fullName != null) {
+                                        int sp = fullName.indexOf(' ');
+                                        if (sp >= 0) {
+                                            driver.firstName = fullName.substring(0, sp);
+                                            driver.lastName  = fullName.substring(sp + 1);
+                                        } else {
+                                            driver.lastName = fullName;
+                                        }
+                                    }
+                                    drivers.add(driver);
+                                }
+                                db.driverDao().upsertAll(drivers);
+                                mainHandler.post(() -> callback.onSuccess(drivers));
+                            });
+                        } else {
+                            callback.onError("Could not load drivers");
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {
+                        callback.onError("Connection error: " + t.getMessage());
+                    }
+                })
+            );
+        });
     }
 
     // ── Misc helpers ──────────────────────────────────────────────────────────

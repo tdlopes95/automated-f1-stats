@@ -171,6 +171,7 @@ public class HomeFragment extends Fragment {
         viewModel.fetchDriverStandings(SeasonHelper.getCurrentYear());
         viewModel.fetchLatestResults("Race", SeasonHelper.getCurrentYear());
         viewModel.fetchMeetings(SeasonHelper.getCurrentYear());
+        viewModel.prefetchDrivers(SeasonHelper.getCurrentYear());
     }
 
     private void refreshData() {

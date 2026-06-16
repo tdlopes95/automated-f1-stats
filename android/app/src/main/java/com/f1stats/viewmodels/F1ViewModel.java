@@ -8,6 +8,7 @@ import com.f1stats.F1App;
 import com.f1stats.api.F1ApiClient;
 import com.f1stats.api.F1ApiService;
 import com.f1stats.data.F1Repository;
+import com.f1stats.db.CachedDriver;
 import com.f1stats.models.ConstructorStanding;
 import com.f1stats.models.DriverStanding;
 import com.f1stats.models.LiveSession;
@@ -66,12 +67,16 @@ public class F1ViewModel extends ViewModel {
     private final MutableLiveData<Map<String, Integer>> dnfMap = new MutableLiveData<>();
     private final MutableLiveData<Map<String, Integer>> podiumMap = new MutableLiveData<>();
 
+    // ── Driver Headshots ──────────────────────────────────────────────────────
+    private final MutableLiveData<Map<String, String>> driverHeadshotMap = new MutableLiveData<>();
+
     // ── Home Error ────────────────────────────────────────────────────────────
     private final MutableLiveData<String> homeError = new MutableLiveData<>(null);
 
     public LiveData<String> getHomeError() { return homeError; }
     public void clearHomeError() { homeError.setValue(null); }
     public LiveData<Boolean> getSeasonStarted() { return seasonStarted; }
+    public LiveData<Map<String, String>> getDriverHeadshotMap() { return driverHeadshotMap; }
 
 
     // ── Live Session (no caching — always live) ───────────────────────────────
@@ -303,6 +308,25 @@ public class F1ViewModel extends ViewModel {
             }
             @Override
             public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {}
+        });
+    }
+
+    // ── Driver Headshots ──────────────────────────────────────────────────────
+
+    public void prefetchDrivers(int year) {
+        repo.fetchDrivers(year, new F1Repository.RepositoryCallback<List<CachedDriver>>() {
+            @Override
+            public void onSuccess(List<CachedDriver> drivers) {
+                Map<String, String> map = new java.util.HashMap<>();
+                for (CachedDriver d : drivers) {
+                    if (d.code != null && d.headshotUrl != null && !d.headshotUrl.isEmpty()) {
+                        map.put(d.code, d.headshotUrl);
+                    }
+                }
+                driverHeadshotMap.setValue(map);
+            }
+            @Override
+            public void onError(String error) {}
         });
     }
 

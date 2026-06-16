@@ -97,4 +97,9 @@ public interface F1ApiService {
 
     @GET("meetings")
     Call<List<Map<String, Object>>> getMeetings(@Query("year") int year);
+
+    // ── Drivers (headshots) ───────────────────────────────────────────────────
+
+    @GET("drivers/{year}")
+    Call<List<Map<String, Object>>> getDriversByYear(@Path("year") int year);
 }

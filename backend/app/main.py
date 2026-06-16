@@ -585,3 +585,46 @@ async def get_meetings(request: Request, year: Optional[int] = None):
     else:
         cache_set(cache_key, result)
     return result
+
+
+# ── Drivers (OpenF1 headshots) ────────────────────────────────────────────────
+
+@app.get("/drivers/{year}")
+@limiter.limit("30/minute")
+async def get_drivers_by_year(request: Request, year: int):
+    current_year = datetime.now(timezone.utc).year
+    cache_key = f"drivers_{year}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+
+    if year == current_year:
+        session = await openf1.get_latest_session()
+    else:
+        sessions = await openf1.get_sessions(year=year, session_type="Race")
+        session = sessions[-1] if sessions else None
+
+    if not session:
+        raise HTTPException(status_code=404, detail=f"No sessions found for {year}")
+
+    session_key = session.get("session_key")
+    drivers_raw = await openf1.get_drivers(session_key)
+
+    result = [
+        {
+            "driver_number": d.get("driver_number"),
+            "name_acronym":  d.get("name_acronym"),
+            "full_name":     d.get("full_name"),
+            "headshot_url":  d.get("headshot_url"),
+            "team_name":     d.get("team_name"),
+            "team_colour":   "#" + d["team_colour"] if d.get("team_colour") else None,
+            "country_code":  d.get("country_code"),
+        }
+        for d in drivers_raw
+    ]
+
+    if year < current_year:
+        cache_set_historical(cache_key, result)
+    else:
+        cache_set(cache_key, result)
+    return result

@@ -128,6 +128,12 @@ public class StandingsFragment extends Fragment {
         RaceResult.Driver driver = standing.getDriver();
         if (driver == null) return;
 
+        String headshotUrl = null;
+        java.util.Map<String, String> headshotMap = viewModel.getDriverHeadshotMap().getValue();
+        if (headshotMap != null && driver.getCode() != null) {
+            headshotUrl = headshotMap.get(driver.getCode());
+        }
+
         Intent intent = new Intent(requireContext(), DriverProfileActivity.class);
         intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_ID, driver.getDriverId());
         intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_CODE, driver.getCode());
@@ -137,6 +143,9 @@ public class StandingsFragment extends Fragment {
         intent.putExtra(DriverProfileActivity.EXTRA_TEAM_COLOUR, getTeamColour(standing.getTeamName()));
         intent.putExtra(DriverProfileActivity.EXTRA_NATIONALITY, driver.getNationality());
         intent.putExtra(DriverProfileActivity.EXTRA_NUMBER, driver.getNumber());
+        if (headshotUrl != null) {
+            intent.putExtra(DriverProfileActivity.EXTRA_HEADSHOT_URL, headshotUrl);
+        }
         startActivity(intent);
     }
 

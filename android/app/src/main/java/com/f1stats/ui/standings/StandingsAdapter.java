@@ -93,9 +93,11 @@ public class StandingsAdapter extends RecyclerView.Adapter<StandingsAdapter.View
                 break;
             case MODE_CONSTRUCTORS:
                 holder.bindConstructor(constructorStandings.get(position));
+                holder.itemView.setOnClickListener(null);
                 break;
             case MODE_PIT_STOPS:
                 holder.bindPitStop(pitStops.get(position), position + 1);
+                holder.itemView.setOnClickListener(null);
                 break;
         }
     }
