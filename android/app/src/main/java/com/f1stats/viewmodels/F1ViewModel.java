@@ -74,6 +74,10 @@ public class F1ViewModel extends ViewModel {
     private final MutableLiveData<List<Map<String, Object>>> startingGrid = new MutableLiveData<>();
     private final MutableLiveData<Boolean> startingGridLoading = new MutableLiveData<>(false);
 
+    // ── Tyre Strategy ─────────────────────────────────────────────────────────
+    private final MutableLiveData<List<Map<String, Object>>> stints = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> stintsLoading = new MutableLiveData<>(false);
+
     // ── Driver Headshots ──────────────────────────────────────────────────────
     private final MutableLiveData<Map<String, String>> driverHeadshotMap = new MutableLiveData<>();
 
@@ -398,6 +402,45 @@ public class F1ViewModel extends ViewModel {
         });
     }
 
+    // ── Tyre Strategy ─────────────────────────────────────────────────────────
+
+    public void fetchStintsForRace(int year, int round) {
+        stintsLoading.setValue(true);
+        stints.setValue(null);
+        if (year < 2023) {
+            stintsLoading.setValue(false);
+            stints.setValue(new ArrayList<>());
+            return;
+        }
+        repo.getSessionKey(year, round, new F1Repository.RepositoryCallback<Integer>() {
+            @Override
+            public void onSuccess(Integer sessionKey) {
+                api.getStints(sessionKey).enqueue(new Callback<List<Map<String, Object>>>() {
+                    @Override
+                    public void onResponse(Call<List<Map<String, Object>>> call,
+                                           Response<List<Map<String, Object>>> response) {
+                        stintsLoading.setValue(false);
+                        if (response.isSuccessful() && response.body() != null) {
+                            stints.setValue(response.body());
+                        } else {
+                            stints.setValue(new ArrayList<>());
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {
+                        stintsLoading.setValue(false);
+                        stints.setValue(new ArrayList<>());
+                    }
+                });
+            }
+            @Override
+            public void onError(String error) {
+                stintsLoading.setValue(false);
+                stints.setValue(new ArrayList<>());
+            }
+        });
+    }
+
     // ── Season Stats ──────────────────────────────────────────────────────────
 
     public void fetchSeasonStats(int year) {
@@ -439,6 +482,9 @@ public class F1ViewModel extends ViewModel {
 
     public LiveData<List<Map<String, Object>>> getStartingGrid() { return startingGrid; }
     public LiveData<Boolean> getStartingGridLoading() { return startingGridLoading; }
+
+    public LiveData<List<Map<String, Object>>> getStints() { return stints; }
+    public LiveData<Boolean> getStintsLoading() { return stintsLoading; }
 
 
     // ── Private Parsers ───────────────────────────────────────────────────────

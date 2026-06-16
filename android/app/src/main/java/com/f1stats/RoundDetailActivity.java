@@ -31,6 +31,7 @@ import com.f1stats.models.RaceResult;
 import com.f1stats.ui.results.PitStopAdapter;
 import com.f1stats.ui.results.ResultsAdapter;
 import com.f1stats.ui.results.QualifyingAdapter;
+import com.f1stats.ui.strategy.StrategyAdapter;
 import com.f1stats.viewmodels.F1ViewModel;
 import com.google.android.material.tabs.TabLayout;
 
@@ -47,16 +48,18 @@ public class RoundDetailActivity extends AppCompatActivity {
     private F1ViewModel viewModel;
     private ResultsAdapter resultsAdapter;
     private PitStopAdapter pitStopAdapter;
+    private StrategyAdapter strategyAdapter;
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefresh;
     private ScrollView svGrid;
     private LinearLayout llGridContainer;
+    private TextView tvStrategyEmpty;
 
     private int round;
     private int year;
 
     private static final String[] TABS = {
-            "Race", "Q1", "Q2", "Q3", "Sprint", "Grid", "Pit Stops"
+            "Race", "Q1", "Q2", "Q3", "Sprint", "Grid", "Pit Stops", "Strategy"
     };
     private String currentTab = "Race";
     private String currentQualiSession = "Q3";
@@ -100,14 +103,16 @@ public class RoundDetailActivity extends AppCompatActivity {
         }
 
         // RecyclerView + grid views
-        recyclerView    = findViewById(R.id.rv_round_detail);
-        swipeRefresh    = findViewById(R.id.swipe_refresh_detail);
-        svGrid          = findViewById(R.id.sv_grid);
-        llGridContainer = findViewById(R.id.ll_grid_container);
+        recyclerView      = findViewById(R.id.rv_round_detail);
+        swipeRefresh      = findViewById(R.id.swipe_refresh_detail);
+        svGrid            = findViewById(R.id.sv_grid);
+        llGridContainer   = findViewById(R.id.ll_grid_container);
+        tvStrategyEmpty   = findViewById(R.id.tv_strategy_empty);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        resultsAdapter = new ResultsAdapter();
-        pitStopAdapter = new PitStopAdapter();
+        resultsAdapter  = new ResultsAdapter();
+        pitStopAdapter  = new PitStopAdapter();
         qualifyingAdapter = new QualifyingAdapter();
+        strategyAdapter = new StrategyAdapter();
         recyclerView.setAdapter(resultsAdapter);
 
         resultsAdapter.setOnDriverClickListener(result -> {
@@ -144,6 +149,8 @@ public class RoundDetailActivity extends AppCompatActivity {
     }
 
     private void loadCurrentTab() {
+        tvStrategyEmpty.setVisibility(View.GONE);
+
         if ("Grid".equals(currentTab)) {
             swipeRefresh.setVisibility(View.GONE);
             svGrid.setVisibility(View.VISIBLE);
@@ -181,6 +188,10 @@ public class RoundDetailActivity extends AppCompatActivity {
             case "Pit Stops":
                 recyclerView.setAdapter(pitStopAdapter);
                 viewModel.fetchPitStopsForRace(year, round);
+                break;
+            case "Strategy":
+                recyclerView.setAdapter(strategyAdapter);
+                viewModel.fetchStintsForRace(year, round);
                 break;
         }
     }
@@ -301,9 +312,37 @@ public class RoundDetailActivity extends AppCompatActivity {
                 buildGridView(grid);
             }
         });
+
+        viewModel.getStints().observe(this, driverStints -> {
+            if (driverStints == null || !"Strategy".equals(currentTab)) return;
+            swipeRefresh.setRefreshing(false);
+            if (driverStints.isEmpty()) {
+                strategyAdapter.setData(driverStints, 0);
+                tvStrategyEmpty.setVisibility(View.VISIBLE);
+                return;
+            }
+            tvStrategyEmpty.setVisibility(View.GONE);
+            int totalLaps = 0;
+            for (Map<String, Object> driver : driverStints) {
+                Object raw = driver.get("stints");
+                if (raw instanceof List) {
+                    for (Object s : (List<?>) raw) {
+                        if (s instanceof Map) {
+                            Object le = ((Map<?, ?>) s).get("lap_end");
+                            int lapEnd = le instanceof Number ? ((Number) le).intValue() : 0;
+                            if (lapEnd > totalLaps) totalLaps = lapEnd;
+                        }
+                    }
+                }
+            }
+            strategyAdapter.setData(driverStints, totalLaps);
+        });
+        viewModel.getStintsLoading().observe(this, loading -> {
+            if ("Strategy".equals(currentTab)) swipeRefresh.setRefreshing(loading);
+        });
     }
 
-    private void buildGridView(List<Map<String, Object>> grid) {
+private void buildGridView(List<Map<String, Object>> grid) {
         llGridContainer.removeAllViews();
 
         if (grid.isEmpty()) {

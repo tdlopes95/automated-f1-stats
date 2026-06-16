@@ -3,6 +3,7 @@ F1 Backend - FastAPI Main Application
 Run with: uvicorn app.main:app --reload --port 8000
 """
 
+import asyncio
 import logging
 import os
 import time
@@ -456,8 +457,45 @@ async def get_fastest_laps(session_key: int):
 
 
 @app.get("/sessions/{session_key}/stints")
-async def get_stints(session_key: int, driver_number: Optional[int] = None):
-    return await openf1.get_stints(session_key, driver_number=driver_number)
+@limiter.limit("30/minute")
+async def get_stints(request: Request, session_key: int):
+    cache_key = f"stints_{session_key}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+
+    stints_raw, drivers_raw = await asyncio.gather(
+        openf1.get_stints(session_key),
+        openf1.get_drivers(session_key),
+    )
+
+    driver_lookup = {d["driver_number"]: d.get("name_acronym", "") for d in drivers_raw}
+
+    grouped: dict[int, list] = {}
+    for s in stints_raw:
+        num = s.get("driver_number")
+        if num is None:
+            continue
+        grouped.setdefault(num, []).append({
+            "stint_number":      s.get("stint_number"),
+            "compound":          s.get("compound"),
+            "lap_start":         s.get("lap_start"),
+            "lap_end":           s.get("lap_end"),
+            "tyre_age_at_start": s.get("tyre_age_at_start"),
+        })
+
+    result = []
+    for num, stints in grouped.items():
+        stints.sort(key=lambda s: s.get("stint_number") or 0)
+        result.append({
+            "driver_number": num,
+            "code":          driver_lookup.get(num, f"{num}"),
+            "stints":        stints,
+        })
+
+    result.sort(key=lambda d: d["driver_number"])
+    cache_set_historical(cache_key, result)
+    return result
 
 
 @app.get("/sessions/{session_key}/pit-stops")

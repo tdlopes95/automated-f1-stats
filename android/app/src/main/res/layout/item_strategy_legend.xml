@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:gravity="center_vertical">
+
+    <View
+        android:id="@+id/dot_soft"
+        android:layout_width="10dp"
+        android:layout_height="10dp" />
+
+    <TextView
+        android:id="@+id/label_soft"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Soft"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="12dp" />
+
+    <View
+        android:id="@+id/dot_medium"
+        android:layout_width="10dp"
+        android:layout_height="10dp" />
+
+    <TextView
+        android:id="@+id/label_medium"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Medium"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="12dp" />
+
+    <View
+        android:id="@+id/dot_hard"
+        android:layout_width="10dp"
+        android:layout_height="10dp" />
+
+    <TextView
+        android:id="@+id/label_hard"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Hard"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="12dp" />
+
+    <View
+        android:id="@+id/dot_inter"
+        android:layout_width="10dp"
+        android:layout_height="10dp" />
+
+    <TextView
+        android:id="@+id/label_inter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Inter"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="12dp" />
+
+    <View
+        android:id="@+id/dot_wet"
+        android:layout_width="10dp"
+        android:layout_height="10dp" />
+
+    <TextView
+        android:id="@+id/label_wet"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Wet"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:layout_marginStart="4dp" />
+
+</LinearLayout>

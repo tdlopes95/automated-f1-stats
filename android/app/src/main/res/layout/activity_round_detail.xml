@@ -161,6 +161,18 @@
 
         </ScrollView>
 
+        <TextView
+            android:id="@+id/tv_strategy_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="No strategy data available for this race.\nStrategy data is only available from the 2023 season onwards."
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:padding="32dp"
+            android:visibility="gone" />
+
     </FrameLayout>
 
 </LinearLayout>
