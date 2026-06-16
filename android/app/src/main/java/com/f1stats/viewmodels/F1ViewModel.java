@@ -54,6 +54,9 @@ public class F1ViewModel extends ViewModel {
     private final MutableLiveData<List<PitStop>> pitStops = new MutableLiveData<>();
     private final MutableLiveData<Boolean> pitStopsLoading = new MutableLiveData<>(false);
 
+    // ── Weather ───────────────────────────────────────────────────────────────
+    private final MutableLiveData<Map<String, Object>> weatherData = new MutableLiveData<>();
+
     // ── Schedule ──────────────────────────────────────────────────────────────
     private final MutableLiveData<List<Map<String, Object>>> schedule = new MutableLiveData<>();
     private final MutableLiveData<Map<String, Object>> nextRace = new MutableLiveData<>();
@@ -254,6 +257,31 @@ public class F1ViewModel extends ViewModel {
             public void onError(String error) {
                 pitStopsLoading.setValue(false);
             }
+        });
+    }
+
+
+    public LiveData<Map<String, Object>> getWeatherData() { return weatherData; }
+
+    public void fetchWeatherForRace(int year, int round) {
+        weatherData.setValue(null);
+        repo.getSessionKey(year, round, new F1Repository.RepositoryCallback<Integer>() {
+            @Override
+            public void onSuccess(Integer sessionKey) {
+                api.getWeather(sessionKey).enqueue(new Callback<Map<String, Object>>() {
+                    @Override
+                    public void onResponse(Call<Map<String, Object>> call,
+                                           Response<Map<String, Object>> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            weatherData.setValue(response.body());
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<Map<String, Object>> call, Throwable t) {}
+                });
+            }
+            @Override
+            public void onError(String error) {}
         });
     }
 

@@ -6,6 +6,8 @@ import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -127,6 +129,7 @@ public class RoundDetailActivity extends AppCompatActivity {
         viewModel = new ViewModelProvider(this).get(F1ViewModel.class);
         observeViewModel();
         loadCurrentTab();
+        viewModel.fetchWeatherForRace(year, round);
     }
 
     private void loadCurrentTab() {
@@ -218,6 +221,35 @@ public class RoundDetailActivity extends AppCompatActivity {
     }
 
     private void observeViewModel() {
+        viewModel.getWeatherData().observe(this, weather -> {
+            if (weather == null) return;
+            LinearLayout bar = findViewById(R.id.ll_weather_bar);
+            TextView tvAir      = findViewById(R.id.tv_weather_air);
+            TextView tvTrack    = findViewById(R.id.tv_weather_track);
+            TextView tvHumidity = findViewById(R.id.tv_weather_humidity);
+            TextView tvRain     = findViewById(R.id.tv_weather_rain);
+            TextView tvWind     = findViewById(R.id.tv_weather_wind);
+
+            Object air      = weather.get("air_temperature");
+            Object track    = weather.get("track_temperature");
+            Object humidity = weather.get("humidity");
+            Object rainfall = weather.get("rainfall");
+            Object wind     = weather.get("wind_speed");
+
+            if (air == null && track == null && humidity == null && rainfall == null && wind == null) return;
+
+            if (air != null)      tvAir.setText("🌡️ " + formatNum(air) + "°C");
+            if (track != null)    tvTrack.setText("🛣️ " + formatNum(track) + "°C");
+            if (humidity != null) tvHumidity.setText("💧 " + formatNum(humidity) + "%");
+            if (rainfall != null) {
+                double r = toDouble(rainfall);
+                tvRain.setText(r > 0 ? "🌧️ Yes" : "🌧️ No");
+            }
+            if (wind != null)     tvWind.setText("💨 " + formatNum(wind) + " km/h");
+
+            bar.setVisibility(View.VISIBLE);
+        });
+
         viewModel.getRaceResults().observe(this, results -> {
             swipeRefresh.setRefreshing(false);
             if (results != null) resultsAdapter.setResults(results);
@@ -242,6 +274,17 @@ public class RoundDetailActivity extends AppCompatActivity {
         });
         viewModel.getPitStopsLoading().observe(this, loading ->
                 swipeRefresh.setRefreshing(loading));
+    }
+
+    private static String formatNum(Object val) {
+        double d = toDouble(val);
+        if (d == Math.floor(d)) return String.valueOf((int) d);
+        return String.format(java.util.Locale.US, "%.1f", d);
+    }
+
+    private static double toDouble(Object val) {
+        if (val instanceof Number) return ((Number) val).doubleValue();
+        try { return Double.parseDouble(val.toString()); } catch (Exception e) { return 0; }
     }
 
     // Handle back button in toolbar
