@@ -84,6 +84,7 @@ public class ResultsFragment extends Fragment {
             }
             intent.putExtra(RoundDetailActivity.EXTRA_HAS_SPRINT, hasSprint);
             startActivity(intent);
+            requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         });
 
         // Season picker

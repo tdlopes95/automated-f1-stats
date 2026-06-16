@@ -260,6 +260,7 @@ public class LiveFragment extends Fragment {
             intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT_IMAGE, (String) race.get("circuit_image"));
             intent.putExtra(RoundDetailActivity.EXTRA_COUNTRY_FLAG, (String) race.get("country_flag"));
             startActivity(intent);
+            requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         });
     }
 
@@ -288,6 +289,7 @@ public class LiveFragment extends Fragment {
                 intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT_IMAGE, (String) displayedRace.get("circuit_image"));
                 intent.putExtra(RoundDetailActivity.EXTRA_COUNTRY_FLAG, (String) displayedRace.get("country_flag"));
                 startActivity(intent);
+                requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
             });
         }
     }

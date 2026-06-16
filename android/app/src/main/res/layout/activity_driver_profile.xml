@@ -397,7 +397,8 @@
                 android:layout_height="wrap_content"
                 android:nestedScrollingEnabled="false"
                 android:clipToPadding="false"
-                android:paddingBottom="24dp" />
+                android:paddingBottom="24dp"
+                android:layoutAnimation="@anim/layout_fall_down" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

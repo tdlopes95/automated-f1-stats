@@ -9,6 +9,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.transition.AutoTransition;
+import androidx.transition.TransitionManager;
 
 import com.bumptech.glide.Glide;
 import com.f1stats.DateHelper;
@@ -118,6 +120,8 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
 
             itemView.setOnClickListener(v -> {
                 expanded = !expanded;
+                TransitionManager.beginDelayedTransition(
+                        (ViewGroup) itemView, new AutoTransition());
                 llSessions.setVisibility(expanded ? View.VISIBLE : View.GONE);
                 ivCircuitImage.setVisibility(
                         (expanded && circuitImage != null && !circuitImage.isEmpty())

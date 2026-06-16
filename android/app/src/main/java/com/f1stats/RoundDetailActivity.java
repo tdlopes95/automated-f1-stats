@@ -153,7 +153,10 @@ public class RoundDetailActivity extends AppCompatActivity {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 currentTab = tabNames.get(tab.getPosition());
-                loadCurrentTab();
+                recyclerView.animate().alpha(0f).setDuration(100).withEndAction(() -> {
+                    loadCurrentTab();
+                    recyclerView.animate().alpha(1f).setDuration(150).start();
+                }).start();
             }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
             @Override public void onTabReselected(TabLayout.Tab tab) {}
@@ -556,5 +559,11 @@ public class RoundDetailActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
     }
 }

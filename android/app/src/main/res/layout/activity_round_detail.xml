@@ -252,7 +252,8 @@
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
                 android:paddingTop="8dp"
-                android:paddingBottom="8dp" />
+                android:paddingBottom="8dp"
+                android:layoutAnimation="@anim/layout_fall_down" />
 
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 

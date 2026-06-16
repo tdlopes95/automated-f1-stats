@@ -63,6 +63,7 @@ public class StandingsFragment extends Fragment {
             Intent intent = new Intent(requireContext(), CompareDriversActivity.class);
             intent.putExtra(CompareDriversActivity.EXTRA_YEAR, selectedYear);
             startActivity(intent);
+            requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         });
 
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
