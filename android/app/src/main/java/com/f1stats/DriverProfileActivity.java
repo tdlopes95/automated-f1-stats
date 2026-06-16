@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -14,10 +15,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
-import com.f1stats.db.AppDatabase;
+import com.f1stats.api.F1ApiClient;
+import com.f1stats.data.F1Repository;
 import com.f1stats.db.CachedDriver;
-import com.f1stats.db.CachedResult;
-import com.f1stats.db.CachedSchedule;
 import com.f1stats.models.RaceResult;
 import com.f1stats.ui.driver.DriverResultAdapter;
 import com.google.gson.Gson;
@@ -25,10 +25,10 @@ import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class DriverProfileActivity extends AppCompatActivity {
 
@@ -48,6 +48,22 @@ public class DriverProfileActivity extends AppCompatActivity {
     private TextView tvStatPoints, tvStatWins, tvStatPodiums;
     private TextView tvStatDnfs, tvStatBestGrid, tvStatPoles;
     private DriverResultAdapter resultsAdapter;
+    private ProgressBar pbLoading;
+
+    private final Gson gson = new Gson();
+    private static final int BATCH_SIZE = 3;
+
+    private static class RoundSession {
+        final int round;
+        final String sessionType;
+        final String raceName;
+
+        RoundSession(int round, String sessionType, String raceName) {
+            this.round = round;
+            this.sessionType = sessionType;
+            this.raceName = raceName;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,7 +80,6 @@ public class DriverProfileActivity extends AppCompatActivity {
         String dob         = getIntent().getStringExtra(EXTRA_DOB);
         String number      = getIntent().getStringExtra(EXTRA_NUMBER);
 
-        // Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -73,29 +88,26 @@ public class DriverProfileActivity extends AppCompatActivity {
             getSupportActionBar().setSubtitle(year + " Season");
         }
 
-        // Bind views
-        ivHeadshot    = findViewById(R.id.iv_headshot);
-        tvDriverName  = findViewById(R.id.tv_driver_name);
-        tvNumberFlag  = findViewById(R.id.tv_number_flag);
-        tvTeamName    = findViewById(R.id.tv_team_name);
-        tvDob         = findViewById(R.id.tv_dob);
-        tvStatPoints  = findViewById(R.id.tv_stat_points);
-        tvStatWins    = findViewById(R.id.tv_stat_wins);
-        tvStatPodiums = findViewById(R.id.tv_stat_podiums);
-        tvStatDnfs    = findViewById(R.id.tv_stat_dnfs);
+        ivHeadshot     = findViewById(R.id.iv_headshot);
+        tvDriverName   = findViewById(R.id.tv_driver_name);
+        tvNumberFlag   = findViewById(R.id.tv_number_flag);
+        tvTeamName     = findViewById(R.id.tv_team_name);
+        tvDob          = findViewById(R.id.tv_dob);
+        tvStatPoints   = findViewById(R.id.tv_stat_points);
+        tvStatWins     = findViewById(R.id.tv_stat_wins);
+        tvStatPodiums  = findViewById(R.id.tv_stat_podiums);
+        tvStatDnfs     = findViewById(R.id.tv_stat_dnfs);
         tvStatBestGrid = findViewById(R.id.tv_stat_best_grid);
-        tvStatPoles   = findViewById(R.id.tv_stat_poles);
+        tvStatPoles    = findViewById(R.id.tv_stat_poles);
+        pbLoading      = findViewById(R.id.pb_loading);
 
         RecyclerView rv = findViewById(R.id.rv_driver_results);
         rv.setLayoutManager(new LinearLayoutManager(this));
         resultsAdapter = new DriverResultAdapter();
         rv.setAdapter(resultsAdapter);
 
-        // Populate header from intent extras
         populateHeader(driverName, number, nationality, teamName, teamColour, dob, headshotUrl);
-
-        // Load data from Room in background
-        loadFromRoom(driverId, year, headshotUrl);
+        loadStats(driverId, year, headshotUrl);
     }
 
     private void populateHeader(String name, String number, String nationality,
@@ -131,40 +143,106 @@ public class DriverProfileActivity extends AppCompatActivity {
         }
     }
 
-    private void loadFromRoom(String driverId, int year, String existingHeadshotUrl) {
+    private void loadStats(String driverId, int year, String existingHeadshotUrl) {
         if (driverId == null) return;
 
+        pbLoading.setVisibility(View.VISIBLE);
+
+        F1Repository repo = new F1Repository(
+                F1App.get().getDatabase(),
+                F1ApiClient.getInstance(F1App.get()).getService()
+        );
+
+        repo.getSchedule(year, new F1Repository.RepositoryCallback<List<Map<String, Object>>>() {
+            @Override
+            public void onSuccess(List<Map<String, Object>> races) {
+                List<RoundSession> sessions = new ArrayList<>();
+                for (Map<String, Object> race : races) {
+                    int round = toInt(race.get("round"));
+                    if (round == 0) continue;
+                    String raceName = toStr(race.get("race_name"));
+                    sessions.add(new RoundSession(round, "Race", raceName));
+
+                    // Include Sprint if this round has one
+                    Object sessObj = race.get("sessions");
+                    if (sessObj instanceof List) {
+                        for (Object s : (List<?>) sessObj) {
+                            if (s instanceof Map && "Sprint".equals(((Map<?, ?>) s).get("name"))) {
+                                sessions.add(new RoundSession(round, "Sprint", raceName));
+                                break;
+                            }
+                        }
+                    }
+                }
+                fetchBatch(repo, driverId, year, sessions, 0, new ArrayList<>(), existingHeadshotUrl);
+            }
+
+            @Override
+            public void onError(String error) {
+                pbLoading.setVisibility(View.GONE);
+            }
+        });
+    }
+
+    // All callbacks from F1Repository fire on the main thread, so no synchronization needed here.
+    private void fetchBatch(F1Repository repo, String driverId, int year,
+                             List<RoundSession> sessions, int startIdx,
+                             List<Object[]> collected, String existingHeadshotUrl) {
+        if (startIdx >= sessions.size()) {
+            computeAndShowStats(driverId, year, collected, existingHeadshotUrl);
+            return;
+        }
+
+        int endIdx = Math.min(startIdx + BATCH_SIZE, sessions.size());
+        AtomicInteger pending = new AtomicInteger(endIdx - startIdx);
+
+        for (int i = startIdx; i < endIdx; i++) {
+            RoundSession rs = sessions.get(i);
+            repo.getResults(year, rs.round, rs.sessionType,
+                    new F1Repository.RepositoryCallback<Map<String, Object>>() {
+                        @Override
+                        public void onSuccess(Map<String, Object> data) {
+                            collected.add(new Object[]{rs, data});
+                            if (pending.decrementAndGet() == 0) {
+                                fetchBatch(repo, driverId, year, sessions, endIdx,
+                                        collected, existingHeadshotUrl);
+                            }
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            // Round not yet raced or fetch failed — nothing to add
+                            if (pending.decrementAndGet() == 0) {
+                                fetchBatch(repo, driverId, year, sessions, endIdx,
+                                        collected, existingHeadshotUrl);
+                            }
+                        }
+                    });
+        }
+    }
+
+    private void computeAndShowStats(String driverId, int year,
+                                      List<Object[]> collected, String existingHeadshotUrl) {
         Executors.newSingleThreadExecutor().execute(() -> {
-            AppDatabase db = AppDatabase.getInstance(this);
+            CachedDriver cachedDriver = F1App.get().getDatabase().driverDao().get(driverId, year);
 
-            // Try to enrich header data from CachedDriver
-            CachedDriver cachedDriver = db.driverDao().get(driverId, year);
-
-            // Build round → race name map from schedule
-            List<CachedSchedule> schedules = db.scheduleDao().getByYear(year);
-            Map<Integer, String> roundNames = new HashMap<>();
-            for (CachedSchedule s : schedules) roundNames.put(s.round, s.raceName);
-
-            // Get all Race + Sprint results for the year
-            List<CachedResult> allCached = db.resultDao().getByYear(year);
-
-            Gson gson = new Gson();
             Type listType = new TypeToken<List<RaceResult>>() {}.getType();
-
             double totalPoints = 0;
             int wins = 0, podiums = 0, dnfs = 0, poles = 0;
             int bestGrid = Integer.MAX_VALUE;
             List<DriverResultAdapter.DriverRaceResult> raceResults = new ArrayList<>();
 
-            for (CachedResult cached : allCached) {
-                if (!"Race".equals(cached.sessionType) && !"Sprint".equals(cached.sessionType)) {
-                    continue;
-                }
-                if (cached.resultsJson == null) continue;
+            for (Object[] entry : collected) {
+                RoundSession rs = (RoundSession) entry[0];
+                @SuppressWarnings("unchecked")
+                Map<String, Object> body = (Map<String, Object>) entry[1];
+
+                Object resultsObj = body.get("results");
+                if (!(resultsObj instanceof List)) continue;
 
                 List<RaceResult> results;
                 try {
-                    results = gson.fromJson(cached.resultsJson, listType);
+                    results = gson.fromJson(gson.toJson(resultsObj), listType);
                 } catch (Exception e) {
                     continue;
                 }
@@ -176,67 +254,56 @@ public class DriverProfileActivity extends AppCompatActivity {
 
                     String pos = r.getPosition();
                     String status = r.getStatus();
-                    boolean isDnf = isDnf(status);
+                    boolean dnf = isDnf(status);
                     double pts = parseDouble(r.getPoints());
 
                     totalPoints += pts;
 
                     int posInt = parseInt(pos);
-                    if (!isDnf && "Race".equals(cached.sessionType)) {
+                    if (!dnf && "Race".equals(rs.sessionType)) {
                         if (posInt == 1) wins++;
                         if (posInt <= 3) podiums++;
                     }
-                    if (isDnf) dnfs++;
+                    if (dnf) dnfs++;
 
-                    // Grid position (from race entry, represents qualifying result)
                     int grid = parseInt(r.getGridPosition());
                     if (grid > 0 && grid < bestGrid) bestGrid = grid;
                     if (grid == 1) poles++;
 
-                    String raceName = roundNames.getOrDefault(cached.round, "Round " + cached.round);
                     raceResults.add(new DriverResultAdapter.DriverRaceResult(
-                            cached.round,
-                            raceName,
-                            cached.sessionType,
-                            pos,
-                            r.getPoints(),
-                            isDnf
+                            rs.round, rs.raceName, rs.sessionType, pos, r.getPoints(), dnf
                     ));
-                    break; // found this driver, move to next cached result
+                    break; // found this driver in this round, move on
                 }
             }
 
-            // Sort by round ascending
             raceResults.sort((a, b) -> {
                 int cmp = Integer.compare(a.round, b.round);
                 if (cmp != 0) return cmp;
-                // Race before Sprint within same round
                 return "Sprint".equals(a.sessionType) ? 1 : -1;
             });
 
             final double fPoints = totalPoints;
-            final int fWins = wins, fPodiums = podiums, fDnfs = dnfs;
-            final int fPoles = poles;
+            final int fWins = wins, fPodiums = podiums, fDnfs = dnfs, fPoles = poles;
             final int fBestGrid = bestGrid == Integer.MAX_VALUE ? 0 : bestGrid;
             final List<DriverResultAdapter.DriverRaceResult> fResults = raceResults;
             final CachedDriver fDriver = cachedDriver;
 
+            if (isFinishing() || isDestroyed()) return;
             runOnUiThread(() -> {
-                // Update stats
+                pbLoading.setVisibility(View.GONE);
                 tvStatPoints.setText(formatPoints(fPoints));
                 tvStatWins.setText(String.valueOf(fWins));
                 tvStatPodiums.setText(String.valueOf(fPodiums));
                 tvStatDnfs.setText(String.valueOf(fDnfs));
                 tvStatBestGrid.setText(fBestGrid > 0 ? "P" + fBestGrid : "--");
                 tvStatPoles.setText(String.valueOf(fPoles));
-
                 resultsAdapter.setResults(fResults);
 
-                // Enrich header if CachedDriver has more info
                 if (fDriver != null) {
                     if ((existingHeadshotUrl == null || existingHeadshotUrl.isEmpty())
                             && fDriver.headshotUrl != null && !fDriver.headshotUrl.isEmpty()) {
-                        Glide.with(this)
+                        Glide.with(DriverProfileActivity.this)
                                 .load(fDriver.headshotUrl)
                                 .apply(RequestOptions.circleCropTransform())
                                 .into(ivHeadshot);
@@ -272,7 +339,6 @@ public class DriverProfileActivity extends AppCompatActivity {
     }
 
     private String formatDob(String dob) {
-        // dob is "YYYY-MM-DD", format to "DD Mon YYYY"
         if (dob == null || dob.length() < 10) return dob;
         try {
             String[] parts = dob.split("-");
@@ -283,6 +349,19 @@ public class DriverProfileActivity extends AppCompatActivity {
         } catch (Exception e) {
             return dob;
         }
+    }
+
+    private int toInt(Object val) {
+        if (val instanceof Double)  return ((Double) val).intValue();
+        if (val instanceof Integer) return (Integer) val;
+        if (val instanceof String) {
+            try { return Integer.parseInt((String) val); } catch (Exception ignored) {}
+        }
+        return 0;
+    }
+
+    private String toStr(Object val) {
+        return val != null ? val.toString() : null;
     }
 
     @Override
