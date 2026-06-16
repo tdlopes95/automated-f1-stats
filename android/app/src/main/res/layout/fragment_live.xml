@@ -1,123 +1,197 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<androidx.swiperefreshlayout.widget.SwipeRefreshLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/swipe_refresh_weekend"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@color/bg_dark">
 
-    <!-- Status Banner (GREEN FLAG / SAFETY CAR / RED FLAG etc) -->
-    <TextView
-        android:id="@+id/tv_session_status"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="LIVE"
-        android:textColor="@color/text_primary"
-        android:textSize="13sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:padding="8dp"
-        android:background="@color/status_green" />
+        android:layout_height="match_parent"
+        android:background="@color/bg_dark">
 
-    <!-- Session name + weather row -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/tv_session_name"
-            android:text="Race"
-            android:textColor="@color/text_primary"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1" />
-
-        <TextView
-            android:id="@+id/tv_weather"
-            android:text=""
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-
-    </LinearLayout>
-
-    <!-- Column headers -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingBottom="6dp">
-
-        <TextView android:text="POS" android:textColor="@color/text_secondary"
-            android:textSize="11sp" android:layout_width="32dp"
-            android:layout_height="wrap_content" />
-        <TextView android:text="DRIVER" android:textColor="@color/text_secondary"
-            android:textSize="11sp" android:layout_width="0dp"
-            android:layout_height="wrap_content" android:layout_weight="1" />
-        <TextView android:text="GAP" android:textColor="@color/text_secondary"
-            android:textSize="11sp" android:layout_width="72dp"
-            android:layout_height="wrap_content" android:gravity="end" />
-        <TextView android:text="TYRE" android:textColor="@color/text_secondary"
-            android:textSize="11sp" android:layout_width="40dp"
-            android:layout_height="wrap_content" android:gravity="center" />
-        <TextView android:text="PIT" android:textColor="@color/text_secondary"
-            android:textSize="11sp" android:layout_width="30dp"
-            android:layout_height="wrap_content" android:gravity="center" />
-
-    </LinearLayout>
-
-    <View android:layout_width="match_parent" android:layout_height="1dp"
-        android:background="@color/bg_divider" />
-
-    <!-- Driver list -->
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipe_refresh_live"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <FrameLayout
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:paddingBottom="24dp">
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rv_live_drivers"
+            <!-- ── Main Card: Next Session or Latest Results ─────────────── -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_main"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:clipToPadding="false"
-                android:paddingBottom="8dp" />
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                app:cardBackgroundColor="@color/bg_surface"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="2dp"
+                android:visibility="gone">
 
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- Circuit image -->
+                    <ImageView
+                        android:id="@+id/iv_circuit_image"
+                        android:layout_width="match_parent"
+                        android:layout_height="160dp"
+                        android:scaleType="centerCrop"
+                        android:background="@color/bg_shimmer" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <!-- Flag + Race Name -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+
+                            <ImageView
+                                android:id="@+id/iv_country_flag"
+                                android:layout_width="28dp"
+                                android:layout_height="20dp"
+                                android:scaleType="fitCenter"
+                                android:layout_marginEnd="8dp" />
+
+                            <TextView
+                                android:id="@+id/tv_race_name"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:textColor="@color/text_primary"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <!-- Session label badge (NEXT / JUST ENDED) -->
+                        <TextView
+                            android:id="@+id/tv_session_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="6dp"
+                            android:textColor="@color/text_primary"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="3dp"
+                            android:background="@color/f1_red" />
+
+                        <!-- Session name -->
+                        <TextView
+                            android:id="@+id/tv_session_name"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="14sp"
+                            android:layout_marginBottom="8dp" />
+
+                        <!-- Countdown (shown for upcoming sessions) -->
+                        <TextView
+                            android:id="@+id/tv_countdown"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/f1_red"
+                            android:textSize="30sp"
+                            android:textStyle="bold"
+                            android:fontFamily="monospace"
+                            android:layout_marginBottom="4dp"
+                            android:visibility="gone" />
+
+                        <!-- Local start/end time -->
+                        <TextView
+                            android:id="@+id/tv_local_time"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp"
+                            android:layout_marginBottom="12dp"
+                            android:visibility="gone" />
+
+                        <!-- Quick results (top 10, shown after a result session) -->
+                        <LinearLayout
+                            android:id="@+id/ll_quick_results"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Open full results button -->
+                        <TextView
+                            android:id="@+id/btn_open_results"
+                            android:layout_width="match_parent"
+                            android:layout_height="40dp"
+                            android:text="VIEW FULL RESULTS"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:gravity="center"
+                            android:background="@color/bg_divider"
+                            android:visibility="gone" />
+
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- ── Weekend Timeline Card ──────────────────────────────────── -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_timeline"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/bg_surface"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="2dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:id="@+id/tv_timeline_header"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="RACE WEEKEND"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.1"
+                        android:layout_marginBottom="12dp" />
+
+                    <LinearLayout
+                        android:id="@+id/ll_sessions"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Empty / loading state -->
             <TextView
-                android:id="@+id/tv_empty_live"
+                android:id="@+id/tv_empty_weekend"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:gravity="center"
                 android:textColor="@color/text_secondary"
                 android:textSize="15sp"
-                android:text="No live session right now.\nCheck back during a race weekend!"
-                android:visibility="gone" />
+                android:padding="48dp"
+                android:text="Loading schedule..."
+                android:visibility="visible" />
 
-        </FrameLayout>
-
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-    <!-- Last updated -->
-    <TextView
-        android:id="@+id/tv_last_updated"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Last updated: --"
-        android:textColor="@color/text_disabled"
-        android:textSize="11sp"
-        android:gravity="center"
-        android:padding="6dp" />
-
-</LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
