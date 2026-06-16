@@ -14,6 +14,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import android.widget.TextView;
+
 import com.f1stats.R;
 import com.f1stats.viewmodels.F1ViewModel;
 import com.f1stats.SeasonHelper;
@@ -26,6 +28,7 @@ public class ScheduleFragment extends Fragment {
     private F1ViewModel viewModel;
     private ScheduleAdapter adapter;
     private SwipeRefreshLayout swipeRefresh;
+    private TextView tvEmpty;
 
     private List<Map<String, Object>> latestSchedule;
     private List<Map<String, Object>> latestMeetings;
@@ -43,6 +46,7 @@ public class ScheduleFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         swipeRefresh = view.findViewById(R.id.swipe_refresh_schedule);
+        tvEmpty = view.findViewById(R.id.tv_empty_schedule);
         RecyclerView rv = view.findViewById(R.id.rv_schedule);
 
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -73,6 +77,16 @@ public class ScheduleFragment extends Fragment {
         viewModel.getScheduleLoading().observe(getViewLifecycleOwner(), loading ->
                 swipeRefresh.setRefreshing(loading));
 
+        viewModel.getScheduleError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null) {
+                swipeRefresh.setRefreshing(false);
+                if (latestSchedule == null || latestSchedule.isEmpty()) {
+                    tvEmpty.setText("No races scheduled for " + SeasonHelper.getCurrentYear());
+                    tvEmpty.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
         viewModel.fetchSchedule(SeasonHelper.getCurrentYear());
         viewModel.fetchMeetings(SeasonHelper.getCurrentYear());
     }
@@ -96,5 +110,11 @@ public class ScheduleFragment extends Fragment {
             }
         }
         adapter.setSchedule(latestSchedule);
+        if (latestSchedule.isEmpty()) {
+            tvEmpty.setText("No races scheduled for " + SeasonHelper.getCurrentYear());
+            tvEmpty.setVisibility(View.VISIBLE);
+        } else {
+            tvEmpty.setVisibility(View.GONE);
+        }
     }
 }

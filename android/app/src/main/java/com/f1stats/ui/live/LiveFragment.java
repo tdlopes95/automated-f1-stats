@@ -27,7 +27,7 @@ public class LiveFragment extends Fragment {
     private F1ViewModel viewModel;
     private LiveDriverAdapter adapter;
 
-    private TextView tvSessionStatus, tvSessionName, tvWeather, tvLastUpdated;
+    private TextView tvSessionStatus, tvSessionName, tvWeather, tvLastUpdated, tvEmpty;
     private SwipeRefreshLayout swipeRefresh;
 
     // Auto-refresh every 15 seconds during live session
@@ -58,6 +58,7 @@ public class LiveFragment extends Fragment {
         tvSessionName   = view.findViewById(R.id.tv_session_name);
         tvWeather       = view.findViewById(R.id.tv_weather);
         tvLastUpdated   = view.findViewById(R.id.tv_last_updated);
+        tvEmpty         = view.findViewById(R.id.tv_empty_live);
         swipeRefresh    = view.findViewById(R.id.swipe_refresh_live);
 
         // RecyclerView setup
@@ -81,14 +82,20 @@ public class LiveFragment extends Fragment {
     }
 
     private void observeViewModel() {
-        viewModel.getLiveSession().observe(getViewLifecycleOwner(), this::updateUI);
-        viewModel.getLiveLoading().observe(getViewLifecycleOwner(), loading -> {
-            swipeRefresh.setRefreshing(loading);
+        viewModel.getLiveSession().observe(getViewLifecycleOwner(), session -> {
+            updateUI(session);
+            if (session != null && session.getDrivers() != null && !session.getDrivers().isEmpty()) {
+                tvEmpty.setVisibility(View.GONE);
+            }
         });
+        viewModel.getLiveLoading().observe(getViewLifecycleOwner(), loading ->
+                swipeRefresh.setRefreshing(loading));
         viewModel.getLiveError().observe(getViewLifecycleOwner(), error -> {
             if (error != null) {
+                swipeRefresh.setRefreshing(false);
                 tvSessionStatus.setText("NO ACTIVE SESSION");
                 tvSessionStatus.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.no_session_gray));
+                tvEmpty.setVisibility(View.VISIBLE);
             }
         });
     }

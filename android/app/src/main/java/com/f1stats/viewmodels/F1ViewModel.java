@@ -90,13 +90,13 @@ public class F1ViewModel extends ViewModel {
                 if (response.isSuccessful() && response.body() != null) {
                     liveSession.setValue(response.body());
                 } else {
-                    liveError.setValue("No active session found");
+                    liveError.setValue(httpError(response.code()));
                 }
             }
             @Override
             public void onFailure(Call<LiveSession> call, Throwable t) {
                 liveLoading.setValue(false);
-                liveError.setValue("Connection error: " + t.getMessage());
+                liveError.setValue(networkError(t));
             }
         });
     }
@@ -117,14 +117,14 @@ public class F1ViewModel extends ViewModel {
                     if (rn != null) lastRaceName.setValue(rn.toString());
                     raceResults.setValue(parseRaceResults(body));
                 } else {
-                    resultsError.setValue("Could not load results");
-                    homeError.setValue("Could not load data.\nCheck your connection and\nrestart the app if ngrok changed.");
+                    resultsError.setValue(httpError(response.code()));
+                    homeError.setValue(httpError(response.code()));
                 }
             }
             @Override
             public void onFailure(Call<Map<String, Object>> call, Throwable t) {
                 resultsLoading.setValue(false);
-                homeError.setValue("Could not load data.\nCheck your connection and\nrestart the app if ngrok changed.");
+                homeError.setValue(networkError(t));
             }
         });
     }
@@ -192,7 +192,7 @@ public class F1ViewModel extends ViewModel {
             public void onError(String error) {
                 standingsLoading.setValue(false);
                 standingsError.setValue(error);
-                homeError.setValue("Could not load data.\nCheck your connection and\nrestart the app if ngrok changed.");
+                homeError.setValue(error);
             }
         });
     }
@@ -284,12 +284,12 @@ public class F1ViewModel extends ViewModel {
                 if (response.isSuccessful() && response.body() != null) {
                     nextRace.setValue(response.body());
                 } else {
-                    homeError.setValue("Could not load data.\nCheck your connection and\nrestart the app if ngrok changed.");
+                    homeError.setValue(httpError(response.code()));
                 }
             }
             @Override
             public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                homeError.setValue("Could not load data.\nCheck your connection and\nrestart the app if ngrok changed.");
+                homeError.setValue(networkError(t));
             }
         });
     }
@@ -418,5 +418,22 @@ public class F1ViewModel extends ViewModel {
             e.printStackTrace();
         }
         return new ArrayList<>();
+    }
+
+    private static String networkError(Throwable t) {
+        if (t instanceof java.net.SocketTimeoutException) {
+            return "Request timed out. Pull down to retry.";
+        }
+        if (t instanceof java.net.UnknownHostException || t instanceof java.net.ConnectException) {
+            return "Couldn't connect to server. Pull down to retry.";
+        }
+        return "Something went wrong. Pull down to retry.";
+    }
+
+    private static String httpError(int code) {
+        if (code >= 500) {
+            return "Server is having issues. Try again in a moment.";
+        }
+        return "Something went wrong. Pull down to retry.";
     }
 }

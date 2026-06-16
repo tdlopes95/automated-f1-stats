@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -32,6 +33,7 @@ public class ResultsFragment extends Fragment {
     private F1ViewModel viewModel;
     private RoundAdapter roundAdapter;
     private SwipeRefreshLayout swipeRefresh;
+    private TextView tvEmpty;
     private int selectedYear = SeasonHelper.getCurrentYear();
 
     private List<Map<String, Object>> latestSchedule;
@@ -50,6 +52,7 @@ public class ResultsFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         swipeRefresh = view.findViewById(R.id.swipe_refresh_results);
+        tvEmpty = view.findViewById(R.id.tv_empty_results);
         RecyclerView recyclerView = view.findViewById(R.id.rv_results);
 
         // Setup RecyclerView with round list
@@ -138,6 +141,16 @@ public class ResultsFragment extends Fragment {
         viewModel.getScheduleLoading().observe(getViewLifecycleOwner(), loading ->
                 swipeRefresh.setRefreshing(loading));
 
+        viewModel.getScheduleError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null) {
+                swipeRefresh.setRefreshing(false);
+                if (latestSchedule == null || latestSchedule.isEmpty()) {
+                    tvEmpty.setText("No results available yet for " + selectedYear);
+                    tvEmpty.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
         viewModel.fetchSchedule(selectedYear);
         viewModel.fetchMeetings(selectedYear);
     }
@@ -163,6 +176,12 @@ public class ResultsFragment extends Fragment {
             }
         }
         roundAdapter.setRounds(rounds);
+        if (rounds.isEmpty()) {
+            tvEmpty.setText("No results available yet for " + selectedYear);
+            tvEmpty.setVisibility(View.VISIBLE);
+        } else {
+            tvEmpty.setVisibility(View.GONE);
+        }
     }
 
     @SuppressWarnings("unchecked")

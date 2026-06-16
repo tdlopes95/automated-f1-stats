@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -34,6 +35,7 @@ public class StandingsFragment extends Fragment {
     private F1ViewModel viewModel;
     private StandingsAdapter adapter;
     private SwipeRefreshLayout swipeRefresh;
+    private TextView tvEmpty;
 
     private static final String[] TABS = {"Drivers", "Constructors"};
     private String currentTab = "Drivers";
@@ -52,6 +54,7 @@ public class StandingsFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         swipeRefresh = view.findViewById(R.id.swipe_refresh_standings);
+        tvEmpty = view.findViewById(R.id.tv_empty_standings);
         RecyclerView rv = view.findViewById(R.id.rv_standings);
         TabLayout tabs = view.findViewById(R.id.tab_layout_standings);
 
@@ -187,12 +190,28 @@ public class StandingsFragment extends Fragment {
     private void observeViewModel() {
         viewModel.getDriverStandings().observe(getViewLifecycleOwner(), standings -> {
             swipeRefresh.setRefreshing(false);
-            if (standings != null) adapter.setDriverStandings(standings);
+            if (standings != null) {
+                adapter.setDriverStandings(standings);
+                if (standings.isEmpty()) {
+                    tvEmpty.setText("Standings not available yet for " + selectedYear);
+                    tvEmpty.setVisibility(View.VISIBLE);
+                } else {
+                    tvEmpty.setVisibility(View.GONE);
+                }
+            }
         });
 
         viewModel.getConstructorStandings().observe(getViewLifecycleOwner(), standings -> {
             swipeRefresh.setRefreshing(false);
-            if (standings != null) adapter.setConstructorStandings(standings);
+            if (standings != null) {
+                adapter.setConstructorStandings(standings);
+                if (standings.isEmpty()) {
+                    tvEmpty.setText("Standings not available yet for " + selectedYear);
+                    tvEmpty.setVisibility(View.VISIBLE);
+                } else {
+                    tvEmpty.setVisibility(View.GONE);
+                }
+            }
         });
 
         viewModel.getDnfMap().observe(getViewLifecycleOwner(), dnfs -> {
@@ -205,5 +224,18 @@ public class StandingsFragment extends Fragment {
 
         viewModel.getStandingsLoading().observe(getViewLifecycleOwner(), loading ->
                 swipeRefresh.setRefreshing(loading));
+
+        viewModel.getStandingsError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null) {
+                swipeRefresh.setRefreshing(false);
+                List<?> current = "Drivers".equals(currentTab)
+                        ? viewModel.getDriverStandings().getValue()
+                        : viewModel.getConstructorStandings().getValue();
+                if (current == null || current.isEmpty()) {
+                    tvEmpty.setText("Standings not available yet for " + selectedYear);
+                    tvEmpty.setVisibility(View.VISIBLE);
+                }
+            }
+        });
     }
 }
