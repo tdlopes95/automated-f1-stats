@@ -5,14 +5,19 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- F letter -->
+    <!-- F: bold with top and middle crossbars, centered left half -->
+    <!-- Left vertical bar: x=20..32, y=24..84 -->
+    <!-- Top crossbar:      x=20..57, y=24..36 -->
+    <!-- Middle crossbar:   x=20..54, y=52..62 -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M18,28 L18,80 L30,80 L30,60 L48,60 L48,50 L30,50 L30,38 L50,38 L50,28 Z" />
+        android:pathData="M20,24 L20,84 L32,84 L32,62 L54,62 L54,52 L32,52 L32,36 L57,36 L57,24 Z" />
 
-    <!-- 1 letter -->
+    <!-- 1: bold bar with diagonal notch at top-left -->
+    <!-- Notch from (68,24) down-left to (61,36) then right to (68,36) -->
+    <!-- Vertical bar: x=68..84, y=24..84 -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M63,28 L56,38 L63,38 L63,80 L75,80 L75,28 Z" />
+        android:pathData="M68,24 L61,36 L68,36 L68,84 L84,84 L84,24 Z" />
 
 </vector>

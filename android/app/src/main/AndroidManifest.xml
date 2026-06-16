@@ -37,6 +37,18 @@
             </intent-filter>
         </activity>
 
+        <receiver
+            android:name=".widget.NextSessionWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.f1stats.widget.TICK" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/next_session_widget_info" />
+        </receiver>
+
     </application>
 
 </manifest>
