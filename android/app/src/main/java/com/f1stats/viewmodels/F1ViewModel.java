@@ -59,6 +59,9 @@ public class F1ViewModel extends ViewModel {
     private final MutableLiveData<Boolean> scheduleLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> scheduleError = new MutableLiveData<>();
 
+    // ── Meetings ──────────────────────────────────────────────────────────────
+    private final MutableLiveData<List<Map<String, Object>>> meetings = new MutableLiveData<>();
+
     // ── Season Stats ──────────────────────────────────────────────────────────
     private final MutableLiveData<Map<String, Integer>> dnfMap = new MutableLiveData<>();
     private final MutableLiveData<Map<String, Integer>> podiumMap = new MutableLiveData<>();
@@ -287,6 +290,22 @@ public class F1ViewModel extends ViewModel {
     }
 
 
+    // ── Meetings ──────────────────────────────────────────────────────────────
+
+    public void fetchMeetings(int year) {
+        api.getMeetings(year).enqueue(new Callback<List<Map<String, Object>>>() {
+            @Override
+            public void onResponse(Call<List<Map<String, Object>>> call,
+                                   Response<List<Map<String, Object>>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    meetings.setValue(response.body());
+                }
+            }
+            @Override
+            public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {}
+        });
+    }
+
     // ── Season Stats ──────────────────────────────────────────────────────────
 
     public void fetchSeasonStats(int year) {
@@ -323,6 +342,8 @@ public class F1ViewModel extends ViewModel {
 
     public LiveData<Map<String, Integer>> getDnfMap() { return dnfMap; }
     public LiveData<Map<String, Integer>> getPodiumMap() { return podiumMap; }
+
+    public LiveData<List<Map<String, Object>>> getMeetings() { return meetings; }
 
 
     // ── Private Parsers ───────────────────────────────────────────────────────

@@ -63,6 +63,16 @@
             android:textSize="12sp"
             android:layout_marginTop="2dp" />
 
+        <!-- Circuit map image (shown when expanded) -->
+        <ImageView
+            android:id="@+id/iv_circuit_image"
+            android:layout_width="match_parent"
+            android:layout_height="160dp"
+            android:scaleType="fitCenter"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone" />
+
         <!-- Sessions list (expandable) -->
         <LinearLayout
             android:id="@+id/ll_sessions"

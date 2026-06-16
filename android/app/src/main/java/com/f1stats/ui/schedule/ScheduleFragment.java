@@ -18,11 +18,17 @@ import com.f1stats.R;
 import com.f1stats.viewmodels.F1ViewModel;
 import com.f1stats.SeasonHelper;
 
+import java.util.List;
+import java.util.Map;
+
 public class ScheduleFragment extends Fragment {
 
     private F1ViewModel viewModel;
     private ScheduleAdapter adapter;
     private SwipeRefreshLayout swipeRefresh;
+
+    private List<Map<String, Object>> latestSchedule;
+    private List<Map<String, Object>> latestMeetings;
 
     @Nullable
     @Override
@@ -51,12 +57,43 @@ public class ScheduleFragment extends Fragment {
 
         viewModel.getSchedule().observe(getViewLifecycleOwner(), schedule -> {
             swipeRefresh.setRefreshing(false);
-            if (schedule != null) adapter.setSchedule(schedule);
+            if (schedule != null) {
+                latestSchedule = schedule;
+                mergeAndUpdate();
+            }
+        });
+
+        viewModel.getMeetings().observe(getViewLifecycleOwner(), meetings -> {
+            if (meetings != null) {
+                latestMeetings = meetings;
+                mergeAndUpdate();
+            }
         });
 
         viewModel.getScheduleLoading().observe(getViewLifecycleOwner(), loading ->
                 swipeRefresh.setRefreshing(loading));
 
         viewModel.fetchSchedule(SeasonHelper.getCurrentYear());
+        viewModel.fetchMeetings(SeasonHelper.getCurrentYear());
+    }
+
+    private void mergeAndUpdate() {
+        if (latestSchedule == null) return;
+        if (latestMeetings != null) {
+            for (Map<String, Object> race : latestSchedule) {
+                String raceName = race.get("race_name") != null ?
+                        race.get("race_name").toString().toLowerCase() : "";
+                for (Map<String, Object> meeting : latestMeetings) {
+                    String meetingName = meeting.get("meeting_name") != null ?
+                            meeting.get("meeting_name").toString().toLowerCase() : "";
+                    if (!meetingName.isEmpty() && (meetingName.equals(raceName)
+                            || meetingName.contains(raceName) || raceName.contains(meetingName))) {
+                        race.put("circuit_image", meeting.get("circuit_image"));
+                        break;
+                    }
+                }
+            }
+        }
+        adapter.setSchedule(latestSchedule);
     }
 }

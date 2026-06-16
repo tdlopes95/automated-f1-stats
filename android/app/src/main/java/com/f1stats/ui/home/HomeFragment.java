@@ -5,8 +5,11 @@ import android.os.CountDownTimer;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import com.bumptech.glide.Glide;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -37,6 +40,7 @@ public class HomeFragment extends Fragment {
     private TextView tvLeaderName, tvLeaderTeam, tvLeaderPoints;
     private TextView tvLastWinner, tvLastRaceName, tvLastRaceTeam;
     private TextView tvLeaderTitle, tvLeaderGap;
+    private ImageView ivNextRaceCircuit;
     private ShimmerFrameLayout shimmerLayout;
     private SwipeRefreshLayout swipeRefresh;
     private LinearLayout layoutError;
@@ -67,9 +71,10 @@ public class HomeFragment extends Fragment {
         tvLastWinner      = view.findViewById(R.id.tv_last_winner);
         tvLastRaceName    = view.findViewById(R.id.tv_last_race_name);
         tvLastRaceTeam    = view.findViewById(R.id.tv_last_race_team);
-        tvLeaderTitle     = view.findViewById(R.id.tv_leader_title);
-        tvLeaderGap       = view.findViewById(R.id.tv_leader_gap);
-        shimmerLayout     = view.findViewById(R.id.shimmer_layout);
+        tvLeaderTitle       = view.findViewById(R.id.tv_leader_title);
+        tvLeaderGap         = view.findViewById(R.id.tv_leader_gap);
+        ivNextRaceCircuit   = view.findViewById(R.id.iv_next_race_circuit);
+        shimmerLayout       = view.findViewById(R.id.shimmer_layout);
         swipeRefresh      = view.findViewById(R.id.swipe_refresh_home);
         layoutError       = view.findViewById(R.id.layout_error);
 
@@ -164,6 +169,7 @@ public class HomeFragment extends Fragment {
         viewModel.fetchNextRace();
         viewModel.fetchDriverStandings(SeasonHelper.getCurrentYear());
         viewModel.fetchLatestResults("Race", SeasonHelper.getCurrentYear());
+        viewModel.fetchMeetings(SeasonHelper.getCurrentYear());
     }
 
     private void refreshData() {
@@ -283,6 +289,26 @@ public class HomeFragment extends Fragment {
                 String team = tvLastRaceTeam.getText() != null ?
                         tvLastRaceTeam.getText().toString() : "";
                 cache.saveLastWinner(winnerName, team, raceName);
+            }
+        });
+
+        viewModel.getMeetings().observe(getViewLifecycleOwner(), meetings -> {
+            if (meetings == null || ivNextRaceCircuit == null) return;
+            String nextRaceName = tvNextRaceName.getText() != null ?
+                    tvNextRaceName.getText().toString().toLowerCase() : "";
+            if (nextRaceName.isEmpty()) return;
+            for (Map<String, Object> meeting : meetings) {
+                String meetingName = meeting.get("meeting_name") != null ?
+                        meeting.get("meeting_name").toString().toLowerCase() : "";
+                if (!meetingName.isEmpty() && (meetingName.equals(nextRaceName)
+                        || meetingName.contains(nextRaceName) || nextRaceName.contains(meetingName))) {
+                    Object img = meeting.get("circuit_image");
+                    if (img != null && !img.toString().isEmpty()) {
+                        ivNextRaceCircuit.setVisibility(View.VISIBLE);
+                        Glide.with(requireContext()).load(img.toString()).into(ivNextRaceCircuit);
+                    }
+                    break;
+                }
             }
         });
 

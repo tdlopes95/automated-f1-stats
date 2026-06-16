@@ -18,6 +18,16 @@
         app:subtitleTextColor="@color/text_secondary"
         app:navigationIcon="@drawable/ic_back" />
 
+    <!-- Circuit map header -->
+    <ImageView
+        android:id="@+id/iv_track_map"
+        android:layout_width="match_parent"
+        android:layout_height="180dp"
+        android:scaleType="fitCenter"
+        android:padding="16dp"
+        android:background="@color/bg_surface"
+        android:visibility="gone" />
+
     <!-- Session tabs -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tab_layout_detail"

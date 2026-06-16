@@ -2,6 +2,8 @@ package com.f1stats;
 
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.ImageView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -10,6 +12,8 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
+import com.bumptech.glide.Glide;
 
 import com.f1stats.ui.results.PitStopAdapter;
 import com.f1stats.ui.results.ResultsAdapter;
@@ -20,10 +24,11 @@ import com.google.android.material.tabs.TabLayout;
 
 public class RoundDetailActivity extends AppCompatActivity {
 
-    public static final String EXTRA_ROUND        = "extra_round";
-    public static final String EXTRA_YEAR         = "extra_year";
-    public static final String EXTRA_RACE_NAME    = "extra_race_name";
-    public static final String EXTRA_CIRCUIT      = "extra_circuit";
+    public static final String EXTRA_ROUND         = "extra_round";
+    public static final String EXTRA_YEAR          = "extra_year";
+    public static final String EXTRA_RACE_NAME     = "extra_race_name";
+    public static final String EXTRA_CIRCUIT       = "extra_circuit";
+    public static final String EXTRA_CIRCUIT_IMAGE = "extra_circuit_image";
 
     private F1ViewModel viewModel;
     private ResultsAdapter resultsAdapter;
@@ -49,8 +54,9 @@ public class RoundDetailActivity extends AppCompatActivity {
         // Get data passed from ResultsFragment
         round    = getIntent().getIntExtra(EXTRA_ROUND, 1);
         year     = getIntent().getIntExtra(EXTRA_YEAR, 2026);
-        String raceName = getIntent().getStringExtra(EXTRA_RACE_NAME);
-        String circuit  = getIntent().getStringExtra(EXTRA_CIRCUIT);
+        String raceName     = getIntent().getStringExtra(EXTRA_RACE_NAME);
+        String circuit      = getIntent().getStringExtra(EXTRA_CIRCUIT);
+        String circuitImage = getIntent().getStringExtra(EXTRA_CIRCUIT_IMAGE);
 
         // Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -59,6 +65,13 @@ public class RoundDetailActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle(raceName);
             getSupportActionBar().setSubtitle(circuit);
+        }
+
+        // Circuit map header
+        ImageView ivTrackMap = findViewById(R.id.iv_track_map);
+        if (circuitImage != null && !circuitImage.isEmpty()) {
+            ivTrackMap.setVisibility(View.VISIBLE);
+            Glide.with(this).load(circuitImage).into(ivTrackMap);
         }
 
         // RecyclerView

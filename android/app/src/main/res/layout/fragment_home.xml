@@ -84,13 +84,30 @@
                         android:orientation="vertical"
                         android:padding="16dp">
 
-                        <TextView
-                            android:text="NEXT RACE"
-                            android:textColor="@color/f1_red"
-                            android:textSize="11sp"
-                            android:letterSpacing="0.1"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                        <!-- Label + circuit thumbnail row -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:text="NEXT RACE"
+                                android:textColor="@color/f1_red"
+                                android:textSize="11sp"
+                                android:letterSpacing="0.1"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1" />
+
+                            <ImageView
+                                android:id="@+id/iv_next_race_circuit"
+                                android:layout_width="60dp"
+                                android:layout_height="45dp"
+                                android:scaleType="fitCenter"
+                                android:visibility="gone" />
+
+                        </LinearLayout>
 
                         <TextView
                             android:id="@+id/tv_next_race_name"

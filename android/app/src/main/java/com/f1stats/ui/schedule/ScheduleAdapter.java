@@ -3,12 +3,14 @@ package com.f1stats.ui.schedule;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.f1stats.DateHelper;
 import com.f1stats.R;
 
@@ -44,16 +46,18 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvRound, tvRaceName, tvCircuit, tvRaceDate, tvExpand;
         LinearLayout llSessions;
+        ImageView ivCircuitImage;
         boolean expanded = false;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvRound    = itemView.findViewById(R.id.tv_round);
-            tvRaceName = itemView.findViewById(R.id.tv_race_name);
-            tvCircuit  = itemView.findViewById(R.id.tv_circuit);
-            tvRaceDate = itemView.findViewById(R.id.tv_race_date);
-            tvExpand   = itemView.findViewById(R.id.tv_expand);
-            llSessions = itemView.findViewById(R.id.ll_sessions);
+            tvRound        = itemView.findViewById(R.id.tv_round);
+            tvRaceName     = itemView.findViewById(R.id.tv_race_name);
+            tvCircuit      = itemView.findViewById(R.id.tv_circuit);
+            tvRaceDate     = itemView.findViewById(R.id.tv_race_date);
+            tvExpand       = itemView.findViewById(R.id.tv_expand);
+            llSessions     = itemView.findViewById(R.id.ll_sessions);
+            ivCircuitImage = itemView.findViewById(R.id.iv_circuit_image);
         }
 
         @SuppressWarnings("unchecked")
@@ -88,14 +92,26 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
                 }
             }
 
+            // Circuit image
+            String circuitImage = (String) race.get("circuit_image");
+            if (circuitImage != null && !circuitImage.isEmpty()) {
+                Glide.with(itemView.getContext()).load(circuitImage).into(ivCircuitImage);
+            } else {
+                ivCircuitImage.setImageDrawable(null);
+            }
+
             // Expand / collapse on click
             expanded = false;
             llSessions.setVisibility(View.GONE);
+            ivCircuitImage.setVisibility(View.GONE);
             tvExpand.setText("▼ Sessions");
 
             itemView.setOnClickListener(v -> {
                 expanded = !expanded;
                 llSessions.setVisibility(expanded ? View.VISIBLE : View.GONE);
+                ivCircuitImage.setVisibility(
+                        (expanded && circuitImage != null && !circuitImage.isEmpty())
+                                ? View.VISIBLE : View.GONE);
                 tvExpand.setText(expanded ? "▲ Sessions" : "▼ Sessions");
             });
         }

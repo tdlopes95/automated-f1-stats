@@ -34,6 +34,9 @@ public class ResultsFragment extends Fragment {
     private SwipeRefreshLayout swipeRefresh;
     private int selectedYear = SeasonHelper.getCurrentYear();
 
+    private List<Map<String, Object>> latestSchedule;
+    private List<Map<String, Object>> latestMeetings;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -61,6 +64,9 @@ public class ResultsFragment extends Fragment {
             intent.putExtra(RoundDetailActivity.EXTRA_YEAR, selectedYear);
             intent.putExtra(RoundDetailActivity.EXTRA_RACE_NAME, round.getRaceName());
             intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT, round.getCircuit());
+            if (round.getCircuitImage() != null) {
+                intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT_IMAGE, round.getCircuitImage());
+            }
             startActivity(intent);
         });
 
@@ -114,7 +120,15 @@ public class ResultsFragment extends Fragment {
         viewModel.getSchedule().observe(getViewLifecycleOwner(), schedule -> {
             swipeRefresh.setRefreshing(false);
             if (schedule != null) {
-                roundAdapter.setRounds(buildRoundList(schedule));
+                latestSchedule = schedule;
+                mergeAndUpdate();
+            }
+        });
+
+        viewModel.getMeetings().observe(getViewLifecycleOwner(), meetings -> {
+            if (meetings != null) {
+                latestMeetings = meetings;
+                mergeAndUpdate();
             }
         });
 
@@ -122,6 +136,28 @@ public class ResultsFragment extends Fragment {
                 swipeRefresh.setRefreshing(loading));
 
         viewModel.fetchSchedule(selectedYear);
+        viewModel.fetchMeetings(selectedYear);
+    }
+
+    private void mergeAndUpdate() {
+        if (latestSchedule == null) return;
+        List<RoundSchedule> rounds = buildRoundList(latestSchedule);
+        if (latestMeetings != null) {
+            for (RoundSchedule round : rounds) {
+                String raceName = round.getRaceName().toLowerCase();
+                for (Map<String, Object> meeting : latestMeetings) {
+                    String meetingName = meeting.get("meeting_name") != null ?
+                            meeting.get("meeting_name").toString().toLowerCase() : "";
+                    if (!meetingName.isEmpty() && (meetingName.equals(raceName)
+                            || meetingName.contains(raceName) || raceName.contains(meetingName))) {
+                        Object img = meeting.get("circuit_image");
+                        if (img != null) round.setCircuitImage(img.toString());
+                        break;
+                    }
+                }
+            }
+        }
+        roundAdapter.setRounds(rounds);
     }
 
     @SuppressWarnings("unchecked")
