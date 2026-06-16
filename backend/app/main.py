@@ -477,7 +477,13 @@ async def get_stints(request: Request, session_key: int):
         openf1.get_drivers(session_key),
     )
 
-    driver_lookup = {d["driver_number"]: d.get("name_acronym", "") for d in drivers_raw}
+    driver_lookup = {}
+    for d in drivers_raw:
+        num = d["driver_number"]
+        driver_lookup[num] = {
+            "code":         d.get("name_acronym", f"{num}"),
+            "team_colour":  "#" + d.get("team_colour", "FFFFFF"),
+        }
 
     grouped: dict[int, list] = {}
     for s in stints_raw:
@@ -495,9 +501,11 @@ async def get_stints(request: Request, session_key: int):
     result = []
     for num, stints in grouped.items():
         stints.sort(key=lambda s: s.get("stint_number") or 0)
+        info = driver_lookup.get(num, {"code": f"{num}", "team_colour": "#FFFFFF"})
         result.append({
             "driver_number": num,
-            "code":          driver_lookup.get(num, f"{num}"),
+            "code":          info["code"],
+            "team_colour":   info["team_colour"],
             "stints":        stints,
         })
 

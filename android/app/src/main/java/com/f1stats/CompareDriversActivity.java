@@ -5,7 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ArrayAdapter;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -23,7 +23,6 @@ import com.f1stats.db.CachedDriver;
 import com.f1stats.db.CachedResult;
 import com.f1stats.models.RaceResult;
 import com.f1stats.ui.compare.DriverPickerBottomSheet;
-import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -125,38 +124,26 @@ public class CompareDriversActivity extends AppCompatActivity
     }
 
     private void setupSeasonSpinner() {
-        MaterialAutoCompleteTextView spinner = findViewById(R.id.spinner_season);
-        List<String> seasons = SeasonHelper.getAllSeasons();
+        TextView tvYear = findViewById(R.id.tv_selected_year);
+        ImageButton btnPrev = findViewById(R.id.btn_prev_year);
+        ImageButton btnNext = findViewById(R.id.btn_next_year);
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this, android.R.layout.simple_dropdown_item_1line, seasons) {
-            @Override
-            public android.widget.Filter getFilter() {
-                return new android.widget.Filter() {
-                    @Override
-                    protected FilterResults performFiltering(CharSequence c) {
-                        FilterResults r = new FilterResults();
-                        r.values = seasons;
-                        r.count  = seasons.size();
-                        return r;
-                    }
-                    @Override
-                    protected void publishResults(CharSequence c, FilterResults r) {
-                        notifyDataSetChanged();
-                    }
-                };
+        tvYear.setText(String.valueOf(year));
+        btnPrev.setOnClickListener(v -> {
+            if (year > 1950) {
+                year--;
+                tvYear.setText(String.valueOf(year));
+                if (getSupportActionBar() != null) getSupportActionBar().setSubtitle(year + " Season");
+                resetDriverSelection();
             }
-        };
-
-        spinner.setAdapter(adapter);
-        spinner.setText(String.valueOf(year), false);
-        spinner.setDropDownHeight(600);
-        spinner.setOnItemClickListener((parent, v, position, id) -> {
-            year = Integer.parseInt(seasons.get(position));
-            if (getSupportActionBar() != null) {
-                getSupportActionBar().setSubtitle(year + " Season");
+        });
+        btnNext.setOnClickListener(v -> {
+            if (year < SeasonHelper.getCurrentYear()) {
+                year++;
+                tvYear.setText(String.valueOf(year));
+                if (getSupportActionBar() != null) getSupportActionBar().setSubtitle(year + " Season");
+                resetDriverSelection();
             }
-            resetDriverSelection();
         });
     }
 

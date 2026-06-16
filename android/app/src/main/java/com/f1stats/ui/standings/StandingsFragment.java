@@ -7,7 +7,6 @@ import android.widget.ImageButton;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -28,7 +27,6 @@ import com.f1stats.models.DriverStanding;
 import com.f1stats.models.RaceResult;
 import com.f1stats.viewmodels.F1ViewModel;
 import com.google.android.material.tabs.TabLayout;
-import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 
 import java.util.List;
 
@@ -93,43 +91,25 @@ public class StandingsFragment extends Fragment {
             @Override public void onTabReselected(TabLayout.Tab tab) {}
         });
 
-        // Season selector
-        MaterialAutoCompleteTextView spinner =
-                view.findViewById(R.id.spinner_season_standings);
+        // Season picker
+        TextView tvYear = view.findViewById(R.id.tv_selected_year);
+        ImageButton btnPrev = view.findViewById(R.id.btn_prev_year);
+        ImageButton btnNext = view.findViewById(R.id.btn_next_year);
 
-        List<String> seasons = SeasonHelper.getAllSeasons();
-
-        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                seasons
-        ) {
-            @Override
-            public android.widget.Filter getFilter() {
-                return new android.widget.Filter() {
-                    @Override
-                    protected FilterResults performFiltering(CharSequence constraint) {
-                        FilterResults results = new FilterResults();
-                        results.values = seasons;
-                        results.count = seasons.size();
-                        return results;
-                    }
-                    @Override
-                    protected void publishResults(CharSequence constraint,
-                                                  FilterResults results) {
-                        notifyDataSetChanged();
-                    }
-                };
+        tvYear.setText(String.valueOf(selectedYear));
+        btnPrev.setOnClickListener(v -> {
+            if (selectedYear > 1950) {
+                selectedYear--;
+                tvYear.setText(String.valueOf(selectedYear));
+                loadCurrentTab();
             }
-        };
-
-        spinner.setAdapter(spinnerAdapter);
-        spinner.setText(String.valueOf(selectedYear), false);
-        spinner.setDropDownHeight(600);
-
-        spinner.setOnItemClickListener((parent, v, position, id) -> {
-            selectedYear = Integer.parseInt(seasons.get(position));
-            loadCurrentTab();
+        });
+        btnNext.setOnClickListener(v -> {
+            if (selectedYear < SeasonHelper.getCurrentYear()) {
+                selectedYear++;
+                tvYear.setText(String.valueOf(selectedYear));
+                loadCurrentTab();
+            }
         });
 
         observeViewModel();
@@ -159,6 +139,7 @@ public class StandingsFragment extends Fragment {
             intent.putExtra(DriverProfileActivity.EXTRA_HEADSHOT_URL, headshotUrl);
         }
         startActivity(intent);
+        requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
     }
 
     private static String getTeamColour(String teamName) {

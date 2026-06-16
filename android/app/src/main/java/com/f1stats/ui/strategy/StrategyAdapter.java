@@ -1,7 +1,6 @@
 package com.f1stats.ui.strategy;
 
 import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,89 +12,85 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.f1stats.R;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class StrategyAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-
-    private static final int TYPE_LEGEND = 0;
-    private static final int TYPE_DRIVER = 1;
+public class StrategyAdapter extends RecyclerView.Adapter<StrategyAdapter.DriverHolder> {
 
     private List<Map<String, Object>> drivers = new ArrayList<>();
     private int totalLaps = 1;
+    private Map<String, Integer> finishPositions = new HashMap<>();
 
-    public void setData(List<Map<String, Object>> drivers, int totalLaps) {
-        this.drivers   = drivers != null ? drivers : new ArrayList<>();
-        this.totalLaps = totalLaps;
+    public void setData(List<Map<String, Object>> drivers, int totalLaps,
+                        Map<String, Integer> finishPositions) {
+        this.drivers        = drivers != null ? drivers : new ArrayList<>();
+        this.totalLaps      = totalLaps;
+        this.finishPositions = finishPositions != null ? finishPositions : new HashMap<>();
         notifyDataSetChanged();
     }
 
-    @Override
-    public int getItemViewType(int position) {
-        return position == 0 ? TYPE_LEGEND : TYPE_DRIVER;
-    }
-
-    @Override
-    public int getItemCount() {
-        return drivers.isEmpty() ? 0 : drivers.size() + 1;
-    }
+    @Override public int getItemCount() { return drivers.size(); }
 
     @NonNull
     @Override
-    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        LayoutInflater inf = LayoutInflater.from(parent.getContext());
-        if (viewType == TYPE_LEGEND) {
-            return new LegendHolder(inf.inflate(R.layout.item_strategy_legend, parent, false));
-        }
-        return new DriverHolder(inf.inflate(R.layout.item_tyre_strategy, parent, false));
+    public DriverHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        return new DriverHolder(LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_tyre_strategy, parent, false));
     }
 
     @Override
-    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        if (holder instanceof DriverHolder) {
-            ((DriverHolder) holder).bind(drivers.get(position - 1), totalLaps);
-        }
+    public void onBindViewHolder(@NonNull DriverHolder holder, int position) {
+        holder.bind(drivers.get(position), totalLaps, finishPositions, position);
     }
-
-    // ── Legend ────────────────────────────────────────────────────────────────
-
-    static class LegendHolder extends RecyclerView.ViewHolder {
-        LegendHolder(@NonNull View itemView) {
-            super(itemView);
-            setDot(itemView, R.id.dot_soft,   "#FF3333");
-            setDot(itemView, R.id.dot_medium, "#FFD700");
-            setDot(itemView, R.id.dot_hard,   "#FFFFFF");
-            setDot(itemView, R.id.dot_inter,  "#39B54A");
-            setDot(itemView, R.id.dot_wet,    "#3399FF");
-        }
-
-        private static void setDot(View root, int id, String hex) {
-            GradientDrawable circle = new GradientDrawable();
-            circle.setShape(GradientDrawable.OVAL);
-            circle.setColor(Color.parseColor(hex));
-            root.findViewById(id).setBackground(circle);
-        }
-    }
-
-    // ── Driver row ────────────────────────────────────────────────────────────
 
     static class DriverHolder extends RecyclerView.ViewHolder {
+        final TextView tvFinishPos;
         final TextView tvCode;
         final TextView tvNumber;
         final TyreStrategyView strategyView;
 
         DriverHolder(@NonNull View v) {
             super(v);
+            tvFinishPos  = v.findViewById(R.id.tv_finish_pos);
             tvCode       = v.findViewById(R.id.tv_driver_code);
             tvNumber     = v.findViewById(R.id.tv_driver_number);
             strategyView = v.findViewById(R.id.tyre_strategy_view);
         }
 
-        void bind(Map<String, Object> driver, int totalLaps) {
-            tvCode.setText(strVal(driver.get("code"), "???"));
+        void bind(Map<String, Object> driver, int totalLaps,
+                  Map<String, Integer> finishPositions, int index) {
+            // alternating row background
+            itemView.setBackgroundColor(index % 2 == 0
+                    ? itemView.getContext().getColor(R.color.bg_surface)
+                    : itemView.getContext().getColor(R.color.bg_dark));
+
+            String code = strVal(driver.get("code"), "???");
+            tvCode.setText(code);
+
+            // driver code in team colour
+            String teamColour = strVal(driver.get("team_colour"), null);
+            if (teamColour != null) {
+                try {
+                    tvCode.setTextColor(Color.parseColor(teamColour));
+                } catch (Exception e) {
+                    tvCode.setTextColor(Color.WHITE);
+                }
+            } else {
+                tvCode.setTextColor(Color.WHITE);
+            }
+
+            // finishing position
+            Integer finPos = finishPositions.get(code);
+            if (tvFinishPos != null) {
+                tvFinishPos.setText(finPos != null ? "P" + finPos : "");
+            }
+
+            // driver number
             Object num = driver.get("driver_number");
             tvNumber.setText(num != null ? "#" + intVal(num) : "");
 
+            // stints
             List<Map<String, Object>> stints = new ArrayList<>();
             Object raw = driver.get("stints");
             if (raw instanceof List) {

@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.f1stats.R;
@@ -29,6 +30,7 @@ public class ScheduleFragment extends Fragment {
     private ScheduleAdapter adapter;
     private SwipeRefreshLayout swipeRefresh;
     private TextView tvEmpty;
+    private int selectedYear = SeasonHelper.getCurrentYear();
 
     private List<Map<String, Object>> latestSchedule;
     private List<Map<String, Object>> latestMeetings;
@@ -55,9 +57,41 @@ public class ScheduleFragment extends Fragment {
 
         viewModel = new ViewModelProvider(requireActivity()).get(F1ViewModel.class);
 
+        // Season picker
+        TextView tvYear = view.findViewById(R.id.tv_selected_year);
+        ImageButton btnPrev = view.findViewById(R.id.btn_prev_year);
+        ImageButton btnNext = view.findViewById(R.id.btn_next_year);
+
+        tvYear.setText(String.valueOf(selectedYear));
+        btnPrev.setOnClickListener(v -> {
+            if (selectedYear > 1950) {
+                selectedYear--;
+                tvYear.setText(String.valueOf(selectedYear));
+                latestSchedule = null;
+                latestMeetings = null;
+                viewModel.fetchSchedule(selectedYear);
+                viewModel.fetchMeetings(selectedYear);
+            }
+        });
+        btnNext.setOnClickListener(v -> {
+            if (selectedYear < SeasonHelper.getCurrentYear()) {
+                selectedYear++;
+                tvYear.setText(String.valueOf(selectedYear));
+                latestSchedule = null;
+                latestMeetings = null;
+                viewModel.fetchSchedule(selectedYear);
+                viewModel.fetchMeetings(selectedYear);
+            }
+        });
+
         swipeRefresh.setColorSchemeColors(ContextCompat.getColor(requireContext(), R.color.f1_red));
         swipeRefresh.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.bg_dark));
-        swipeRefresh.setOnRefreshListener(() -> viewModel.fetchSchedule(SeasonHelper.getCurrentYear()));
+        swipeRefresh.setOnRefreshListener(() -> {
+            latestSchedule = null;
+            latestMeetings = null;
+            viewModel.fetchSchedule(selectedYear);
+            viewModel.fetchMeetings(selectedYear);
+        });
 
         viewModel.getSchedule().observe(getViewLifecycleOwner(), schedule -> {
             swipeRefresh.setRefreshing(false);
@@ -81,14 +115,14 @@ public class ScheduleFragment extends Fragment {
             if (error != null) {
                 swipeRefresh.setRefreshing(false);
                 if (latestSchedule == null || latestSchedule.isEmpty()) {
-                    tvEmpty.setText("No races scheduled for " + SeasonHelper.getCurrentYear());
+                    tvEmpty.setText("No races scheduled for " + selectedYear);
                     tvEmpty.setVisibility(View.VISIBLE);
                 }
             }
         });
 
-        viewModel.fetchSchedule(SeasonHelper.getCurrentYear());
-        viewModel.fetchMeetings(SeasonHelper.getCurrentYear());
+        viewModel.fetchSchedule(selectedYear);
+        viewModel.fetchMeetings(selectedYear);
     }
 
     private void mergeAndUpdate() {
@@ -111,7 +145,7 @@ public class ScheduleFragment extends Fragment {
         }
         adapter.setSchedule(latestSchedule);
         if (latestSchedule.isEmpty()) {
-            tvEmpty.setText("No races scheduled for " + SeasonHelper.getCurrentYear());
+            tvEmpty.setText("No races scheduled for " + selectedYear);
             tvEmpty.setVisibility(View.VISIBLE);
         } else {
             tvEmpty.setVisibility(View.GONE);

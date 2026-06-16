@@ -1,10 +1,11 @@
 package com.f1stats;
 
+import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -20,6 +21,7 @@ import com.f1stats.data.F1Repository;
 import com.f1stats.db.CachedDriver;
 import com.f1stats.models.RaceResult;
 import com.f1stats.ui.driver.DriverResultAdapter;
+import com.google.android.material.imageview.ShapeableImageView;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -43,8 +45,10 @@ public class DriverProfileActivity extends AppCompatActivity {
     public static final String EXTRA_DOB          = "extra_dob";
     public static final String EXTRA_NUMBER       = "extra_number";
 
-    private ImageView ivHeadshot;
+    private ShapeableImageView ivHeadshot;
     private TextView tvDriverName, tvNumberFlag, tvTeamName, tvDob;
+    private TextView tvNumberWatermark;
+    private View viewHeaderGradient;
     private TextView tvStatPoints, tvStatWins, tvStatPodiums;
     private TextView tvStatDnfs, tvStatBestGrid, tvStatPoles;
     private DriverResultAdapter resultsAdapter;
@@ -90,18 +94,20 @@ public class DriverProfileActivity extends AppCompatActivity {
             getSupportActionBar().setSubtitle(year + " Season");
         }
 
-        ivHeadshot     = findViewById(R.id.iv_headshot);
-        tvDriverName   = findViewById(R.id.tv_driver_name);
-        tvNumberFlag   = findViewById(R.id.tv_number_flag);
-        tvTeamName     = findViewById(R.id.tv_team_name);
-        tvDob          = findViewById(R.id.tv_dob);
-        tvStatPoints   = findViewById(R.id.tv_stat_points);
-        tvStatWins     = findViewById(R.id.tv_stat_wins);
-        tvStatPodiums  = findViewById(R.id.tv_stat_podiums);
-        tvStatDnfs     = findViewById(R.id.tv_stat_dnfs);
-        tvStatBestGrid = findViewById(R.id.tv_stat_best_grid);
-        tvStatPoles    = findViewById(R.id.tv_stat_poles);
-        pbLoading      = findViewById(R.id.pb_loading);
+        ivHeadshot         = findViewById(R.id.iv_headshot);
+        tvDriverName       = findViewById(R.id.tv_driver_name);
+        tvNumberFlag       = findViewById(R.id.tv_number_flag);
+        tvTeamName         = findViewById(R.id.tv_team_name);
+        tvDob              = findViewById(R.id.tv_dob);
+        tvNumberWatermark  = findViewById(R.id.tv_number_watermark);
+        viewHeaderGradient = findViewById(R.id.view_header_gradient);
+        tvStatPoints       = findViewById(R.id.tv_stat_points);
+        tvStatWins         = findViewById(R.id.tv_stat_wins);
+        tvStatPodiums      = findViewById(R.id.tv_stat_podiums);
+        tvStatDnfs         = findViewById(R.id.tv_stat_dnfs);
+        tvStatBestGrid     = findViewById(R.id.tv_stat_best_grid);
+        tvStatPoles        = findViewById(R.id.tv_stat_poles);
+        pbLoading          = findViewById(R.id.pb_loading);
 
         RecyclerView rv = findViewById(R.id.rv_driver_results);
         rv.setLayoutManager(new LinearLayoutManager(this));
@@ -117,10 +123,13 @@ public class DriverProfileActivity extends AppCompatActivity {
                                 String headshotUrl) {
         tvDriverName.setText(name != null ? name : "");
 
+        tvNumberWatermark.setText(number != null ? number : "");
+
         String flag = DriverHelper.getFlag(nationality);
         String numDisplay = number != null && !number.isEmpty() ? "#" + number : "";
         String natShort = DriverHelper.getShortNationality(nationality);
-        tvNumberFlag.setText(numDisplay + " · " + flag + " " + natShort);
+        tvNumberFlag.setText(flag + " " + natShort +
+                (numDisplay.isEmpty() ? "" : "  ·  " + numDisplay));
 
         if (teamName != null) {
             tvTeamName.setText(teamName);
@@ -136,6 +145,22 @@ public class DriverProfileActivity extends AppCompatActivity {
             tvDob.setText("Born: " + formatDob(dob));
             tvDob.setVisibility(View.VISIBLE);
         }
+
+        // Team colour border on headshot
+        int teamColor;
+        try {
+            teamColor = teamColour != null ? Color.parseColor(teamColour) : Color.WHITE;
+        } catch (Exception e) {
+            teamColor = Color.WHITE;
+        }
+        ivHeadshot.setStrokeColor(ColorStateList.valueOf(teamColor));
+
+        // Team colour gradient on header background
+        int alpha26 = Color.argb(26, Color.red(teamColor), Color.green(teamColor), Color.blue(teamColor));
+        GradientDrawable gradient = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{alpha26, Color.TRANSPARENT});
+        viewHeaderGradient.setBackground(gradient);
 
         if (headshotUrl != null && !headshotUrl.isEmpty()) {
             Glide.with(this)
@@ -165,7 +190,6 @@ public class DriverProfileActivity extends AppCompatActivity {
                     String raceName = toStr(race.get("race_name"));
                     sessions.add(new RoundSession(round, "Race", raceName));
 
-                    // Include Sprint if this round has one
                     Object sessObj = race.get("sessions");
                     if (sessObj instanceof List) {
                         for (Object s : (List<?>) sessObj) {
@@ -186,7 +210,6 @@ public class DriverProfileActivity extends AppCompatActivity {
         });
     }
 
-    // All callbacks from F1Repository fire on the main thread, so no synchronization needed here.
     private void fetchBatch(F1Repository repo, String driverId, int year,
                              List<RoundSession> sessions, int startIdx,
                              List<Object[]> collected, String existingHeadshotUrl) {
@@ -213,7 +236,6 @@ public class DriverProfileActivity extends AppCompatActivity {
 
                         @Override
                         public void onError(String error) {
-                            // Round not yet raced or fetch failed — nothing to add
                             if (pending.decrementAndGet() == 0) {
                                 fetchBatch(repo, driverId, year, sessions, endIdx,
                                         collected, existingHeadshotUrl);
@@ -276,9 +298,10 @@ public class DriverProfileActivity extends AppCompatActivity {
                     if (grid == 1) poles++;
 
                     raceResults.add(new DriverResultAdapter.DriverRaceResult(
-                            rs.round, rs.raceName, rs.sessionType, pos, r.getPoints(), dnf
+                            rs.round, rs.raceName, rs.sessionType, pos, r.getPoints(),
+                            dnf, r.hasFastestLap()
                     ));
-                    break; // found this driver in this round, move on
+                    break;
                 }
             }
 
@@ -327,10 +350,10 @@ public class DriverProfileActivity extends AppCompatActivity {
                             F1App.get().getDatabase(),
                             F1ApiClient.getInstance(F1App.get()).getService()
                     );
-                    fetchRepo.fetchDrivers(year, new F1Repository.RepositoryCallback<java.util.List<com.f1stats.db.CachedDriver>>() {
+                    fetchRepo.fetchDrivers(year, new F1Repository.RepositoryCallback<java.util.List<CachedDriver>>() {
                         @Override
-                        public void onSuccess(java.util.List<com.f1stats.db.CachedDriver> drivers) {
-                            for (com.f1stats.db.CachedDriver d : drivers) {
+                        public void onSuccess(java.util.List<CachedDriver> drivers) {
+                            for (CachedDriver d : drivers) {
                                 if (driverCode.equals(d.code) && d.headshotUrl != null
                                         && !d.headshotUrl.isEmpty()) {
                                     if (!isFinishing() && !isDestroyed()) {
@@ -350,6 +373,8 @@ public class DriverProfileActivity extends AppCompatActivity {
             });
         });
     }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private boolean isDnf(String status) {
         if (status == null) return false;
@@ -405,5 +430,11 @@ public class DriverProfileActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
     }
 }

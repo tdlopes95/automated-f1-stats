@@ -5,7 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -22,7 +22,6 @@ import com.f1stats.RoundDetailActivity;
 import com.f1stats.SeasonHelper;
 import com.f1stats.models.RoundSchedule;
 import com.f1stats.viewmodels.F1ViewModel;
-import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -73,46 +72,39 @@ public class ResultsFragment extends Fragment {
             if (round.getCountryFlag() != null) {
                 intent.putExtra(RoundDetailActivity.EXTRA_COUNTRY_FLAG, round.getCountryFlag());
             }
+            boolean hasSprint = false;
+            List<Map<String, Object>> sessions = round.getSessions();
+            if (sessions != null) {
+                for (Map<String, Object> session : sessions) {
+                    if ("Sprint".equals(session.get("name"))) {
+                        hasSprint = true;
+                        break;
+                    }
+                }
+            }
+            intent.putExtra(RoundDetailActivity.EXTRA_HAS_SPRINT, hasSprint);
             startActivity(intent);
         });
 
-        // Season selector
-        MaterialAutoCompleteTextView spinner =
-                view.findViewById(R.id.spinner_season_results); // or spinner_season_standings
+        // Season picker
+        TextView tvYear = view.findViewById(R.id.tv_selected_year);
+        ImageButton btnPrev = view.findViewById(R.id.btn_prev_year);
+        ImageButton btnNext = view.findViewById(R.id.btn_next_year);
 
-        List<String> seasons = SeasonHelper.getAllSeasons();
-
-// Use a non-filtering adapter
-        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                seasons
-        ) {
-            @Override
-            public android.widget.Filter getFilter() {
-                return new android.widget.Filter() {
-                    @Override
-                    protected FilterResults performFiltering(CharSequence constraint) {
-                        FilterResults results = new FilterResults();
-                        results.values = seasons;
-                        results.count = seasons.size();
-                        return results;
-                    }
-                    @Override
-                    protected void publishResults(CharSequence constraint, FilterResults results) {
-                        notifyDataSetChanged();
-                    }
-                };
+        tvYear.setText(String.valueOf(selectedYear));
+        btnPrev.setOnClickListener(v -> {
+            if (selectedYear > 1950) {
+                selectedYear--;
+                tvYear.setText(String.valueOf(selectedYear));
+                viewModel.fetchSchedule(selectedYear);
             }
-        };
-
-        spinner.setAdapter(spinnerAdapter);
-        spinner.setText(String.valueOf(selectedYear), false);
-        spinner.setDropDownHeight(600); // ~5 items
-
-        spinner.setOnItemClickListener((parent, v, position, id) -> {
-            selectedYear = Integer.parseInt(seasons.get(position));
-            viewModel.fetchSchedule(selectedYear);
+        });
+        btnNext.setOnClickListener(v -> {
+            if (selectedYear < SeasonHelper.getCurrentYear()) {
+                selectedYear++;
+                tvYear.setText(String.valueOf(selectedYear));
+                viewModel.fetchSchedule(selectedYear);
+            }
         });
 
         viewModel = new ViewModelProvider(requireActivity()).get(F1ViewModel.class);

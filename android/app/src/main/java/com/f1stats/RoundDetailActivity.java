@@ -2,6 +2,7 @@ package com.f1stats;
 
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -22,7 +23,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.bumptech.glide.Glide;
+import com.google.android.material.card.MaterialCardView;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -44,6 +48,7 @@ public class RoundDetailActivity extends AppCompatActivity {
     public static final String EXTRA_CIRCUIT       = "extra_circuit";
     public static final String EXTRA_CIRCUIT_IMAGE = "extra_circuit_image";
     public static final String EXTRA_COUNTRY_FLAG  = "extra_country_flag";
+    public static final String EXTRA_HAS_SPRINT    = "extra_has_sprint";
 
     private F1ViewModel viewModel;
     private ResultsAdapter resultsAdapter;
@@ -53,14 +58,16 @@ public class RoundDetailActivity extends AppCompatActivity {
     private SwipeRefreshLayout swipeRefresh;
     private ScrollView svGrid;
     private LinearLayout llGridContainer;
+    private LinearLayout llStrategyHeader;
     private TextView tvStrategyEmpty;
+    private TextView tvLapTotal;
+
+    private Map<String, Integer> qualiPositionMap = new HashMap<>();
 
     private int round;
     private int year;
 
-    private static final String[] TABS = {
-            "Race", "Q1", "Q2", "Q3", "Sprint", "Grid", "Pit Stops", "Strategy"
-    };
+    private List<String> tabNames;
     private String currentTab = "Race";
     private String currentQualiSession = "Q3";
     private QualifyingAdapter qualifyingAdapter;
@@ -70,7 +77,6 @@ public class RoundDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_round_detail);
 
-        // Get data passed from ResultsFragment
         round    = getIntent().getIntExtra(EXTRA_ROUND, 1);
         year     = getIntent().getIntExtra(EXTRA_YEAR, 2026);
         String raceName     = getIntent().getStringExtra(EXTRA_RACE_NAME);
@@ -78,7 +84,6 @@ public class RoundDetailActivity extends AppCompatActivity {
         String circuitImage = getIntent().getStringExtra(EXTRA_CIRCUIT_IMAGE);
         String countryFlag  = getIntent().getStringExtra(EXTRA_COUNTRY_FLAG);
 
-        // Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -87,7 +92,6 @@ public class RoundDetailActivity extends AppCompatActivity {
             getSupportActionBar().setSubtitle(circuit);
         }
 
-        // Country flag header
         View llFlagHeader = findViewById(R.id.ll_flag_header);
         ImageView ivCountryFlag = findViewById(R.id.iv_country_flag);
         if (countryFlag != null && !countryFlag.isEmpty()) {
@@ -95,19 +99,20 @@ public class RoundDetailActivity extends AppCompatActivity {
             Glide.with(this).load(countryFlag).into(ivCountryFlag);
         }
 
-        // Circuit map header
         ImageView ivTrackMap = findViewById(R.id.iv_track_map);
         if (circuitImage != null && !circuitImage.isEmpty()) {
             ivTrackMap.setVisibility(View.VISIBLE);
             Glide.with(this).load(circuitImage).into(ivTrackMap);
         }
 
-        // RecyclerView + grid views
         recyclerView      = findViewById(R.id.rv_round_detail);
         swipeRefresh      = findViewById(R.id.swipe_refresh_detail);
         svGrid            = findViewById(R.id.sv_grid);
         llGridContainer   = findViewById(R.id.ll_grid_container);
+        llStrategyHeader  = findViewById(R.id.ll_strategy_header);
         tvStrategyEmpty   = findViewById(R.id.tv_strategy_empty);
+        tvLapTotal        = findViewById(R.id.tv_lap_total);
+
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         resultsAdapter  = new ResultsAdapter();
         pitStopAdapter  = new PitStopAdapter();
@@ -126,16 +131,28 @@ public class RoundDetailActivity extends AppCompatActivity {
         swipeRefresh.setBackgroundColor(ContextCompat.getColor(this, R.color.bg_dark));
         swipeRefresh.setOnRefreshListener(this::loadCurrentTab);
 
-        // Tabs
+        setupStrategyLegendDots();
+
+        boolean hasSprint = getIntent().getBooleanExtra(EXTRA_HAS_SPRINT, false);
+        tabNames = new ArrayList<>();
+        tabNames.add("Race");
+        tabNames.add("Q1");
+        tabNames.add("Q2");
+        tabNames.add("Q3");
+        if (hasSprint) tabNames.add("Sprint");
+        tabNames.add("Grid");
+        tabNames.add("Pit Stops");
+        tabNames.add("Strategy");
+
         TabLayout tabs = findViewById(R.id.tab_layout_detail);
-        for (String tab : TABS) {
+        for (String tab : tabNames) {
             tabs.addTab(tabs.newTab().setText(tab));
         }
 
         tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
-                currentTab = TABS[tab.getPosition()];
+                currentTab = tabNames.get(tab.getPosition());
                 loadCurrentTab();
             }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
@@ -148,13 +165,32 @@ public class RoundDetailActivity extends AppCompatActivity {
         viewModel.fetchWeatherForRace(year, round);
     }
 
+    private void setupStrategyLegendDots() {
+        setDot(R.id.strategy_dot_soft,   "#FF3333");
+        setDot(R.id.strategy_dot_medium, "#FFD700");
+        setDot(R.id.strategy_dot_hard,   "#FFFFFF");
+        setDot(R.id.strategy_dot_inter,  "#39B54A");
+        setDot(R.id.strategy_dot_wet,    "#3399FF");
+    }
+
+    private void setDot(int viewId, String hex) {
+        View dot = findViewById(viewId);
+        if (dot == null) return;
+        GradientDrawable circle = new GradientDrawable();
+        circle.setShape(GradientDrawable.OVAL);
+        circle.setColor(Color.parseColor(hex));
+        dot.setBackground(circle);
+    }
+
     private void loadCurrentTab() {
         tvStrategyEmpty.setVisibility(View.GONE);
+        llStrategyHeader.setVisibility(View.GONE);
 
         if ("Grid".equals(currentTab)) {
             swipeRefresh.setVisibility(View.GONE);
             svGrid.setVisibility(View.VISIBLE);
             viewModel.fetchStartingGridForRace(year, round);
+            viewModel.fetchQualifyingResults(year, round);
             return;
         }
 
@@ -191,6 +227,8 @@ public class RoundDetailActivity extends AppCompatActivity {
                 break;
             case "Strategy":
                 recyclerView.setAdapter(strategyAdapter);
+                llStrategyHeader.setVisibility(View.VISIBLE);
+                viewModel.fetchResults(year, round, "Race");
                 viewModel.fetchStintsForRace(year, round);
                 break;
         }
@@ -211,6 +249,7 @@ public class RoundDetailActivity extends AppCompatActivity {
         intent.putExtra(DriverProfileActivity.EXTRA_NATIONALITY, driver.getNationality());
         intent.putExtra(DriverProfileActivity.EXTRA_NUMBER, driver.getNumber());
         startActivity(intent);
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
     }
 
     private void launchDriverProfile(QualifyingResult result) {
@@ -228,6 +267,7 @@ public class RoundDetailActivity extends AppCompatActivity {
         intent.putExtra(DriverProfileActivity.EXTRA_NATIONALITY, driver.getNationality());
         intent.putExtra(DriverProfileActivity.EXTRA_NUMBER, driver.getNumber());
         startActivity(intent);
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
     }
 
     private static String getTeamColour(String teamName) {
@@ -250,6 +290,21 @@ public class RoundDetailActivity extends AppCompatActivity {
             if (teamName.contains(e.getKey())) return e.getValue();
         }
         return "#FFFFFF";
+    }
+
+    private Map<String, Integer> buildFinishPositions() {
+        Map<String, Integer> map = new HashMap<>();
+        List<RaceResult> results = viewModel.getRaceResults().getValue();
+        if (results != null) {
+            for (RaceResult r : results) {
+                if (r.getDriver() != null && r.getDriver().getCode() != null) {
+                    try {
+                        map.put(r.getDriver().getCode(), Integer.parseInt(r.getPosition()));
+                    } catch (Exception ignored) {}
+                }
+            }
+        }
+        return map;
     }
 
     private void observeViewModel() {
@@ -288,8 +343,10 @@ public class RoundDetailActivity extends AppCompatActivity {
         });
         viewModel.getResultsLoading().observe(this, loading ->
                 swipeRefresh.setRefreshing(loading));
+
         viewModel.getQualifyingResults().observe(this, results -> {
             if (results != null) {
+                // update qualifying adapter
                 QualifyingAdapter.QualiSession session;
                 switch (currentQualiSession) {
                     case "Q1": session = QualifyingAdapter.QualiSession.Q1; break;
@@ -297,9 +354,26 @@ public class RoundDetailActivity extends AppCompatActivity {
                     default:   session = QualifyingAdapter.QualiSession.Q3; break;
                 }
                 qualifyingAdapter.setResults(results, session);
+
+                // build qualiPositionMap for grid position change indicators
+                qualiPositionMap = new HashMap<>();
+                for (QualifyingResult r : results) {
+                    if (r.getDriver() != null && r.getDriver().getCode() != null) {
+                        try {
+                            qualiPositionMap.put(r.getDriver().getCode(),
+                                    Integer.parseInt(r.getPosition()));
+                        } catch (Exception ignored) {}
+                    }
+                }
+                // if on Grid tab and grid data already loaded, rebuild
+                if ("Grid".equals(currentTab)) {
+                    List<Map<String, Object>> grid = viewModel.getStartingGrid().getValue();
+                    if (grid != null && !grid.isEmpty()) buildGridView(grid);
+                }
             }
             swipeRefresh.setRefreshing(false);
         });
+
         viewModel.getPitStops().observe(this, stops -> {
             if (stops != null) pitStopAdapter.setPitStops(stops);
             swipeRefresh.setRefreshing(false);
@@ -320,7 +394,7 @@ public class RoundDetailActivity extends AppCompatActivity {
             if (driverStints == null || !"Strategy".equals(currentTab)) return;
             swipeRefresh.setRefreshing(false);
             if (driverStints.isEmpty()) {
-                strategyAdapter.setData(driverStints, 0);
+                strategyAdapter.setData(driverStints, 0, null);
                 tvStrategyEmpty.setVisibility(View.VISIBLE);
                 return;
             }
@@ -338,14 +412,15 @@ public class RoundDetailActivity extends AppCompatActivity {
                     }
                 }
             }
-            strategyAdapter.setData(driverStints, totalLaps);
+            if (tvLapTotal != null) tvLapTotal.setText("Lap " + totalLaps);
+            strategyAdapter.setData(driverStints, totalLaps, buildFinishPositions());
         });
         viewModel.getStintsLoading().observe(this, loading -> {
             if ("Strategy".equals(currentTab)) swipeRefresh.setRefreshing(loading);
         });
     }
 
-private void buildGridView(List<Map<String, Object>> grid) {
+    private void buildGridView(List<Map<String, Object>> grid) {
         llGridContainer.removeAllViews();
 
         if (grid.isEmpty()) {
@@ -358,14 +433,15 @@ private void buildGridView(List<Map<String, Object>> grid) {
             return;
         }
 
-        int screenWidth = getResources().getDisplayMetrics().widthPixels
-                - dpToPx(16); // account for container padding
+        int screenWidth = getResources().getDisplayMetrics().widthPixels - dpToPx(16);
         int cardWidth = (int) (screenWidth * 0.47);
-        int stagger = dpToPx(20);
+        int stagger = dpToPx(32);
 
         for (int i = 0; i < grid.size(); i += 2) {
             Map<String, Object> leftDriver  = grid.get(i);
             Map<String, Object> rightDriver = (i + 1 < grid.size()) ? grid.get(i + 1) : null;
+
+            boolean isAlternate = (i / 2) % 2 == 1;
 
             RelativeLayout row = new RelativeLayout(this);
             LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
@@ -373,7 +449,7 @@ private void buildGridView(List<Map<String, Object>> grid) {
                     ViewGroup.LayoutParams.WRAP_CONTENT);
             rowParams.bottomMargin = dpToPx(4);
 
-            View leftCard = buildGridCard(leftDriver);
+            View leftCard = buildGridCard(leftDriver, i + 1, isAlternate);
             int leftId = View.generateViewId();
             leftCard.setId(leftId);
             RelativeLayout.LayoutParams leftParams = new RelativeLayout.LayoutParams(
@@ -382,7 +458,7 @@ private void buildGridView(List<Map<String, Object>> grid) {
             row.addView(leftCard, leftParams);
 
             if (rightDriver != null) {
-                View rightCard = buildGridCard(rightDriver);
+                View rightCard = buildGridCard(rightDriver, i + 2, isAlternate);
                 RelativeLayout.LayoutParams rightParams = new RelativeLayout.LayoutParams(
                         cardWidth, ViewGroup.LayoutParams.WRAP_CONTENT);
                 rightParams.addRule(RelativeLayout.ALIGN_PARENT_END);
@@ -394,25 +470,55 @@ private void buildGridView(List<Map<String, Object>> grid) {
         }
     }
 
-    private View buildGridCard(Map<String, Object> driver) {
-        View card = LayoutInflater.from(this).inflate(R.layout.item_grid_position, null);
+    private View buildGridCard(Map<String, Object> driver, int gridPosition, boolean isAlternate) {
+        MaterialCardView card = (MaterialCardView) LayoutInflater.from(this)
+                .inflate(R.layout.item_grid_position, null);
 
-        int position = driver.get("position") instanceof Number
-                ? ((Number) driver.get("position")).intValue() : 0;
-        String code      = strVal(driver.get("name_acronym"), "???");
-        String team      = strVal(driver.get("team_name"), "");
-        String colour    = strVal(driver.get("team_colour"), "#FFFFFF");
-        String headshot  = strVal(driver.get("headshot_url"), null);
+        String code     = strVal(driver.get("name_acronym"), "???");
+        String team     = strVal(driver.get("team_name"), "");
+        String colour   = strVal(driver.get("team_colour"), "FFFFFF");
+        if (colour != null && !colour.startsWith("#")) colour = "#" + colour;
+        String headshot = strVal(driver.get("headshot_url"), null);
 
-        ((TextView) card.findViewById(R.id.tv_grid_position)).setText("P" + position);
+        ((TextView) card.findViewById(R.id.tv_grid_position)).setText("P" + gridPosition);
         ((TextView) card.findViewById(R.id.tv_grid_code)).setText(code);
         ((TextView) card.findViewById(R.id.tv_grid_team)).setText(team);
 
+        // alternating card background
+        card.setCardBackgroundColor(ContextCompat.getColor(this,
+                isAlternate ? R.color.bg_dark : R.color.bg_surface));
+
+        // team colour left border
         try {
-            int base = Color.parseColor(colour);
-            card.setBackgroundColor(Color.argb(25,
-                    Color.red(base), Color.green(base), Color.blue(base)));
+            View border = card.findViewById(R.id.view_team_border);
+            GradientDrawable bd = new GradientDrawable();
+            bd.setColor(Color.parseColor(colour));
+            border.setBackground(bd);
         } catch (Exception ignored) {}
+
+        // P1 gold border/glow
+        if (gridPosition == 1) {
+            card.setStrokeColor(Color.parseColor("#FFD700"));
+            card.setStrokeWidth(dpToPx(1));
+        }
+
+        // position change vs qualifying
+        if (!qualiPositionMap.isEmpty()) {
+            Integer qualiPos = qualiPositionMap.get(code);
+            if (qualiPos != null) {
+                int change = qualiPos - gridPosition;
+                TextView tvChange = card.findViewById(R.id.tv_position_change);
+                if (change > 0) {
+                    tvChange.setText("▲" + change);
+                    tvChange.setTextColor(Color.parseColor("#4CAF50"));
+                    tvChange.setVisibility(View.VISIBLE);
+                } else if (change < 0) {
+                    tvChange.setText("▼" + Math.abs(change));
+                    tvChange.setTextColor(Color.parseColor("#F44336"));
+                    tvChange.setVisibility(View.VISIBLE);
+                }
+            }
+        }
 
         if (headshot != null && !headshot.isEmpty()) {
             Glide.with(this)
@@ -443,7 +549,6 @@ private void buildGridView(List<Map<String, Object>> grid) {
         try { return Double.parseDouble(val.toString()); } catch (Exception e) { return 0; }
     }
 
-    // Handle back button in toolbar
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {

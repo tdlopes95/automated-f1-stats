@@ -120,7 +120,120 @@
         app:tabTextColor="@color/text_secondary"
         app:tabSelectedTextColor="@color/text_primary"
         app:tabIndicatorColor="@color/f1_red"
-        app:tabMode="scrollable" />
+        app:tabIndicatorFullWidth="false"
+        app:tabMode="scrollable"
+        app:tabGravity="start"
+        app:tabPaddingStart="12dp"
+        app:tabPaddingEnd="12dp"
+        app:tabTextAppearance="@style/TabTextAppearance" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#2A2A2A" />
+
+    <!-- Sticky strategy header (legend + lap axis) -->
+    <LinearLayout
+        android:id="@+id/ll_strategy_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/bg_surface"
+        android:visibility="gone">
+
+        <!-- Legend row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="2dp"
+            android:gravity="center_vertical">
+
+            <!-- spacer matching finish-pos col (28dp) + driver col (46dp) -->
+            <View android:layout_width="74dp" android:layout_height="1dp" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <View android:id="@+id/strategy_dot_soft"
+                    android:layout_width="8dp" android:layout_height="8dp"
+                    android:layout_marginEnd="3dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="S" android:textColor="@color/text_hint" android:textSize="10sp"
+                    android:layout_marginEnd="8dp" />
+
+                <View android:id="@+id/strategy_dot_medium"
+                    android:layout_width="8dp" android:layout_height="8dp"
+                    android:layout_marginEnd="3dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="M" android:textColor="@color/text_hint" android:textSize="10sp"
+                    android:layout_marginEnd="8dp" />
+
+                <View android:id="@+id/strategy_dot_hard"
+                    android:layout_width="8dp" android:layout_height="8dp"
+                    android:layout_marginEnd="3dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="H" android:textColor="@color/text_hint" android:textSize="10sp"
+                    android:layout_marginEnd="8dp" />
+
+                <View android:id="@+id/strategy_dot_inter"
+                    android:layout_width="8dp" android:layout_height="8dp"
+                    android:layout_marginEnd="3dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="I" android:textColor="@color/text_hint" android:textSize="10sp"
+                    android:layout_marginEnd="8dp" />
+
+                <View android:id="@+id/strategy_dot_wet"
+                    android:layout_width="8dp" android:layout_height="8dp"
+                    android:layout_marginEnd="3dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="W" android:textColor="@color/text_hint" android:textSize="10sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Lap axis row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="4dp">
+
+            <View android:layout_width="80dp" android:layout_height="1dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lap 1"
+                android:textColor="@color/text_hint"
+                android:textSize="9sp" />
+
+            <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/tv_lap_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lap ?"
+                android:textColor="@color/text_hint"
+                android:textSize="9sp" />
+
+        </LinearLayout>
+
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#1AFFFFFF" />
+
+    </LinearLayout>
 
     <!-- Content area: RecyclerView tabs or Grid tab -->
     <FrameLayout

@@ -6,44 +6,44 @@
     android:orientation="vertical"
     android:background="@color/bg_dark">
 
-    <!-- Season selector -->
+    <!-- Season picker -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:background="@color/bg_surface"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
-        android:focusable="false"
-        android:clickable="false"
-        android:gravity="center_vertical">
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:gravity="center_vertical|end">
+
+        <ImageButton
+            android:id="@+id/btn_prev_year"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_chevron_left"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Previous year"
+            android:tint="@color/text_secondary" />
 
         <TextView
-            android:text="Season"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:layout_width="wrap_content"
+            android:id="@+id/tv_selected_year"
+            android:layout_width="52dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp" />
+            android:gravity="center"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/spinner_layout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="120dp"
-            android:layout_height="wrap_content"
-            android:hint="Season">
-
-            <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                android:id="@+id/spinner_season_results"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none"
-                android:textColor="@color/text_primary"
-                android:textSize="14sp" />
-
-        </com.google.android.material.textfield.TextInputLayout>
+        <ImageButton
+            android:id="@+id/btn_next_year"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_chevron_right"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Next year"
+            android:tint="@color/text_secondary" />
 
     </LinearLayout>
 

@@ -1,7 +1,11 @@
 package com.f1stats.ui.home;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.style.RelativeSizeSpan;
 import java.util.Locale;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,6 +24,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.f1stats.DateHelper;
+import com.f1stats.DriverHelper;
 import com.f1stats.HomeCacheManager;
 import com.f1stats.R;
 import com.f1stats.SeasonHelper;
@@ -36,15 +41,22 @@ public class HomeFragment extends Fragment {
     private HomeCacheManager cache;
     private CountDownTimer countDownTimer;
 
-    private TextView tvNextRaceName, tvNextRaceCircuit, tvNextRaceDate;
+    private TextView tvNextRaceName, tvNextRaceCircuit, tvNextRaceDate, tvNextRaceFlag;
     private TextView tvCountdown;
     private TextView tvLeaderName, tvLeaderTeam, tvLeaderPoints;
     private TextView tvLastWinner, tvLastRaceName, tvLastRaceTeam;
     private TextView tvLeaderTitle, tvLeaderGap;
     private ImageView ivNextRaceCircuit;
+    private ImageView ivLeaderHeadshot, ivLastWinnerHeadshot;
+    private View viewLeaderColour, viewLastWinnerColour;
+    private LinearLayout llSessionTimes;
     private ShimmerFrameLayout shimmerLayout;
     private SwipeRefreshLayout swipeRefresh;
     private LinearLayout layoutError;
+
+    private String leaderCode = null;
+    private String winnerCode = null;
+
     private boolean nextRaceLoaded   = false;
     private boolean standingsLoaded  = false;
     private boolean lastWinnerLoaded = false;
@@ -65,6 +77,7 @@ public class HomeFragment extends Fragment {
         tvNextRaceName    = view.findViewById(R.id.tv_next_race_name);
         tvNextRaceCircuit = view.findViewById(R.id.tv_next_race_circuit);
         tvNextRaceDate    = view.findViewById(R.id.tv_next_race_date);
+        tvNextRaceFlag    = view.findViewById(R.id.tv_next_race_flag);
         tvCountdown       = view.findViewById(R.id.tv_countdown);
         tvLeaderName      = view.findViewById(R.id.tv_leader_name);
         tvLeaderTeam      = view.findViewById(R.id.tv_leader_team);
@@ -72,10 +85,15 @@ public class HomeFragment extends Fragment {
         tvLastWinner      = view.findViewById(R.id.tv_last_winner);
         tvLastRaceName    = view.findViewById(R.id.tv_last_race_name);
         tvLastRaceTeam    = view.findViewById(R.id.tv_last_race_team);
-        tvLeaderTitle       = view.findViewById(R.id.tv_leader_title);
-        tvLeaderGap         = view.findViewById(R.id.tv_leader_gap);
-        ivNextRaceCircuit   = view.findViewById(R.id.iv_next_race_circuit);
-        shimmerLayout       = view.findViewById(R.id.shimmer_layout);
+        tvLeaderTitle     = view.findViewById(R.id.tv_leader_title);
+        tvLeaderGap       = view.findViewById(R.id.tv_leader_gap);
+        ivNextRaceCircuit    = view.findViewById(R.id.iv_next_race_circuit);
+        ivLeaderHeadshot     = view.findViewById(R.id.iv_leader_headshot);
+        ivLastWinnerHeadshot = view.findViewById(R.id.iv_last_winner_headshot);
+        viewLeaderColour     = view.findViewById(R.id.view_leader_colour);
+        viewLastWinnerColour = view.findViewById(R.id.view_last_winner_colour);
+        llSessionTimes    = view.findViewById(R.id.ll_session_times);
+        shimmerLayout     = view.findViewById(R.id.shimmer_layout);
         swipeRefresh      = view.findViewById(R.id.swipe_refresh_home);
         layoutError       = view.findViewById(R.id.layout_error);
 
@@ -98,11 +116,9 @@ public class HomeFragment extends Fragment {
         viewModel = new ViewModelProvider(requireActivity()).get(F1ViewModel.class);
         observeViewModel();
 
-        // Show cached data instantly, skip skeleton if cache exists
         if (cache.hasCache()) {
             loadFromCache();
             showContent();
-            // Still fetch fresh data silently in background
             fetchData();
         } else {
             showSkeleton();
@@ -113,7 +129,6 @@ public class HomeFragment extends Fragment {
     // ── Cache ─────────────────────────────────────────────────────────────────
 
     private void loadFromCache() {
-        // Leader
         tvLeaderName.setText(cache.loadLeaderName());
         tvLeaderTeam.setText(cache.loadLeaderTeam());
         tvLeaderPoints.setText(cache.loadLeaderPoints());
@@ -127,19 +142,19 @@ public class HomeFragment extends Fragment {
             tvLeaderGap.setVisibility(View.GONE);
         }
 
-        // Last winner
         tvLastWinner.setText(cache.loadLastWinner());
         tvLastRaceTeam.setText(cache.loadLastTeam());
         tvLastRaceName.setText(cache.loadLastRaceName());
 
-        // Next race
         Map<String, Object> race = cache.loadNextRace();
         if (race != null) {
             tvNextRaceName.setText(getString(race, "race_name", ""));
             tvNextRaceCircuit.setText(getString(race, "circuit", ""));
+            @SuppressWarnings("unchecked")
             List<Map<String, Object>> sessions =
                     (List<Map<String, Object>>) race.get("sessions");
             if (sessions != null) {
+                buildSessionTimes(sessions);
                 for (Map<String, Object> session : sessions) {
                     if ("Race".equals(session.get("name"))) {
                         String dateStr = (String) session.get("datetime");
@@ -158,7 +173,6 @@ public class HomeFragment extends Fragment {
         shimmerLayout.stopShimmer();
         shimmerLayout.setVisibility(View.GONE);
         swipeRefresh.setVisibility(View.VISIBLE);
-        // Mark all as loaded so checkAllLoaded() transitions correctly
         nextRaceLoaded   = true;
         standingsLoaded  = true;
         lastWinnerLoaded = true;
@@ -194,12 +208,10 @@ public class HomeFragment extends Fragment {
             shimmerLayout.stopShimmer();
             shimmerLayout.setVisibility(View.GONE);
             swipeRefresh.setVisibility(View.VISIBLE);
-            // Check BEFORE setting to false
             boolean wasRefreshing = swipeRefresh.isRefreshing();
             swipeRefresh.setRefreshing(false);
             if (wasRefreshing) {
-                com.google.android.material.snackbar.Snackbar
-                        .make(requireView(), "Refresh OK", Snackbar.LENGTH_SHORT)
+                Snackbar.make(requireView(), "Refresh OK", Snackbar.LENGTH_SHORT)
                         .setAnchorView(requireActivity().findViewById(R.id.bottom_navigation))
                         .show();
             }
@@ -214,9 +226,12 @@ public class HomeFragment extends Fragment {
             if (race == null) return;
             tvNextRaceName.setText(getString(race, "race_name", "Unknown Race"));
             tvNextRaceCircuit.setText(getString(race, "circuit", ""));
+            tvNextRaceFlag.setText(DriverHelper.getFlagForCountry(getString(race, "country", "")));
+            @SuppressWarnings("unchecked")
             List<Map<String, Object>> sessions =
                     (List<Map<String, Object>>) race.get("sessions");
             if (sessions != null) {
+                buildSessionTimes(sessions);
                 for (Map<String, Object> session : sessions) {
                     if ("Race".equals(session.get("name"))) {
                         String dateStr = (String) session.get("datetime");
@@ -250,6 +265,12 @@ public class HomeFragment extends Fragment {
             } else {
                 tvLeaderGap.setVisibility(View.GONE);
             }
+
+            applyTeamColour(viewLeaderColour, team);
+            leaderCode = leader.getDriver() != null ? leader.getDriver().getCode() : null;
+            loadHeadshot(ivLeaderHeadshot, leaderCode,
+                    viewModel.getDriverHeadshotMap().getValue());
+
             standingsLoaded = true;
             checkAllLoaded();
         });
@@ -259,7 +280,6 @@ public class HomeFragment extends Fragment {
                 tvLeaderTitle.setText(started != null && started ?
                         "CHAMPIONSHIP LEADER" : "LAST SEASON CHAMPION");
             }
-            // Save leader to cache with latest values
             String name   = tvLeaderName.getText() != null ? tvLeaderName.getText().toString() : "";
             String team   = tvLeaderTeam.getText() != null ? tvLeaderTeam.getText().toString() : "";
             String points = tvLeaderPoints.getText() != null ? tvLeaderPoints.getText().toString() : "";
@@ -278,6 +298,12 @@ public class HomeFragment extends Fragment {
                     winner.getConstructor().getName() : "";
             tvLastWinner.setText(winnerName);
             tvLastRaceTeam.setText(team);
+
+            applyTeamColour(viewLastWinnerColour, team);
+            winnerCode = winner.getDriver() != null ? winner.getDriver().getCode() : null;
+            loadHeadshot(ivLastWinnerHeadshot, winnerCode,
+                    viewModel.getDriverHeadshotMap().getValue());
+
             lastWinnerLoaded = true;
             checkAllLoaded();
         });
@@ -285,7 +311,6 @@ public class HomeFragment extends Fragment {
         viewModel.getLastRaceName().observe(getViewLifecycleOwner(), raceName -> {
             if (raceName != null && !raceName.isEmpty()) {
                 tvLastRaceName.setText(raceName);
-                // Save last winner once race name arrives
                 String winnerName = tvLastWinner.getText() != null ?
                         tvLastWinner.getText().toString() : "";
                 String team = tvLastRaceTeam.getText() != null ?
@@ -306,7 +331,6 @@ public class HomeFragment extends Fragment {
                         || meetingName.contains(nextRaceName) || nextRaceName.contains(meetingName))) {
                     Object img = meeting.get("circuit_image");
                     if (img != null && !img.toString().isEmpty()) {
-                        ivNextRaceCircuit.setVisibility(View.VISIBLE);
                         Glide.with(requireContext()).load(img.toString()).into(ivNextRaceCircuit);
                     }
                     break;
@@ -314,12 +338,17 @@ public class HomeFragment extends Fragment {
             }
         });
 
+        viewModel.getDriverHeadshotMap().observe(getViewLifecycleOwner(), map -> {
+            if (map == null) return;
+            loadHeadshot(ivLeaderHeadshot, leaderCode, map);
+            loadHeadshot(ivLastWinnerHeadshot, winnerCode, map);
+        });
+
         viewModel.getHomeError().observe(getViewLifecycleOwner(), error -> {
             if (error != null) {
                 failCount++;
                 swipeRefresh.setRefreshing(false);
                 if (failCount >= 3) {
-                    // Only show error screen if we have no cached data to show
                     if (!cache.hasCache()) {
                         shimmerLayout.stopShimmer();
                         shimmerLayout.setVisibility(View.GONE);
@@ -334,6 +363,87 @@ public class HomeFragment extends Fragment {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private void applyTeamColour(View strip, String teamName) {
+        if (strip == null || teamName == null) return;
+        Map<String, String> colours = new java.util.HashMap<>();
+        colours.put("Red Bull",     "#3671C6");
+        colours.put("Ferrari",      "#E8002D");
+        colours.put("Mercedes",     "#27F4D2");
+        colours.put("McLaren",      "#FF8000");
+        colours.put("Aston Martin", "#229971");
+        colours.put("Alpine",       "#FF87BC");
+        colours.put("Williams",     "#64C4FF");
+        colours.put("RB",           "#6692FF");
+        colours.put("Haas",         "#B6BABD");
+        colours.put("Audi",         "#B5B5B5");
+        colours.put("Kick Sauber",  "#52E252");
+        colours.put("Sauber",       "#52E252");
+        colours.put("Cadillac",     "#CC0000");
+        String hex = "#FFFFFF";
+        for (Map.Entry<String, String> entry : colours.entrySet()) {
+            if (teamName.contains(entry.getKey())) {
+                hex = entry.getValue();
+                break;
+            }
+        }
+        try {
+            strip.setBackgroundColor(Color.parseColor(hex));
+        } catch (Exception ignored) {}
+    }
+
+    private void loadHeadshot(ImageView iv, String code, Map<String, String> headshotMap) {
+        if (iv == null || code == null || headshotMap == null) return;
+        String url = headshotMap.get(code);
+        if (url != null && !url.isEmpty()) {
+            Glide.with(requireContext())
+                    .load(url)
+                    .circleCrop()
+                    .into(iv);
+        }
+    }
+
+    private void buildSessionTimes(List<Map<String, Object>> sessions) {
+        if (llSessionTimes == null || sessions == null || getContext() == null) return;
+        llSessionTimes.removeAllViews();
+        float density = requireContext().getResources().getDisplayMetrics().density;
+        int topMarginPx = Math.round(4 * density);
+        int colorHint = ContextCompat.getColor(requireContext(), R.color.text_hint);
+        int colorSecondary = ContextCompat.getColor(requireContext(), R.color.text_secondary);
+
+        for (Map<String, Object> session : sessions) {
+            String name    = (String) session.get("name");
+            String dateStr = (String) session.get("datetime");
+            if (name == null || dateStr == null) continue;
+
+            LinearLayout row = new LinearLayout(requireContext());
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            rowParams.topMargin = topMarginPx;
+            row.setLayoutParams(rowParams);
+
+            TextView tvName = new TextView(requireContext());
+            tvName.setLayoutParams(new LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            tvName.setText(name);
+            tvName.setTextSize(13);
+            tvName.setTextColor(colorHint);
+
+            TextView tvTime = new TextView(requireContext());
+            tvTime.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
+            tvTime.setText(DateHelper.formatForDisplay(dateStr, "EEE, HH:mm"));
+            tvTime.setTextSize(13);
+            tvTime.setTextColor(colorSecondary);
+
+            row.addView(tvName);
+            row.addView(tvTime);
+            llSessionTimes.addView(row);
+        }
+    }
 
     private void startCountdown(String isoDateStr) {
         try {
@@ -351,9 +461,11 @@ public class HomeFragment extends Fragment {
                     long days    = millisUntilFinished / (1000 * 60 * 60 * 24);
                     long hours   = (millisUntilFinished % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60);
                     long minutes = (millisUntilFinished % (1000 * 60 * 60)) / (1000 * 60);
-                    long seconds = (millisUntilFinished % (1000 * 60)) / 1000;
-                    tvCountdown.setText(String.format(Locale.getDefault(),
-                            "%dd %02dh %02dm %02ds", days, hours, minutes, seconds));
+                    SpannableStringBuilder sb = new SpannableStringBuilder();
+                    appendCountdownUnit(sb, String.valueOf(days), "d  ");
+                    appendCountdownUnit(sb, String.format(Locale.getDefault(), "%02d", hours), "h  ");
+                    appendCountdownUnit(sb, String.format(Locale.getDefault(), "%02d", minutes), "m");
+                    tvCountdown.setText(sb, TextView.BufferType.SPANNABLE);
                 }
                 @Override
                 public void onFinish() {
@@ -363,6 +475,14 @@ public class HomeFragment extends Fragment {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void appendCountdownUnit(SpannableStringBuilder sb, String number, String unit) {
+        sb.append(number);
+        int start = sb.length();
+        sb.append(unit);
+        sb.setSpan(new RelativeSizeSpan(0.5f), start, sb.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
     private String formatDate(String isoDateStr) {

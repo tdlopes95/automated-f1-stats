@@ -3,61 +3,86 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp"
-    android:paddingTop="10dp"
-    android:paddingBottom="10dp">
+    android:orientation="vertical">
 
-    <!-- Round -->
-    <TextView
-        android:id="@+id/tv_round"
-        android:layout_width="36dp"
+    <!-- Row content -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/text_secondary"
-        android:textSize="12sp"
-        android:gravity="center" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="9dp"
+        android:paddingBottom="9dp">
 
-    <!-- Race name -->
-    <TextView
-        android:id="@+id/tv_race_name"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:textColor="@color/text_primary"
-        android:textSize="14sp"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:maxLines="1"
-        android:ellipsize="end" />
+        <!-- Round number -->
+        <TextView
+            android:id="@+id/tv_round"
+            android:layout_width="28dp"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_hint"
+            android:textSize="11sp"
+            android:gravity="center" />
 
-    <!-- Session badge (Race/Sprint) -->
-    <TextView
-        android:id="@+id/tv_session"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@color/text_tertiary"
-        android:textSize="10sp"
-        android:layout_marginEnd="8dp"
-        android:visibility="gone" />
+        <!-- Race name -->
+        <TextView
+            android:id="@+id/tv_race_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:maxLines="1"
+            android:ellipsize="end" />
 
-    <!-- Position -->
-    <TextView
-        android:id="@+id/tv_position"
-        android:layout_width="32dp"
-        android:layout_height="wrap_content"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:gravity="center" />
+        <!-- Sprint badge -->
+        <TextView
+            android:id="@+id/tv_session"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/status_orange"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="6dp"
+            android:visibility="gone" />
 
-    <!-- Points -->
-    <TextView
-        android:id="@+id/tv_points"
-        android:layout_width="52dp"
-        android:layout_height="wrap_content"
-        android:textColor="@color/text_secondary"
-        android:textSize="12sp"
-        android:gravity="end" />
+        <!-- Fastest lap purple dot -->
+        <View
+            android:id="@+id/v_fastest_lap"
+            android:layout_width="7dp"
+            android:layout_height="7dp"
+            android:background="@drawable/circle_fastest_lap"
+            android:layout_marginEnd="7dp"
+            android:visibility="gone" />
+
+        <!-- Position badge -->
+        <TextView
+            android:id="@+id/tv_position"
+            android:layout_width="42dp"
+            android:layout_height="22dp"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <!-- Points right-aligned -->
+        <TextView
+            android:id="@+id/tv_points"
+            android:layout_width="52dp"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:gravity="end"
+            android:layout_marginStart="6dp" />
+
+    </LinearLayout>
+
+    <!-- Row divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="@color/bg_divider" />
 
 </LinearLayout>

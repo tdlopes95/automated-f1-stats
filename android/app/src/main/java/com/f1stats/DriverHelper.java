@@ -7,6 +7,42 @@ public class DriverHelper {
 
     // Nationality → flag emoji
     private static final Map<String, String> FLAGS = new HashMap<>();
+
+    // Country name → flag emoji (for circuit/race locations)
+    private static final Map<String, String> COUNTRY_FLAGS = new HashMap<>();
+    static {
+        COUNTRY_FLAGS.put("Australia",      "🇦🇺");
+        COUNTRY_FLAGS.put("Bahrain",        "🇧🇭");
+        COUNTRY_FLAGS.put("Saudi Arabia",   "🇸🇦");
+        COUNTRY_FLAGS.put("Japan",          "🇯🇵");
+        COUNTRY_FLAGS.put("China",          "🇨🇳");
+        COUNTRY_FLAGS.put("USA",            "🇺🇸");
+        COUNTRY_FLAGS.put("United States",  "🇺🇸");
+        COUNTRY_FLAGS.put("Italy",          "🇮🇹");
+        COUNTRY_FLAGS.put("Monaco",         "🇲🇨");
+        COUNTRY_FLAGS.put("Spain",          "🇪🇸");
+        COUNTRY_FLAGS.put("Canada",         "🇨🇦");
+        COUNTRY_FLAGS.put("Austria",        "🇦🇹");
+        COUNTRY_FLAGS.put("United Kingdom", "🇬🇧");
+        COUNTRY_FLAGS.put("UK",             "🇬🇧");
+        COUNTRY_FLAGS.put("Hungary",        "🇭🇺");
+        COUNTRY_FLAGS.put("Belgium",        "🇧🇪");
+        COUNTRY_FLAGS.put("Netherlands",    "🇳🇱");
+        COUNTRY_FLAGS.put("Singapore",      "🇸🇬");
+        COUNTRY_FLAGS.put("Mexico",         "🇲🇽");
+        COUNTRY_FLAGS.put("Brazil",         "🇧🇷");
+        COUNTRY_FLAGS.put("Qatar",          "🇶🇦");
+        COUNTRY_FLAGS.put("UAE",            "🇦🇪");
+        COUNTRY_FLAGS.put("Abu Dhabi",      "🇦🇪");
+        COUNTRY_FLAGS.put("Azerbaijan",     "🇦🇿");
+        COUNTRY_FLAGS.put("France",         "🇫🇷");
+        COUNTRY_FLAGS.put("Germany",        "🇩🇪");
+        COUNTRY_FLAGS.put("Portugal",       "🇵🇹");
+        COUNTRY_FLAGS.put("Turkey",         "🇹🇷");
+        COUNTRY_FLAGS.put("South Korea",    "🇰🇷");
+        COUNTRY_FLAGS.put("India",          "🇮🇳");
+        COUNTRY_FLAGS.put("Russia",         "🇷🇺");
+    }
     static {
         FLAGS.put("British",        "🇬🇧");
         FLAGS.put("Dutch",          "🇳🇱");
@@ -40,6 +76,11 @@ public class DriverHelper {
     public static String getFlag(String nationality) {
         if (nationality == null) return "";
         return FLAGS.getOrDefault(nationality, "🏁");
+    }
+
+    public static String getFlagForCountry(String country) {
+        if (country == null) return "";
+        return COUNTRY_FLAGS.getOrDefault(country, "");
     }
 
     // Driver number styled display e.g. "#44"
