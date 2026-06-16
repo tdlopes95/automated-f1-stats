@@ -23,6 +23,16 @@ public class QualifyingAdapter extends RecyclerView.Adapter<QualifyingAdapter.Vi
     private List<QualifyingResult> results = new ArrayList<>();
     private QualiSession session = QualiSession.ALL;
 
+    public interface OnDriverClickListener {
+        void onDriverClick(QualifyingResult result);
+    }
+
+    private OnDriverClickListener driverClickListener;
+
+    public void setOnDriverClickListener(OnDriverClickListener listener) {
+        this.driverClickListener = listener;
+    }
+
     public void setResults(List<QualifyingResult> results, QualiSession session) {
         this.results = results;
         this.session = session;
@@ -39,7 +49,11 @@ public class QualifyingAdapter extends RecyclerView.Adapter<QualifyingAdapter.Vi
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        holder.bind(results.get(position), session);
+        QualifyingResult result = results.get(position);
+        holder.bind(result, session);
+        holder.tvDriverName.setOnClickListener(v -> {
+            if (driverClickListener != null) driverClickListener.onDriverClick(result);
+        });
     }
 
     @Override

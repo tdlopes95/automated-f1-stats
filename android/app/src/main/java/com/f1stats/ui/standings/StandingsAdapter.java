@@ -35,6 +35,16 @@ public class StandingsAdapter extends RecyclerView.Adapter<StandingsAdapter.View
     // Podium map: driverId → podium count
     private Map<String, Integer> podiumMap = new java.util.HashMap<>();
 
+    public interface OnDriverClickListener {
+        void onDriverClick(DriverStanding standing);
+    }
+
+    private OnDriverClickListener driverClickListener;
+
+    public void setOnDriverClickListener(OnDriverClickListener listener) {
+        this.driverClickListener = listener;
+    }
+
     public void setDriverStandings(List<DriverStanding> data) {
         this.driverStandings = data;
         this.mode = MODE_DRIVERS;
@@ -75,7 +85,11 @@ public class StandingsAdapter extends RecyclerView.Adapter<StandingsAdapter.View
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         switch (mode) {
             case MODE_DRIVERS:
-                holder.bindDriver(driverStandings.get(position), dnfMap, podiumMap);
+                DriverStanding standing = driverStandings.get(position);
+                holder.bindDriver(standing, dnfMap, podiumMap);
+                holder.itemView.setOnClickListener(v -> {
+                    if (driverClickListener != null) driverClickListener.onDriverClick(standing);
+                });
                 break;
             case MODE_CONSTRUCTORS:
                 holder.bindConstructor(constructorStandings.get(position));

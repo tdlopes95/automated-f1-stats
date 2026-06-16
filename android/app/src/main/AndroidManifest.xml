@@ -19,6 +19,10 @@
             android:parentActivityName=".MainActivity"
             android:theme="@style/Theme.F1Stats" />
         <activity
+            android:name=".DriverProfileActivity"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.F1Stats" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.App.SplashScreen">

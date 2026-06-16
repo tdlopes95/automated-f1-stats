@@ -1,5 +1,7 @@
 package com.f1stats;
 
+import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
@@ -15,6 +17,8 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.bumptech.glide.Glide;
 
+import com.f1stats.models.QualifyingResult;
+import com.f1stats.models.RaceResult;
 import com.f1stats.ui.results.PitStopAdapter;
 import com.f1stats.ui.results.ResultsAdapter;
 import com.f1stats.ui.results.QualifyingAdapter;
@@ -83,6 +87,13 @@ public class RoundDetailActivity extends AppCompatActivity {
         qualifyingAdapter = new QualifyingAdapter();
         recyclerView.setAdapter(resultsAdapter);
 
+        resultsAdapter.setOnDriverClickListener(result -> {
+            if (result.getDriver() != null) launchDriverProfile(result);
+        });
+        qualifyingAdapter.setOnDriverClickListener(result -> {
+            if (result.getDriver() != null) launchDriverProfile(result);
+        });
+
         swipeRefresh.setColorSchemeColors(ContextCompat.getColor(this, R.color.f1_red));
         swipeRefresh.setBackgroundColor(ContextCompat.getColor(this, R.color.bg_dark));
         swipeRefresh.setOnRefreshListener(this::loadCurrentTab);
@@ -138,6 +149,62 @@ public class RoundDetailActivity extends AppCompatActivity {
                 viewModel.fetchPitStopsForRace(year, round);
                 break;
         }
+    }
+
+    private void launchDriverProfile(RaceResult result) {
+        RaceResult.Driver driver = result.getDriver();
+        Intent intent = new Intent(this, DriverProfileActivity.class);
+        intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_ID, driver.getDriverId());
+        intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_CODE, driver.getCode());
+        intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_NAME, driver.getFullName());
+        intent.putExtra(DriverProfileActivity.EXTRA_YEAR, year);
+        if (result.getConstructor() != null) {
+            String team = result.getConstructor().getName();
+            intent.putExtra(DriverProfileActivity.EXTRA_TEAM_NAME, team);
+            intent.putExtra(DriverProfileActivity.EXTRA_TEAM_COLOUR, getTeamColour(team));
+        }
+        intent.putExtra(DriverProfileActivity.EXTRA_NATIONALITY, driver.getNationality());
+        intent.putExtra(DriverProfileActivity.EXTRA_NUMBER, driver.getNumber());
+        startActivity(intent);
+    }
+
+    private void launchDriverProfile(QualifyingResult result) {
+        RaceResult.Driver driver = result.getDriver();
+        Intent intent = new Intent(this, DriverProfileActivity.class);
+        intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_ID, driver.getDriverId());
+        intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_CODE, driver.getCode());
+        intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_NAME, driver.getFullName());
+        intent.putExtra(DriverProfileActivity.EXTRA_YEAR, year);
+        if (result.getConstructor() != null) {
+            String team = result.getConstructor().getName();
+            intent.putExtra(DriverProfileActivity.EXTRA_TEAM_NAME, team);
+            intent.putExtra(DriverProfileActivity.EXTRA_TEAM_COLOUR, getTeamColour(team));
+        }
+        intent.putExtra(DriverProfileActivity.EXTRA_NATIONALITY, driver.getNationality());
+        intent.putExtra(DriverProfileActivity.EXTRA_NUMBER, driver.getNumber());
+        startActivity(intent);
+    }
+
+    private static String getTeamColour(String teamName) {
+        if (teamName == null) return "#FFFFFF";
+        java.util.Map<String, String> colours = new java.util.HashMap<>();
+        colours.put("Red Bull",     "#3671C6");
+        colours.put("Ferrari",      "#E8002D");
+        colours.put("Mercedes",     "#27F4D2");
+        colours.put("McLaren",      "#FF8000");
+        colours.put("Aston Martin", "#229971");
+        colours.put("Alpine",       "#FF87BC");
+        colours.put("Williams",     "#64C4FF");
+        colours.put("RB",           "#6692FF");
+        colours.put("Haas",         "#B6BABD");
+        colours.put("Audi",         "#B5B5B5");
+        colours.put("Kick Sauber",  "#52E252");
+        colours.put("Sauber",       "#52E252");
+        colours.put("Cadillac",     "#CC0000");
+        for (java.util.Map.Entry<String, String> e : colours.entrySet()) {
+            if (teamName.contains(e.getKey())) return e.getValue();
+        }
+        return "#FFFFFF";
     }
 
     private void observeViewModel() {

@@ -36,6 +36,16 @@ public class ResultsAdapter extends RecyclerView.Adapter<ResultsAdapter.ViewHold
         TEAM_COLOURS.put("Cadillac",      "#CC0000");
     }
 
+    public interface OnDriverClickListener {
+        void onDriverClick(RaceResult result);
+    }
+
+    private OnDriverClickListener driverClickListener;
+
+    public void setOnDriverClickListener(OnDriverClickListener listener) {
+        this.driverClickListener = listener;
+    }
+
     public void setResults(List<RaceResult> results) {
         this.results = results;
         notifyDataSetChanged();
@@ -51,7 +61,11 @@ public class ResultsAdapter extends RecyclerView.Adapter<ResultsAdapter.ViewHold
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        holder.bind(results.get(position));
+        RaceResult result = results.get(position);
+        holder.bind(result);
+        holder.tvDriverName.setOnClickListener(v -> {
+            if (driverClickListener != null) driverClickListener.onDriverClick(result);
+        });
     }
 
     @Override

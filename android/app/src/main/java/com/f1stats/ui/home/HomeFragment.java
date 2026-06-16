@@ -2,6 +2,7 @@ package com.f1stats.ui.home;
 
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import java.util.Locale;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
