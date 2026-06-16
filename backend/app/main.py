@@ -18,6 +18,14 @@ from .database import Database
 from .jolpica_client import JolpicaClient
 from .openf1_client import OpenF1Client
 from .scheduler import F1Scheduler
+from .models import (
+    RaceSchedule,
+    ResultsResponse,
+    DriverStandingsResponse,
+    ConstructorStandingsResponse,
+    MeetingInfo,
+    DriverInfo,
+)
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -167,7 +175,7 @@ async def root():
 
 # ── Schedule ──────────────────────────────────────────────────────────────────
 
-@app.get("/schedule")
+@app.get("/schedule", response_model=list[RaceSchedule])
 @limiter.limit("30/minute")
 async def get_schedule(request: Request, year: Optional[int] = None):
     cache_key = f"schedule_{year or 'current'}"
@@ -302,7 +310,7 @@ async def get_latest_results(
     raise HTTPException(status_code=404, detail="No results found")
 
 
-@app.get("/results/{year}/{round}")
+@app.get("/results/{year}/{round}", response_model=ResultsResponse)
 @limiter.limit("60/minute")
 async def get_results(
     request: Request,
@@ -344,7 +352,7 @@ async def get_results(
 
 # ── Standings ─────────────────────────────────────────────────────────────────
 
-@app.get("/standings/drivers")
+@app.get("/standings/drivers", response_model=DriverStandingsResponse)
 @limiter.limit("30/minute")
 async def get_driver_standings(request: Request, year: Optional[int] = None):
     current_year = datetime.now(timezone.utc).year
@@ -405,7 +413,7 @@ async def get_driver_standings(request: Request, year: Optional[int] = None):
     return {"source": "live", "season_started": season_started, "standings": standings}
 
 
-@app.get("/standings/constructors")
+@app.get("/standings/constructors", response_model=ConstructorStandingsResponse)
 @limiter.limit("30/minute")
 async def get_constructor_standings(request: Request, year: Optional[int] = None):
     current_year = datetime.now(timezone.utc).year
@@ -593,7 +601,7 @@ async def get_session_key(request: Request, year: int, round: int):
 
 # ── Meetings (OpenF1) ─────────────────────────────────────────────────────────
 
-@app.get("/meetings")
+@app.get("/meetings", response_model=list[MeetingInfo])
 @limiter.limit("30/minute")
 async def get_meetings(request: Request, year: Optional[int] = None):
     current_year = datetime.now(timezone.utc).year
@@ -627,7 +635,7 @@ async def get_meetings(request: Request, year: Optional[int] = None):
 
 # ── Drivers (OpenF1 headshots) ────────────────────────────────────────────────
 
-@app.get("/drivers/{year}")
+@app.get("/drivers/{year}", response_model=list[DriverInfo])
 @limiter.limit("30/minute")
 async def get_drivers_by_year(request: Request, year: int):
     current_year = datetime.now(timezone.utc).year

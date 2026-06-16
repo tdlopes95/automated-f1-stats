@@ -4,7 +4,7 @@ Pydantic models for API responses
 """
 
 from pydantic import BaseModel
-from typing import Optional
+from typing import Any, Optional
 from datetime import datetime, timezone
 
 
@@ -170,3 +170,73 @@ class LiveSessionState(BaseModel):
     drivers: list[LiveDriverState] = []
     weather: Optional[Weather] = None
     last_updated: datetime = datetime.now(timezone.utc)
+
+
+# ── Schedule ───────────────────────────────────────────────────────────────────
+
+class SessionEntry(BaseModel):
+    name: str
+    datetime: str
+
+
+class RaceSchedule(BaseModel):
+    round: int
+    race_name: Optional[str] = None
+    circuit: Optional[str] = None
+    country: Optional[str] = None
+    locality: Optional[str] = None
+    sessions: list[SessionEntry] = []
+
+
+# ── Results response wrapper ───────────────────────────────────────────────────
+
+class ResultsResponse(BaseModel):
+    source: str
+    year: int
+    round: int
+    session_type: Optional[str] = None
+    race_name: Optional[str] = None
+    results: list[Any] = []
+
+
+# ── Standings response wrappers ────────────────────────────────────────────────
+
+class DriverStandingsResponse(BaseModel):
+    source: str
+    season_started: Optional[bool] = None
+    year: Optional[int] = None
+    standings: list[Any] = []
+
+
+class ConstructorStandingsResponse(BaseModel):
+    source: str
+    year: Optional[int] = None
+    standings: list[Any] = []
+
+
+# ── Meeting info (endpoint shape) ──────────────────────────────────────────────
+
+class MeetingInfo(BaseModel):
+    meeting_key: Optional[int] = None
+    meeting_name: Optional[str] = None
+    location: Optional[str] = None
+    country_name: Optional[str] = None
+    country_flag: Optional[str] = None
+    circuit_short_name: Optional[str] = None
+    circuit_type: Optional[str] = None
+    circuit_image: Optional[str] = None
+    gmt_offset: Optional[str] = None
+    date_start: Optional[str] = None
+    year: Optional[int] = None
+
+
+# ── Driver info (endpoint shape) ───────────────────────────────────────────────
+
+class DriverInfo(BaseModel):
+    driver_number: Optional[int] = None
+    name_acronym: Optional[str] = None
+    full_name: Optional[str] = None
+    headshot_url: Optional[str] = None
+    team_name: Optional[str] = None
+    team_colour: Optional[str] = None
+    country_code: Optional[str] = None
