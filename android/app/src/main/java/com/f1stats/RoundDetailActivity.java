@@ -3,10 +3,14 @@ package com.f1stats;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -18,6 +22,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.bumptech.glide.Glide;
+
+import java.util.List;
+import java.util.Map;
 
 import com.f1stats.models.QualifyingResult;
 import com.f1stats.models.RaceResult;
@@ -42,12 +49,14 @@ public class RoundDetailActivity extends AppCompatActivity {
     private PitStopAdapter pitStopAdapter;
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefresh;
+    private ScrollView svGrid;
+    private LinearLayout llGridContainer;
 
     private int round;
     private int year;
 
     private static final String[] TABS = {
-            "Race", "Q1", "Q2", "Q3", "Sprint", "Pit Stops"
+            "Race", "Q1", "Q2", "Q3", "Sprint", "Grid", "Pit Stops"
     };
     private String currentTab = "Race";
     private String currentQualiSession = "Q3";
@@ -90,9 +99,11 @@ public class RoundDetailActivity extends AppCompatActivity {
             Glide.with(this).load(circuitImage).into(ivTrackMap);
         }
 
-        // RecyclerView
-        recyclerView  = findViewById(R.id.rv_round_detail);
-        swipeRefresh  = findViewById(R.id.swipe_refresh_detail);
+        // RecyclerView + grid views
+        recyclerView    = findViewById(R.id.rv_round_detail);
+        swipeRefresh    = findViewById(R.id.swipe_refresh_detail);
+        svGrid          = findViewById(R.id.sv_grid);
+        llGridContainer = findViewById(R.id.ll_grid_container);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         resultsAdapter = new ResultsAdapter();
         pitStopAdapter = new PitStopAdapter();
@@ -133,6 +144,16 @@ public class RoundDetailActivity extends AppCompatActivity {
     }
 
     private void loadCurrentTab() {
+        if ("Grid".equals(currentTab)) {
+            swipeRefresh.setVisibility(View.GONE);
+            svGrid.setVisibility(View.VISIBLE);
+            viewModel.fetchStartingGridForRace(year, round);
+            return;
+        }
+
+        swipeRefresh.setVisibility(View.VISIBLE);
+        svGrid.setVisibility(View.GONE);
+
         switch (currentTab) {
             case "Race":
                 recyclerView.setAdapter(resultsAdapter);
@@ -274,6 +295,99 @@ public class RoundDetailActivity extends AppCompatActivity {
         });
         viewModel.getPitStopsLoading().observe(this, loading ->
                 swipeRefresh.setRefreshing(loading));
+
+        viewModel.getStartingGrid().observe(this, grid -> {
+            if (grid != null && "Grid".equals(currentTab)) {
+                buildGridView(grid);
+            }
+        });
+    }
+
+    private void buildGridView(List<Map<String, Object>> grid) {
+        llGridContainer.removeAllViews();
+
+        if (grid.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText("No starting grid data available for this race.");
+            empty.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+            empty.setPadding(32, 48, 32, 48);
+            empty.setGravity(android.view.Gravity.CENTER);
+            llGridContainer.addView(empty);
+            return;
+        }
+
+        int screenWidth = getResources().getDisplayMetrics().widthPixels
+                - dpToPx(16); // account for container padding
+        int cardWidth = (int) (screenWidth * 0.47);
+        int stagger = dpToPx(20);
+
+        for (int i = 0; i < grid.size(); i += 2) {
+            Map<String, Object> leftDriver  = grid.get(i);
+            Map<String, Object> rightDriver = (i + 1 < grid.size()) ? grid.get(i + 1) : null;
+
+            RelativeLayout row = new RelativeLayout(this);
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            rowParams.bottomMargin = dpToPx(4);
+
+            View leftCard = buildGridCard(leftDriver);
+            int leftId = View.generateViewId();
+            leftCard.setId(leftId);
+            RelativeLayout.LayoutParams leftParams = new RelativeLayout.LayoutParams(
+                    cardWidth, ViewGroup.LayoutParams.WRAP_CONTENT);
+            leftParams.addRule(RelativeLayout.ALIGN_PARENT_START);
+            row.addView(leftCard, leftParams);
+
+            if (rightDriver != null) {
+                View rightCard = buildGridCard(rightDriver);
+                RelativeLayout.LayoutParams rightParams = new RelativeLayout.LayoutParams(
+                        cardWidth, ViewGroup.LayoutParams.WRAP_CONTENT);
+                rightParams.addRule(RelativeLayout.ALIGN_PARENT_END);
+                rightParams.topMargin = stagger;
+                row.addView(rightCard, rightParams);
+            }
+
+            llGridContainer.addView(row, rowParams);
+        }
+    }
+
+    private View buildGridCard(Map<String, Object> driver) {
+        View card = LayoutInflater.from(this).inflate(R.layout.item_grid_position, null);
+
+        int position = driver.get("position") instanceof Number
+                ? ((Number) driver.get("position")).intValue() : 0;
+        String code      = strVal(driver.get("name_acronym"), "???");
+        String team      = strVal(driver.get("team_name"), "");
+        String colour    = strVal(driver.get("team_colour"), "#FFFFFF");
+        String headshot  = strVal(driver.get("headshot_url"), null);
+
+        ((TextView) card.findViewById(R.id.tv_grid_position)).setText("P" + position);
+        ((TextView) card.findViewById(R.id.tv_grid_code)).setText(code);
+        ((TextView) card.findViewById(R.id.tv_grid_team)).setText(team);
+
+        try {
+            int base = Color.parseColor(colour);
+            card.setBackgroundColor(Color.argb(25,
+                    Color.red(base), Color.green(base), Color.blue(base)));
+        } catch (Exception ignored) {}
+
+        if (headshot != null && !headshot.isEmpty()) {
+            Glide.with(this)
+                    .load(headshot)
+                    .circleCrop()
+                    .into((ImageView) card.findViewById(R.id.iv_grid_headshot));
+        }
+
+        return card;
+    }
+
+    private static String strVal(Object val, String fallback) {
+        return (val != null && !val.toString().isEmpty()) ? val.toString() : fallback;
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     private static String formatNum(Object val) {

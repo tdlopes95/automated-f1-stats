@@ -628,3 +628,45 @@ async def get_drivers_by_year(request: Request, year: int):
     else:
         cache_set(cache_key, result)
     return result
+
+
+# ── Starting Grid (OpenF1) ────────────────────────────────────────────────────
+
+@app.get("/starting-grid")
+@limiter.limit("30/minute")
+async def get_starting_grid(request: Request, session_key: int):
+    cache_key = f"starting_grid_{session_key}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+
+    grid_raw = await openf1.get_starting_grid(session_key)
+    drivers_raw = await openf1.get_drivers(session_key)
+
+    driver_lookup = {}
+    for d in drivers_raw:
+        driver_lookup[d["driver_number"]] = {
+            "full_name":    d.get("full_name", ""),
+            "name_acronym": d.get("name_acronym", ""),
+            "team_name":    d.get("team_name", ""),
+            "team_colour":  "#" + d["team_colour"] if d.get("team_colour") else "#FFFFFF",
+            "headshot_url": d.get("headshot_url"),
+        }
+
+    result = []
+    for entry in sorted(grid_raw, key=lambda x: x.get("position", 99)):
+        num = entry.get("driver_number")
+        info = driver_lookup.get(num, {})
+        result.append({
+            "position":     entry.get("position"),
+            "driver_number": num,
+            "full_name":    info.get("full_name", f"Driver {num}"),
+            "name_acronym": info.get("name_acronym", "???"),
+            "team_name":    info.get("team_name", ""),
+            "team_colour":  info.get("team_colour", "#FFFFFF"),
+            "headshot_url": info.get("headshot_url"),
+        })
+
+    if result:
+        cache_set_historical(cache_key, result)
+    return result

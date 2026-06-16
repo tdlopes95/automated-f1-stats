@@ -70,6 +70,10 @@ public class F1ViewModel extends ViewModel {
     private final MutableLiveData<Map<String, Integer>> dnfMap = new MutableLiveData<>();
     private final MutableLiveData<Map<String, Integer>> podiumMap = new MutableLiveData<>();
 
+    // ── Starting Grid ─────────────────────────────────────────────────────────
+    private final MutableLiveData<List<Map<String, Object>>> startingGrid = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> startingGridLoading = new MutableLiveData<>(false);
+
     // ── Driver Headshots ──────────────────────────────────────────────────────
     private final MutableLiveData<Map<String, String>> driverHeadshotMap = new MutableLiveData<>();
 
@@ -358,6 +362,42 @@ public class F1ViewModel extends ViewModel {
         });
     }
 
+    // ── Starting Grid ─────────────────────────────────────────────────────────
+
+    public void fetchStartingGrid(int sessionKey) {
+        startingGridLoading.setValue(true);
+        api.getStartingGrid(sessionKey).enqueue(new Callback<List<Map<String, Object>>>() {
+            @Override
+            public void onResponse(Call<List<Map<String, Object>>> call,
+                                   Response<List<Map<String, Object>>> response) {
+                startingGridLoading.setValue(false);
+                startingGrid.setValue(response.isSuccessful() && response.body() != null
+                        ? response.body() : new ArrayList<>());
+            }
+            @Override
+            public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {
+                startingGridLoading.setValue(false);
+                startingGrid.setValue(new ArrayList<>());
+            }
+        });
+    }
+
+    public void fetchStartingGridForRace(int year, int round) {
+        startingGridLoading.setValue(true);
+        startingGrid.setValue(null);
+        repo.getSessionKey(year, round, new F1Repository.RepositoryCallback<Integer>() {
+            @Override
+            public void onSuccess(Integer sessionKey) {
+                fetchStartingGrid(sessionKey);
+            }
+            @Override
+            public void onError(String error) {
+                startingGridLoading.setValue(false);
+                startingGrid.setValue(new ArrayList<>());
+            }
+        });
+    }
+
     // ── Season Stats ──────────────────────────────────────────────────────────
 
     public void fetchSeasonStats(int year) {
@@ -396,6 +436,9 @@ public class F1ViewModel extends ViewModel {
     public LiveData<Map<String, Integer>> getPodiumMap() { return podiumMap; }
 
     public LiveData<List<Map<String, Object>>> getMeetings() { return meetings; }
+
+    public LiveData<List<Map<String, Object>>> getStartingGrid() { return startingGrid; }
+    public LiveData<Boolean> getStartingGridLoading() { return startingGridLoading; }
 
 
     // ── Private Parsers ───────────────────────────────────────────────────────
