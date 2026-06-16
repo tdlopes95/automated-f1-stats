@@ -18,6 +18,28 @@
         app:subtitleTextColor="@color/text_secondary"
         app:navigationIcon="@drawable/ic_back" />
 
+    <!-- Country flag header -->
+    <LinearLayout
+        android:id="@+id/ll_flag_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:background="@color/bg_surface"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/iv_country_flag"
+            android:layout_width="28dp"
+            android:layout_height="20dp"
+            android:scaleType="fitCenter" />
+
+    </LinearLayout>
+
     <!-- Circuit map header -->
     <ImageView
         android:id="@+id/iv_track_map"

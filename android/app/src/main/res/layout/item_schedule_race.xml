@@ -33,6 +33,14 @@
                 android:textStyle="bold"
                 android:layout_marginEnd="8dp" />
 
+            <ImageView
+                android:id="@+id/iv_country_flag"
+                android:layout_width="28dp"
+                android:layout_height="20dp"
+                android:scaleType="fitCenter"
+                android:layout_marginEnd="8dp"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/tv_race_name"
                 android:layout_width="0dp"

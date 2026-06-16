@@ -67,6 +67,9 @@ public class ResultsFragment extends Fragment {
             if (round.getCircuitImage() != null) {
                 intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT_IMAGE, round.getCircuitImage());
             }
+            if (round.getCountryFlag() != null) {
+                intent.putExtra(RoundDetailActivity.EXTRA_COUNTRY_FLAG, round.getCountryFlag());
+            }
             startActivity(intent);
         });
 
@@ -152,6 +155,8 @@ public class ResultsFragment extends Fragment {
                             || meetingName.contains(raceName) || raceName.contains(meetingName))) {
                         Object img = meeting.get("circuit_image");
                         if (img != null) round.setCircuitImage(img.toString());
+                        Object flag = meeting.get("country_flag");
+                        if (flag != null) round.setCountryFlag(flag.toString());
                         break;
                     }
                 }

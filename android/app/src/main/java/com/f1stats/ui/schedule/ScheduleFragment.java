@@ -89,6 +89,7 @@ public class ScheduleFragment extends Fragment {
                     if (!meetingName.isEmpty() && (meetingName.equals(raceName)
                             || meetingName.contains(raceName) || raceName.contains(meetingName))) {
                         race.put("circuit_image", meeting.get("circuit_image"));
+                        race.put("country_flag", meeting.get("country_flag"));
                         break;
                     }
                 }

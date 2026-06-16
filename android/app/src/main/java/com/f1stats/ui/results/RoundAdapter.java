@@ -3,11 +3,13 @@ package com.f1stats.ui.results;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.f1stats.DateHelper;
 import com.f1stats.R;
 import com.f1stats.models.RoundSchedule;
@@ -55,6 +57,7 @@ public class RoundAdapter extends RecyclerView.Adapter<RoundAdapter.ViewHolder> 
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvRoundNumber, tvRaceName, tvCircuit, tvRaceDate;
+        ImageView ivCountryFlag;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -62,6 +65,7 @@ public class RoundAdapter extends RecyclerView.Adapter<RoundAdapter.ViewHolder> 
             tvRaceName    = itemView.findViewById(R.id.tv_race_name);
             tvCircuit     = itemView.findViewById(R.id.tv_circuit);
             tvRaceDate    = itemView.findViewById(R.id.tv_race_date);
+            ivCountryFlag = itemView.findViewById(R.id.iv_country_flag);
         }
 
         void bind(RoundSchedule round) {
@@ -69,6 +73,14 @@ public class RoundAdapter extends RecyclerView.Adapter<RoundAdapter.ViewHolder> 
             tvRaceName.setText(round.getRaceName());
             tvCircuit.setText(round.getCircuit());
             tvRaceDate.setText(formatDate(round.getRaceDate()));
+
+            String flag = round.getCountryFlag();
+            if (flag != null && !flag.isEmpty()) {
+                ivCountryFlag.setVisibility(View.VISIBLE);
+                Glide.with(itemView.getContext()).load(flag).into(ivCountryFlag);
+            } else {
+                ivCountryFlag.setVisibility(View.GONE);
+            }
         }
 
         private String formatDate(String isoStr) {

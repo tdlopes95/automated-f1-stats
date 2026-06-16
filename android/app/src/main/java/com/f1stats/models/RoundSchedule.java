@@ -11,6 +11,7 @@ public class RoundSchedule {
     private String country;
     private String raceDate;
     private String circuitImage;
+    private String countryFlag;
     private List<Map<String, Object>> sessions;
 
     public RoundSchedule(int round, String raceName, String circuit,
@@ -31,5 +32,7 @@ public class RoundSchedule {
     public String getRaceDate() { return raceDate; }
     public String getCircuitImage() { return circuitImage; }
     public void setCircuitImage(String circuitImage) { this.circuitImage = circuitImage; }
+    public String getCountryFlag() { return countryFlag; }
+    public void setCountryFlag(String countryFlag) { this.countryFlag = countryFlag; }
     public List<Map<String, Object>> getSessions() { return sessions; }
 }

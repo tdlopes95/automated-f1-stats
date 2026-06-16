@@ -46,7 +46,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvRound, tvRaceName, tvCircuit, tvRaceDate, tvExpand;
         LinearLayout llSessions;
-        ImageView ivCircuitImage;
+        ImageView ivCircuitImage, ivCountryFlag;
         boolean expanded = false;
 
         ViewHolder(@NonNull View itemView) {
@@ -58,6 +58,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
             tvExpand       = itemView.findViewById(R.id.tv_expand);
             llSessions     = itemView.findViewById(R.id.ll_sessions);
             ivCircuitImage = itemView.findViewById(R.id.iv_circuit_image);
+            ivCountryFlag  = itemView.findViewById(R.id.iv_country_flag);
         }
 
         @SuppressWarnings("unchecked")
@@ -90,6 +91,15 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
                     tv.setPadding(0, 4, 0, 4);
                     llSessions.addView(tv);
                 }
+            }
+
+            // Country flag
+            String countryFlag = (String) race.get("country_flag");
+            if (countryFlag != null && !countryFlag.isEmpty()) {
+                ivCountryFlag.setVisibility(View.VISIBLE);
+                Glide.with(itemView.getContext()).load(countryFlag).into(ivCountryFlag);
+            } else {
+                ivCountryFlag.setVisibility(View.GONE);
             }
 
             // Circuit image

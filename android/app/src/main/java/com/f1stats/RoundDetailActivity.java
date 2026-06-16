@@ -33,6 +33,7 @@ public class RoundDetailActivity extends AppCompatActivity {
     public static final String EXTRA_RACE_NAME     = "extra_race_name";
     public static final String EXTRA_CIRCUIT       = "extra_circuit";
     public static final String EXTRA_CIRCUIT_IMAGE = "extra_circuit_image";
+    public static final String EXTRA_COUNTRY_FLAG  = "extra_country_flag";
 
     private F1ViewModel viewModel;
     private ResultsAdapter resultsAdapter;
@@ -61,6 +62,7 @@ public class RoundDetailActivity extends AppCompatActivity {
         String raceName     = getIntent().getStringExtra(EXTRA_RACE_NAME);
         String circuit      = getIntent().getStringExtra(EXTRA_CIRCUIT);
         String circuitImage = getIntent().getStringExtra(EXTRA_CIRCUIT_IMAGE);
+        String countryFlag  = getIntent().getStringExtra(EXTRA_COUNTRY_FLAG);
 
         // Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -69,6 +71,14 @@ public class RoundDetailActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle(raceName);
             getSupportActionBar().setSubtitle(circuit);
+        }
+
+        // Country flag header
+        View llFlagHeader = findViewById(R.id.ll_flag_header);
+        ImageView ivCountryFlag = findViewById(R.id.iv_country_flag);
+        if (countryFlag != null && !countryFlag.isEmpty()) {
+            llFlagHeader.setVisibility(View.VISIBLE);
+            Glide.with(this).load(countryFlag).into(ivCountryFlag);
         }
 
         // Circuit map header
