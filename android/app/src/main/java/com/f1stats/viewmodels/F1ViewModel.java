@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel;
 import com.f1stats.F1App;
 import com.f1stats.api.F1ApiClient;
 import com.f1stats.api.F1ApiService;
+import com.f1stats.data.F1Repository;
 import com.f1stats.models.ConstructorStanding;
 import com.f1stats.models.DriverStanding;
 import com.f1stats.models.LiveSession;
@@ -26,6 +27,7 @@ import retrofit2.Response;
 public class F1ViewModel extends ViewModel {
 
     private final F1ApiService api = F1ApiClient.getInstance(F1App.get()).getService();
+    private final F1Repository repo = new F1Repository(F1App.get().getDatabase(), api);
 
     // ── Live Session ──────────────────────────────────────────────────────────
     private final MutableLiveData<LiveSession> liveSession = new MutableLiveData<>();
@@ -69,7 +71,7 @@ public class F1ViewModel extends ViewModel {
     public LiveData<Boolean> getSeasonStarted() { return seasonStarted; }
 
 
-    // ── Live Session ──────────────────────────────────────────────────────────
+    // ── Live Session (no caching — always live) ───────────────────────────────
 
     public void fetchLiveSession() {
         liveLoading.setValue(true);
@@ -121,21 +123,16 @@ public class F1ViewModel extends ViewModel {
 
     public void fetchResults(int year, int round, String sessionType) {
         resultsLoading.setValue(true);
-        api.getResults(year, round, sessionType).enqueue(new Callback<Map<String, Object>>() {
+        repo.getResults(year, round, sessionType, new F1Repository.RepositoryCallback<Map<String, Object>>() {
             @Override
-            public void onResponse(Call<Map<String, Object>> call,
-                                   Response<Map<String, Object>> response) {
+            public void onSuccess(Map<String, Object> data) {
                 resultsLoading.setValue(false);
-                if (response.isSuccessful() && response.body() != null) {
-                    raceResults.setValue(parseRaceResults(response.body()));
-                } else {
-                    resultsError.setValue("Could not load results");
-                }
+                raceResults.setValue(parseRaceResults(data));
             }
             @Override
-            public void onFailure(Call<Map<String, Object>> call, Throwable t) {
+            public void onError(String error) {
                 resultsLoading.setValue(false);
-                resultsError.setValue("Connection error: " + t.getMessage());
+                resultsError.setValue(error);
             }
         });
     }
@@ -143,28 +140,25 @@ public class F1ViewModel extends ViewModel {
     public void fetchQualifyingResults(int year, int round) {
         resultsLoading.setValue(true);
         qualifyingResults.setValue(null);
-        api.getResults(year, round, "Qualifying").enqueue(new Callback<Map<String, Object>>() {
+        repo.getResults(year, round, "Qualifying", new F1Repository.RepositoryCallback<Map<String, Object>>() {
             @Override
-            public void onResponse(Call<Map<String, Object>> call,
-                                   Response<Map<String, Object>> response) {
+            public void onSuccess(Map<String, Object> data) {
                 resultsLoading.setValue(false);
-                if (response.isSuccessful() && response.body() != null) {
-                    try {
-                        Object results = response.body().get("results");
-                        if (results instanceof List) {
-                            com.google.gson.Gson gson = new com.google.gson.Gson();
-                            String json = gson.toJson(results);
-                            java.lang.reflect.Type type =
-                                    new com.google.gson.reflect.TypeToken<List<QualifyingResult>>(){}.getType();
-                            qualifyingResults.setValue(gson.fromJson(json, type));
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                try {
+                    Object results = data.get("results");
+                    if (results instanceof List) {
+                        com.google.gson.Gson gson = new com.google.gson.Gson();
+                        String json = gson.toJson(results);
+                        java.lang.reflect.Type type =
+                                new com.google.gson.reflect.TypeToken<List<QualifyingResult>>(){}.getType();
+                        qualifyingResults.setValue(gson.fromJson(json, type));
                     }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
             @Override
-            public void onFailure(Call<Map<String, Object>> call, Throwable t) {
+            public void onError(String error) {
                 resultsLoading.setValue(false);
             }
         });
@@ -176,26 +170,20 @@ public class F1ViewModel extends ViewModel {
     public void fetchDriverStandings(int year) {
         standingsLoading.setValue(true);
         driverStandings.setValue(null);
-        api.getDriverStandings(year).enqueue(new Callback<Map<String, Object>>() {
+        repo.getDriverStandings(year, new F1Repository.RepositoryCallback<Map<String, Object>>() {
             @Override
-            public void onResponse(Call<Map<String, Object>> call,
-                                   Response<Map<String, Object>> response) {
+            public void onSuccess(Map<String, Object> data) {
                 standingsLoading.setValue(false);
-                if (response.isSuccessful() && response.body() != null) {
-                    Map<String, Object> body = response.body();
-                    Object started = body.get("season_started");
-                    if (started instanceof Boolean) {
-                        seasonStarted.setValue((Boolean) started);
-                    }
-                    driverStandings.setValue(parseDriverStandings(body));
-                } else {
-                    standingsError.setValue("Could not load standings");
-                    homeError.setValue("Could not load data.\nCheck your connection and\nrestart the app if ngrok changed.");
+                Object started = data.get("season_started");
+                if (started instanceof Boolean) {
+                    seasonStarted.setValue((Boolean) started);
                 }
+                driverStandings.setValue(parseDriverStandings(data));
             }
             @Override
-            public void onFailure(Call<Map<String, Object>> call, Throwable t) {
+            public void onError(String error) {
                 standingsLoading.setValue(false);
+                standingsError.setValue(error);
                 homeError.setValue("Could not load data.\nCheck your connection and\nrestart the app if ngrok changed.");
             }
         });
@@ -204,21 +192,16 @@ public class F1ViewModel extends ViewModel {
     public void fetchConstructorStandings(int year) {
         standingsLoading.setValue(true);
         constructorStandings.setValue(null);
-        api.getConstructorStandings(year).enqueue(new Callback<Map<String, Object>>() {
+        repo.getConstructorStandings(year, new F1Repository.RepositoryCallback<Map<String, Object>>() {
             @Override
-            public void onResponse(Call<Map<String, Object>> call,
-                                   Response<Map<String, Object>> response) {
+            public void onSuccess(Map<String, Object> data) {
                 standingsLoading.setValue(false);
-                if (response.isSuccessful() && response.body() != null) {
-                    constructorStandings.setValue(parseConstructorStandings(response.body()));
-                } else {
-                    standingsError.setValue("Could not load standings");
-                }
+                constructorStandings.setValue(parseConstructorStandings(data));
             }
             @Override
-            public void onFailure(Call<Map<String, Object>> call, Throwable t) {
+            public void onError(String error) {
                 standingsLoading.setValue(false);
-                standingsError.setValue("Connection error: " + t.getMessage());
+                standingsError.setValue(error);
             }
         });
     }
@@ -254,24 +237,13 @@ public class F1ViewModel extends ViewModel {
     public void fetchPitStopsForRace(int year, int round) {
         pitStopsLoading.setValue(true);
         pitStops.setValue(null);
-        api.getSessionKey(year, round).enqueue(new Callback<Map<String, Object>>() {
+        repo.getSessionKey(year, round, new F1Repository.RepositoryCallback<Integer>() {
             @Override
-            public void onResponse(Call<Map<String, Object>> call,
-                                   Response<Map<String, Object>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    Object keyObj = response.body().get("session_key");
-                    if (keyObj != null) {
-                        int sessionKey = ((Double) keyObj).intValue();
-                        fetchPitStops(sessionKey);
-                    } else {
-                        pitStopsLoading.setValue(false);
-                    }
-                } else {
-                    pitStopsLoading.setValue(false);
-                }
+            public void onSuccess(Integer sessionKey) {
+                fetchPitStops(sessionKey);
             }
             @Override
-            public void onFailure(Call<Map<String, Object>> call, Throwable t) {
+            public void onError(String error) {
                 pitStopsLoading.setValue(false);
             }
         });
@@ -282,21 +254,16 @@ public class F1ViewModel extends ViewModel {
 
     public void fetchSchedule(int year) {
         scheduleLoading.setValue(true);
-        api.getScheduleByYear(year).enqueue(new Callback<List<Map<String, Object>>>() {
+        repo.getSchedule(year, new F1Repository.RepositoryCallback<List<Map<String, Object>>>() {
             @Override
-            public void onResponse(Call<List<Map<String, Object>>> call,
-                                   Response<List<Map<String, Object>>> response) {
+            public void onSuccess(List<Map<String, Object>> data) {
                 scheduleLoading.setValue(false);
-                if (response.isSuccessful() && response.body() != null) {
-                    schedule.setValue(response.body());
-                } else {
-                    scheduleError.setValue("Could not load schedule");
-                }
+                schedule.setValue(data);
             }
             @Override
-            public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {
+            public void onError(String error) {
                 scheduleLoading.setValue(false);
-                scheduleError.setValue("Connection error: " + t.getMessage());
+                scheduleError.setValue(error);
             }
         });
     }
@@ -320,68 +287,12 @@ public class F1ViewModel extends ViewModel {
     }
 
 
-    // ── Season Stats (DNFs + Podiums) ─────────────────────────────────────────
+    // ── Season Stats ──────────────────────────────────────────────────────────
 
     public void fetchSeasonStats(int year) {
-        api.getScheduleByYear(year).enqueue(new Callback<List<Map<String, Object>>>() {
-            @Override
-            public void onResponse(Call<List<Map<String, Object>>> call,
-                                   Response<List<Map<String, Object>>> response) {
-                if (!response.isSuccessful() || response.body() == null) return;
-
-                List<Map<String, Object>> races = response.body();
-                Map<String, Integer> dnfs    = new java.util.HashMap<>();
-                Map<String, Integer> podiums = new java.util.HashMap<>();
-                int totalRounds = races.size();
-                final int[] completed = {0};
-
-                for (Map<String, Object> race : races) {
-                    Object roundObj = race.get("round");
-                    if (roundObj == null) continue;
-                    int round = ((Double) roundObj).intValue();
-
-                    api.getResults(year, round, "Race").enqueue(
-                            new Callback<Map<String, Object>>() {
-                                @Override
-                                public void onResponse(Call<Map<String, Object>> call,
-                                                       Response<Map<String, Object>> response) {
-                                    completed[0]++;
-                                    if (response.isSuccessful() && response.body() != null) {
-                                        List<RaceResult> results = parseRaceResults(response.body());
-                                        for (RaceResult result : results) {
-                                            if (result.getDriver() == null) continue;
-                                            String id = result.getDriver().getDriverId();
-                                            if (!result.isFinished() &&
-                                                    result.getStatus() != null &&
-                                                    !result.getStatus().contains("Lap")) {
-                                                dnfs.put(id, dnfs.getOrDefault(id, 0) + 1);
-                                            }
-                                            try {
-                                                int pos = Integer.parseInt(result.getPosition());
-                                                if (pos <= 3) {
-                                                    podiums.put(id, podiums.getOrDefault(id, 0) + 1);
-                                                }
-                                            } catch (NumberFormatException ignored) {}
-                                        }
-                                    }
-                                    if (completed[0] >= totalRounds) {
-                                        dnfMap.postValue(dnfs);
-                                        podiumMap.postValue(podiums);
-                                    }
-                                }
-                                @Override
-                                public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                                    completed[0]++;
-                                    if (completed[0] >= totalRounds) {
-                                        dnfMap.postValue(dnfs);
-                                        podiumMap.postValue(podiums);
-                                    }
-                                }
-                            });
-                }
-            }
-            @Override
-            public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {}
+        repo.fetchSeasonStats(year, (dnfs, podiums) -> {
+            dnfMap.setValue(dnfs);
+            podiumMap.setValue(podiums);
         });
     }
 
