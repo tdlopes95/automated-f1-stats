@@ -56,6 +56,20 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/btn_compare_drivers"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_compare"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Compare Drivers"
+            android:tint="@color/text_secondary" />
+
     </LinearLayout>
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout

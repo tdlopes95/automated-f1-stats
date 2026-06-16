@@ -3,6 +3,7 @@ package com.f1stats.ui.standings;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.widget.ImageButton;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.f1stats.CompareDriversActivity;
 import com.f1stats.DriverHelper;
 import com.f1stats.DriverProfileActivity;
 import com.f1stats.R;
@@ -57,6 +59,13 @@ public class StandingsFragment extends Fragment {
         tvEmpty = view.findViewById(R.id.tv_empty_standings);
         RecyclerView rv = view.findViewById(R.id.rv_standings);
         TabLayout tabs = view.findViewById(R.id.tab_layout_standings);
+
+        ImageButton btnCompare = view.findViewById(R.id.btn_compare_drivers);
+        btnCompare.setOnClickListener(v -> {
+            Intent intent = new Intent(requireContext(), CompareDriversActivity.class);
+            intent.putExtra(CompareDriversActivity.EXTRA_YEAR, selectedYear);
+            startActivity(intent);
+        });
 
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new StandingsAdapter();
