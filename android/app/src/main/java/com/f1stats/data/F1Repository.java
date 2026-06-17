@@ -748,10 +748,12 @@ public class F1Repository {
     // ── Ensure all Race results cached for season ─────────────────────────────
 
     public void ensureSeasonResultsCached(int year, RepositoryCallback<Void> callback) {
+        android.util.Log.d("H2H_DEBUG", "ensureSeasonResultsCached: year=" + year);
         getSchedule(year, new RepositoryCallback<List<Map<String, Object>>>() {
             @Override
             public void onSuccess(List<Map<String, Object>> races) {
                 executor.execute(() -> {
+                    android.util.Log.d("H2H_DEBUG", "  schedule returned " + races.size() + " races");
                     List<Integer> missingRounds = new ArrayList<>();
                     for (Map<String, Object> race : races) {
                         int round = toInt(race.get("round"));
@@ -760,7 +762,10 @@ public class F1Repository {
                         if (hit == null) missingRounds.add(round);
                     }
 
+                    android.util.Log.d("H2H_DEBUG", "  missingRounds=" + missingRounds.size() + " " + missingRounds);
+
                     if (missingRounds.isEmpty()) {
+                        android.util.Log.d("H2H_DEBUG", "  all rounds already cached — firing callback immediately");
                         mainHandler.post(() -> callback.onSuccess(null));
                         return;
                     }
@@ -775,6 +780,9 @@ public class F1Repository {
                                                            Response<Map<String, Object>> response) {
                                         if (response.isSuccessful() && response.body() != null) {
                                             Map<String, Object> body = response.body();
+                                            Object resultsObj = body.get("results");
+                                            int resultCount = (resultsObj instanceof List) ? ((List<?>) resultsObj).size() : -1;
+                                            android.util.Log.d("H2H_DEBUG", "  fetched round=" + round + " resultCount=" + resultCount + " httpCode=" + response.code());
                                             // decrement AFTER the DB write so computeStatsFromRoom
                                             // sees the row when the callback fires
                                             executor.execute(() -> {
@@ -785,11 +793,14 @@ public class F1Repository {
                                                 row.resultsJson = gson.toJson(body);
                                                 row.fetchedAt   = System.currentTimeMillis();
                                                 db.resultDao().upsert(row);
-                                                if (pending.decrementAndGet() == 0) {
+                                                int remaining = pending.decrementAndGet();
+                                                android.util.Log.d("H2H_DEBUG", "  saved round=" + round + " remaining=" + remaining);
+                                                if (remaining == 0) {
                                                     mainHandler.post(() -> callback.onSuccess(null));
                                                 }
                                             });
                                         } else {
+                                            android.util.Log.d("H2H_DEBUG", "  round=" + round + " fetch FAILED httpCode=" + response.code());
                                             if (pending.decrementAndGet() == 0) {
                                                 mainHandler.post(() -> callback.onSuccess(null));
                                             }
@@ -797,6 +808,7 @@ public class F1Repository {
                                     }
                                     @Override
                                     public void onFailure(Call<Map<String, Object>> call, Throwable t) {
+                                        android.util.Log.d("H2H_DEBUG", "  round=" + round + " fetch FAILURE: " + t.getMessage());
                                         if (pending.decrementAndGet() == 0) {
                                             mainHandler.post(() -> callback.onSuccess(null));
                                         }
@@ -809,6 +821,7 @@ public class F1Repository {
             }
             @Override
             public void onError(String error) {
+                android.util.Log.d("H2H_DEBUG", "ensureSeasonResultsCached schedule error: " + error);
                 callback.onSuccess(null);
             }
         });
