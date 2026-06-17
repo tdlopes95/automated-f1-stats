@@ -4,7 +4,7 @@ Pydantic models for API responses
 """
 
 from pydantic import BaseModel
-from typing import Any, Optional
+from typing import Any, List, Optional
 from datetime import datetime, timezone
 
 
@@ -240,3 +240,39 @@ class DriverInfo(BaseModel):
     team_name: Optional[str] = None
     team_colour: Optional[str] = None
     country_code: Optional[str] = None
+
+
+# ── Circuit Stats ──────────────────────────────────────────────────────────────
+
+class DriverStat(BaseModel):
+    driverId: str
+    name: str
+    count: int
+    years: Optional[List[int]] = None
+
+
+class ConstructorStat(BaseModel):
+    constructorId: str
+    name: str
+    count: int
+
+
+class LapRecord(BaseModel):
+    driverId: str
+    name: str
+    time: str
+    year: int
+
+
+class CircuitStatsResponse(BaseModel):
+    circuitId: str
+    circuitName: str
+    locality: str
+    country: str
+    totalRaces: int
+    firstGPYear: int
+    lastGPYear: int
+    mostWins: Optional[DriverStat] = None
+    mostPoles: Optional[DriverStat] = None
+    mostConstructorWins: Optional[ConstructorStat] = None
+    lapRecord: Optional[LapRecord] = None

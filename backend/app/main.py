@@ -25,6 +25,7 @@ from .models import (
     ConstructorStandingsResponse,
     MeetingInfo,
     DriverInfo,
+    CircuitStatsResponse,
 )
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -682,3 +683,129 @@ async def get_drivers_by_year(request: Request, year: int):
     else:
         cache_set(cache_key, result)
     return result
+
+
+# ── Circuit Stats ─────────────────────────────────────────────────────────────
+
+def _parse_lap_time(time_str: str) -> float:
+    """Convert '1:21.046' to total seconds for comparison."""
+    try:
+        parts = time_str.split(":")
+        if len(parts) == 2:
+            return int(parts[0]) * 60 + float(parts[1])
+        return float(time_str)
+    except Exception:
+        return float("inf")
+
+
+def compute_circuit_stats(circuit_id: str, races: list) -> dict:
+    wins: dict = {}
+    poles: dict = {}
+    constructor_wins: dict = {}
+    lap_records: list = []
+    seasons: list = []
+
+    circuit_meta = races[0].get("Circuit", {}) if races else {}
+    location = circuit_meta.get("Location", {})
+
+    for race in races:
+        season = int(race.get("season", 0))
+        seasons.append(season)
+
+        for result in race.get("Results", []):
+            driver = result.get("Driver", {})
+            constructor = result.get("Constructor", {})
+            driver_id = driver.get("driverId", "")
+            driver_name = f"{driver.get('givenName', '')} {driver.get('familyName', '')}".strip()
+            constructor_id = constructor.get("constructorId", "")
+
+            position = result.get("position", "")
+            grid = result.get("grid", "")
+
+            if position == "1":
+                if driver_id not in wins:
+                    wins[driver_id] = {"count": 0, "years": [], "name": driver_name}
+                wins[driver_id]["count"] += 1
+                wins[driver_id]["years"].append(season)
+
+                if constructor_id not in constructor_wins:
+                    constructor_wins[constructor_id] = {"count": 0, "name": constructor.get("name", "")}
+                constructor_wins[constructor_id]["count"] += 1
+
+            if grid == "1":
+                if driver_id not in poles:
+                    poles[driver_id] = {"count": 0, "name": driver_name}
+                poles[driver_id]["count"] += 1
+
+            fastest_lap = result.get("FastestLap")
+            if fastest_lap and fastest_lap.get("rank") == "1":
+                fl_time = fastest_lap.get("Time", {}).get("time", "")
+                if fl_time:
+                    secs = _parse_lap_time(fl_time)
+                    if secs != float("inf"):
+                        lap_records.append((secs, driver_id, driver_name, season, fl_time))
+
+    most_wins = None
+    if wins:
+        best = max(wins, key=lambda d: wins[d]["count"])
+        most_wins = {
+            "driverId": best,
+            "name": wins[best]["name"],
+            "count": wins[best]["count"],
+            "years": sorted(wins[best]["years"]),
+        }
+
+    most_poles = None
+    if poles:
+        best = max(poles, key=lambda d: poles[d]["count"])
+        most_poles = {"driverId": best, "name": poles[best]["name"], "count": poles[best]["count"]}
+
+    most_constructor_wins = None
+    if constructor_wins:
+        best = max(constructor_wins, key=lambda c: constructor_wins[c]["count"])
+        most_constructor_wins = {
+            "constructorId": best,
+            "name": constructor_wins[best]["name"],
+            "count": constructor_wins[best]["count"],
+        }
+
+    lap_record = None
+    if lap_records:
+        best = min(lap_records, key=lambda x: x[0])
+        lap_record = {"driverId": best[1], "name": best[2], "time": best[4], "year": best[3]}
+
+    return {
+        "circuitId": circuit_id,
+        "circuitName": circuit_meta.get("circuitName", ""),
+        "locality": location.get("locality", ""),
+        "country": location.get("country", ""),
+        "totalRaces": len(races),
+        "firstGPYear": min(seasons) if seasons else 0,
+        "lastGPYear": max(seasons) if seasons else 0,
+        "mostWins": most_wins,
+        "mostPoles": most_poles,
+        "mostConstructorWins": most_constructor_wins,
+        "lapRecord": lap_record,
+    }
+
+
+@app.get("/circuit/{circuit_id}/stats", response_model=CircuitStatsResponse)
+@limiter.limit("30/minute")
+async def get_circuit_stats(request: Request, circuit_id: str):
+    cache_key = f"circuit_stats:{circuit_id}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+
+    try:
+        races = await jolpica.get_circuit_results(circuit_id)
+    except Exception as e:
+        logger.error(f"Jolpica error fetching circuit results for {circuit_id}: {e}")
+        raise HTTPException(status_code=502, detail="Upstream data source unavailable")
+
+    if not races:
+        raise HTTPException(status_code=404, detail=f"No races found for circuit '{circuit_id}'")
+
+    stats = compute_circuit_stats(circuit_id, races)
+    cache_set_historical(cache_key, stats)
+    return stats

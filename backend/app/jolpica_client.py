@@ -209,5 +209,26 @@ class JolpicaClient:
             return []
         return lists[0].get("ConstructorStandings", [])
 
+    # ── Circuit Results ───────────────────────────────────────────────────────
+
+    async def get_circuit_results(self, circuit_id: str) -> list[dict]:
+        """Get all race results at a circuit across all seasons, handling pagination."""
+        all_races = []
+        offset = 0
+        limit = 1000
+        while True:
+            data = await self._get(
+                f"/circuits/{circuit_id}/results.json",
+                {"limit": limit, "offset": offset}
+            )
+            mr_data = data.get("MRData", {})
+            races = mr_data.get("RaceTable", {}).get("Races", [])
+            all_races.extend(races)
+            total = int(mr_data.get("total", 0))
+            if offset + limit >= total:
+                break
+            offset += limit
+        return all_races
+
     async def close(self):
         await self._client.aclose()
