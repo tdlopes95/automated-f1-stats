@@ -1,0 +1,381 @@
+{
+  "albert_park": {
+    "name": "Albert Park Circuit",
+    "turns": 14,
+    "length_km": 5.278,
+    "sector_splits": [0.28, 0.64],
+    "drs_zones": [
+      {"start": 0.05, "end": 0.13},
+      {"start": 0.68, "end": 0.78}
+    ],
+    "notable_turns": {}
+  },
+  "bahrain": {
+    "name": "Bahrain International Circuit",
+    "turns": 15,
+    "length_km": 5.412,
+    "sector_splits": [0.30, 0.62],
+    "drs_zones": [
+      {"start": 0.05, "end": 0.15},
+      {"start": 0.48, "end": 0.58},
+      {"start": 0.72, "end": 0.82}
+    ],
+    "notable_turns": {}
+  },
+  "shanghai": {
+    "name": "Shanghai International Circuit",
+    "turns": 16,
+    "length_km": 5.451,
+    "sector_splits": [0.35, 0.65],
+    "drs_zones": [
+      {"start": 0.05, "end": 0.15},
+      {"start": 0.62, "end": 0.72}
+    ],
+    "notable_turns": {}
+  },
+  "suzuka": {
+    "name": "Suzuka International Racing Course",
+    "turns": 18,
+    "length_km": 5.807,
+    "sector_splits": [0.33, 0.67],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.10},
+      {"start": 0.62, "end": 0.70}
+    ],
+    "notable_turns": {
+      "1": "First Corner",
+      "3": "S Curves",
+      "7": "Dunlop",
+      "11": "Hairpin",
+      "14": "Spoon",
+      "16": "130R",
+      "17": "Chicane",
+      "18": "Casio Triangle"
+    }
+  },
+  "miami": {
+    "name": "Miami International Autodrome",
+    "turns": 19,
+    "length_km": 5.412,
+    "sector_splits": [0.28, 0.58],
+    "drs_zones": [
+      {"start": 0.05, "end": 0.13},
+      {"start": 0.42, "end": 0.52},
+      {"start": 0.76, "end": 0.86}
+    ],
+    "notable_turns": {}
+  },
+  "imola": {
+    "name": "Autodromo Enzo e Dino Ferrari",
+    "turns": 19,
+    "length_km": 4.909,
+    "sector_splits": [0.33, 0.68],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.10},
+      {"start": 0.55, "end": 0.65}
+    ],
+    "notable_turns": {
+      "2": "Tamburello",
+      "4": "Villeneuve",
+      "7": "Acque Minerali",
+      "14": "Variante Alta",
+      "17": "Rivazza"
+    }
+  },
+  "monaco": {
+    "name": "Circuit de Monaco",
+    "turns": 19,
+    "length_km": 3.337,
+    "sector_splits": [0.33, 0.66],
+    "drs_zones": [
+      {"start": 0.0, "end": 0.08}
+    ],
+    "notable_turns": {
+      "1": "Sainte Devote",
+      "5": "Casino",
+      "6": "Grand Hotel Hairpin",
+      "10": "Nouvelle Chicane",
+      "15": "Piscine",
+      "18": "Rascasse",
+      "19": "Anthony Noghes"
+    }
+  },
+  "americas": {
+    "name": "Circuit of the Americas",
+    "turns": 20,
+    "length_km": 5.513,
+    "sector_splits": [0.32, 0.60],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.10},
+      {"start": 0.55, "end": 0.63}
+    ],
+    "notable_turns": {
+      "1": "Turn 1",
+      "2": "Esses",
+      "11": "Back Straight",
+      "12": "Turn 12",
+      "15": "Carousel",
+      "19": "Austin Hairpin",
+      "20": "Final Chicane"
+    }
+  },
+  "catalunya": {
+    "name": "Circuit de Barcelona-Catalunya",
+    "turns": 16,
+    "length_km": 4.675,
+    "sector_splits": [0.30, 0.65],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.12},
+      {"start": 0.62, "end": 0.72}
+    ],
+    "notable_turns": {}
+  },
+  "villeneuve": {
+    "name": "Circuit Gilles Villeneuve",
+    "turns": 14,
+    "length_km": 4.361,
+    "sector_splits": [0.33, 0.66],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.12},
+      {"start": 0.55, "end": 0.65}
+    ],
+    "notable_turns": {
+      "6": "Casino Hairpin",
+      "10": "Senna's Corner",
+      "13": "Wall of Champions"
+    }
+  },
+  "red_bull_ring": {
+    "name": "Red Bull Ring",
+    "turns": 10,
+    "length_km": 4.318,
+    "sector_splits": [0.35, 0.70],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.12},
+      {"start": 0.55, "end": 0.65}
+    ],
+    "notable_turns": {
+      "1": "Turn 1",
+      "3": "Turn 3",
+      "4": "Turn 4",
+      "6": "Turn 6",
+      "9": "Turn 9",
+      "10": "Turn 10"
+    }
+  },
+  "silverstone": {
+    "name": "Silverstone Circuit",
+    "turns": 18,
+    "length_km": 5.891,
+    "sector_splits": [0.33, 0.64],
+    "drs_zones": [
+      {"start": 0.88, "end": 0.02},
+      {"start": 0.36, "end": 0.44}
+    ],
+    "notable_turns": {
+      "1": "Abbey",
+      "3": "Village",
+      "6": "Brooklands",
+      "9": "Copse",
+      "10": "Maggotts",
+      "15": "Stowe",
+      "18": "Club"
+    }
+  },
+  "spa": {
+    "name": "Circuit de Spa-Francorchamps",
+    "turns": 19,
+    "length_km": 7.004,
+    "sector_splits": [0.30, 0.65],
+    "drs_zones": [
+      {"start": 0.0, "end": 0.06},
+      {"start": 0.46, "end": 0.55}
+    ],
+    "notable_turns": {
+      "1": "La Source",
+      "3": "Eau Rouge",
+      "4": "Raidillon",
+      "8": "Les Combes",
+      "15": "Stavelot",
+      "19": "Bus Stop"
+    }
+  },
+  "hungaroring": {
+    "name": "Hungaroring",
+    "turns": 14,
+    "length_km": 4.381,
+    "sector_splits": [0.30, 0.62],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.12}
+    ],
+    "notable_turns": {
+      "1": "Turn 1",
+      "4": "Turn 4",
+      "6": "Turn 6",
+      "11": "Hairpin",
+      "14": "Final Corner"
+    }
+  },
+  "zandvoort": {
+    "name": "Circuit Zandvoort",
+    "turns": 14,
+    "length_km": 4.259,
+    "sector_splits": [0.33, 0.66],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.12},
+      {"start": 0.55, "end": 0.65}
+    ],
+    "notable_turns": {
+      "1": "Tarzan",
+      "3": "Hugenholtzbocht",
+      "9": "Scheivlak",
+      "11": "Hugenholtz",
+      "14": "Arie Luyendijk"
+    }
+  },
+  "monza": {
+    "name": "Autodromo Nazionale Monza",
+    "turns": 11,
+    "length_km": 5.793,
+    "sector_splits": [0.32, 0.68],
+    "drs_zones": [
+      {"start": 0.0, "end": 0.08},
+      {"start": 0.55, "end": 0.68}
+    ],
+    "notable_turns": {
+      "1": "Variante del Rettifilo",
+      "4": "Variante della Roggia",
+      "8": "Lesmo 1",
+      "9": "Lesmo 2",
+      "11": "Parabolica"
+    }
+  },
+  "marina_bay": {
+    "name": "Marina Bay Street Circuit",
+    "turns": 23,
+    "length_km": 4.940,
+    "sector_splits": [0.30, 0.58],
+    "drs_zones": [
+      {"start": 0.05, "end": 0.13},
+      {"start": 0.52, "end": 0.60}
+    ],
+    "notable_turns": {
+      "3": "Anderson Bridge",
+      "5": "Esplanade",
+      "10": "Raffles Blvd",
+      "14": "Singapore Sling",
+      "18": "Fairmont Hotel",
+      "23": "Turn 23"
+    }
+  },
+  "baku": {
+    "name": "Baku City Circuit",
+    "turns": 20,
+    "length_km": 6.003,
+    "sector_splits": [0.30, 0.60],
+    "drs_zones": [
+      {"start": 0.05, "end": 0.18},
+      {"start": 0.65, "end": 0.78}
+    ],
+    "notable_turns": {
+      "1": "Turn 1",
+      "3": "Castle Section",
+      "8": "Castle",
+      "15": "Fountain",
+      "16": "Turn 16",
+      "20": "Turn 20"
+    }
+  },
+  "losail": {
+    "name": "Lusail International Circuit",
+    "turns": 16,
+    "length_km": 5.380,
+    "sector_splits": [0.30, 0.66],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.12},
+      {"start": 0.58, "end": 0.68}
+    ],
+    "notable_turns": {}
+  },
+  "rodriguez": {
+    "name": "Autodromo Hermanos Rodriguez",
+    "turns": 17,
+    "length_km": 4.304,
+    "sector_splits": [0.28, 0.60],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.13},
+      {"start": 0.55, "end": 0.65}
+    ],
+    "notable_turns": {
+      "1": "Foro Sol",
+      "6": "Peraltada",
+      "13": "Hairpin",
+      "17": "Final Corner"
+    }
+  },
+  "interlagos": {
+    "name": "Autodromo Jose Carlos Pace",
+    "turns": 15,
+    "length_km": 4.309,
+    "sector_splits": [0.38, 0.68],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.12},
+      {"start": 0.62, "end": 0.72}
+    ],
+    "notable_turns": {
+      "1": "Senna S",
+      "2": "Curva do Sol",
+      "4": "Descida do Lago",
+      "8": "Ferradura",
+      "11": "Mergulho",
+      "12": "Junção",
+      "15": "Subida dos Boxes"
+    }
+  },
+  "yas_marina": {
+    "name": "Yas Marina Circuit",
+    "turns": 16,
+    "length_km": 5.281,
+    "sector_splits": [0.32, 0.64],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.12},
+      {"start": 0.55, "end": 0.65}
+    ],
+    "notable_turns": {}
+  },
+  "jeddah": {
+    "name": "Jeddah Corniche Circuit",
+    "turns": 27,
+    "length_km": 6.174,
+    "sector_splits": [0.28, 0.58],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.12},
+      {"start": 0.45, "end": 0.55},
+      {"start": 0.72, "end": 0.82}
+    ],
+    "notable_turns": {
+      "1": "Turn 1",
+      "4": "Turn 4",
+      "13": "Turn 13",
+      "22": "Turn 22",
+      "27": "Turn 27"
+    }
+  },
+  "vegas": {
+    "name": "Las Vegas Street Circuit",
+    "turns": 17,
+    "length_km": 6.201,
+    "sector_splits": [0.28, 0.62],
+    "drs_zones": [
+      {"start": 0.03, "end": 0.15},
+      {"start": 0.55, "end": 0.68}
+    ],
+    "notable_turns": {
+      "1": "Turn 1",
+      "5": "Koval",
+      "12": "Harmon",
+      "14": "T-Mobile Arena",
+      "17": "Final Chicane"
+    }
+  }
+}

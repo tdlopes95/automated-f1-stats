@@ -1,11 +1,17 @@
 package com.f1stats;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -16,6 +22,11 @@ import androidx.appcompat.widget.Toolbar;
 import com.bumptech.glide.Glide;
 import com.f1stats.data.F1Repository;
 import com.f1stats.models.CircuitStatsResponse;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 public class TrackDetailActivity extends AppCompatActivity {
 
@@ -26,6 +37,10 @@ public class TrackDetailActivity extends AppCompatActivity {
     public static final String EXTRA_LOCALITY      = "extra_locality";
     public static final String EXTRA_COUNTRY_FLAG  = "extra_country_flag";
 
+    private static final String TAG = "TrackDetail";
+
+    private WebView webTrackMap;
+    private FrameLayout flHero;
     private ImageView ivHero;
     private ScaleGestureDetector scaleDetector;
     private float currentScale = 1f;
@@ -64,7 +79,10 @@ public class TrackDetailActivity extends AppCompatActivity {
             getSupportActionBar().setTitle(circuitName != null ? circuitName : "Track Detail");
         }
 
+        webTrackMap = findViewById(R.id.web_track_map);
+        flHero = findViewById(R.id.fl_hero);
         ivHero = findViewById(R.id.iv_hero_image);
+
         if (circuitImage != null && !circuitImage.isEmpty()) {
             Glide.with(this).load(circuitImage).into(ivHero);
         }
@@ -96,11 +114,104 @@ public class TrackDetailActivity extends AppCompatActivity {
         tvStatsError       = findViewById(R.id.tv_stats_error);
 
         if (circuitId != null && !circuitId.isEmpty()) {
+            loadInteractiveTrack(circuitId);
             loadCircuitStats(circuitId);
         } else {
             tvStatsError.setText("Circuit ID unavailable — open schedule again to refresh.");
             tvStatsError.setVisibility(View.VISIBLE);
         }
+    }
+
+    private void loadInteractiveTrack(String circuitId) {
+        String[] candidates = {
+            "circuits/" + circuitId + ".svg",
+            "circuits/" + circuitId.replace("_", "-") + ".svg"
+        };
+
+        String svgContent = null;
+        for (String candidate : candidates) {
+            try {
+                InputStream is = getAssets().open(candidate);
+                byte[] buffer = new byte[is.available()];
+                is.read(buffer);
+                is.close();
+                svgContent = new String(buffer);
+                break;
+            } catch (IOException ignored) {}
+        }
+
+        if (svgContent == null) {
+            Log.d(TAG, "No bundled SVG for " + circuitId + ", showing fallback image");
+            showFallback();
+            return;
+        }
+
+        String pathData = extractPathData(svgContent);
+        if (pathData == null) {
+            Log.d(TAG, "Could not extract path data from SVG for " + circuitId);
+            showFallback();
+            return;
+        }
+
+        String metadataJson = "{}";
+        try {
+            InputStream metaIs = getAssets().open("track_metadata.json");
+            byte[] metaBuffer = new byte[metaIs.available()];
+            metaIs.read(metaBuffer);
+            metaIs.close();
+            JsonObject allMeta = JsonParser.parseString(new String(metaBuffer)).getAsJsonObject();
+            if (allMeta.has(circuitId)) {
+                metadataJson = allMeta.get(circuitId).toString();
+            }
+        } catch (IOException e) {
+            Log.w(TAG, "No track metadata for " + circuitId);
+        }
+
+        webTrackMap.setVisibility(View.VISIBLE);
+        flHero.setVisibility(View.GONE);
+
+        WebSettings settings = webTrackMap.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(false);
+        settings.setAllowFileAccess(true);
+        settings.setBuiltInZoomControls(true);
+        settings.setDisplayZoomControls(false);
+        settings.setSupportZoom(true);
+        webTrackMap.setBackgroundColor(Color.TRANSPARENT);
+        webTrackMap.addJavascriptInterface(new TrackJsBridge(), "Android");
+
+        final String finalPathData = pathData
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\n", "")
+            .replace("\r", "");
+        final String finalMetadata = metadataJson
+            .replace("\\", "\\\\")
+            .replace("'", "\\'");
+
+        webTrackMap.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                view.evaluateJavascript("initTrack('" + finalPathData + "', '" + finalMetadata + "');", null);
+            }
+        });
+        webTrackMap.loadUrl("file:///android_asset/interactive_track.html");
+    }
+
+    private void showFallback() {
+        webTrackMap.setVisibility(View.GONE);
+        flHero.setVisibility(View.VISIBLE);
+    }
+
+    private String extractPathData(String svgContent) {
+        int dStart = svgContent.indexOf(" d=\"");
+        if (dStart == -1) dStart = svgContent.indexOf(" d='");
+        if (dStart == -1) return null;
+        dStart += 4;
+        char quote = svgContent.charAt(dStart - 1);
+        int dEnd = svgContent.indexOf(quote, dStart);
+        if (dEnd == -1) return null;
+        return svgContent.substring(dStart, dEnd);
     }
 
     private void setupZoom() {
@@ -141,7 +252,7 @@ public class TrackDetailActivity extends AppCompatActivity {
                 pbLoading.setVisibility(View.GONE);
                 tvStatsError.setText("Could not load stats");
                 tvStatsError.setVisibility(View.VISIBLE);
-                Log.e("TRACK_STATS", "Failed to load circuit stats: " + message);
+                Log.e(TAG, "Failed to load circuit stats: " + message);
             }
         });
     }
@@ -198,5 +309,12 @@ public class TrackDetailActivity extends AppCompatActivity {
     public void onBackPressed() {
         super.onBackPressed();
         overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
+    }
+
+    private class TrackJsBridge {
+        @JavascriptInterface
+        public void onSectorTapped(int sectorNum) {
+            Log.d(TAG, "Sector tapped: " + sectorNum);
+        }
     }
 }

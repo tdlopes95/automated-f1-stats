@@ -26,7 +26,16 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Hero circuit image (zoomable) -->
+            <!-- Interactive SVG track map (WebView, shown when bundled SVG exists) -->
+            <WebView
+                android:id="@+id/web_track_map"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="300dp"
+                android:visibility="gone"
+                android:background="@color/bg_surface" />
+
+            <!-- Fallback: hero circuit image from OpenF1 (shown when no bundled SVG) -->
             <FrameLayout
                 android:id="@+id/fl_hero"
                 android:layout_width="match_parent"

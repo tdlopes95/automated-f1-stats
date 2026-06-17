@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: transparent;
+    overflow: hidden;
+    touch-action: manipulation;
+    font-family: -apple-system, sans-serif;
+  }
+  #track-container {
+    width: 100%;
+    aspect-ratio: 1;
+    position: relative;
+  }
+  #track-svg {
+    width: 100%;
+    height: 100%;
+  }
+  .track-base {
+    fill: none;
+    stroke: #333333;
+    stroke-width: 22;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .sector-path {
+    fill: none;
+    stroke-width: 18;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    cursor: pointer;
+    transition: stroke-width 0.2s, opacity 0.2s;
+  }
+  .sector-path.active { stroke-width: 22; }
+  .sector-1 { stroke: #E8D44D; }
+  .sector-2 { stroke: #4DA6FF; }
+  .sector-3 { stroke: #FF4D4D; }
+  .drs-zone {
+    fill: none;
+    stroke: #22C55E;
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 8 6;
+    opacity: 0.7;
+    pointer-events: none;
+  }
+  .turn-label {
+    font-size: 11px;
+    font-weight: 600;
+    fill: #FFFFFF;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+  }
+  .turn-bg {
+    fill: #555555;
+    pointer-events: none;
+  }
+  .start-finish {
+    stroke: #FFFFFF;
+    stroke-width: 3;
+    stroke-dasharray: 3 3;
+  }
+  .drs-label {
+    font-size: 9px;
+    font-weight: 700;
+    fill: #22C55E;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+  }
+  #legend {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    padding: 8px 0;
+    font-size: 12px;
+    color: #AAAAAA;
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  #sector-info {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    background: rgba(30, 30, 30, 0.95);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #FFFFFF;
+    font-size: 13px;
+    display: none;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  #sector-info.visible { display: block; }
+  #sector-info .sector-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  #sector-info .sector-detail { color: #AAAAAA; font-size: 12px; }
+</style>
+</head>
+<body>
+<div id="track-container">
+  <svg id="track-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="sector-info"></div>
+</div>
+<div id="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#E8D44D"></div> S1</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#4DA6FF"></div> S2</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FF4D4D"></div> S3</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#22C55E"></div> DRS</div>
+</div>
+
+<script>
+var trackPathData = '';
+var trackMetadata = {};
+
+function initTrack(svgPathD, metadataJson) {
+  trackPathData = svgPathD;
+  trackMetadata = JSON.parse(metadataJson);
+  render();
+}
+
+function render() {
+  var svg = document.getElementById('track-svg');
+  svg.innerHTML = '';
+
+  var basePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  basePath.setAttribute('d', trackPathData);
+  basePath.setAttribute('class', 'track-base');
+  svg.appendChild(basePath);
+
+  var totalLength = basePath.getTotalLength();
+  var splits = trackMetadata.sector_splits || [0.33, 0.66];
+
+  var sectorDefs = [
+    { cls: 'sector-1', start: 0, end: splits[0] },
+    { cls: 'sector-2', start: splits[0], end: splits[1] },
+    { cls: 'sector-3', start: splits[1], end: 1.0 }
+  ];
+
+  sectorDefs.forEach(function(sec, idx) {
+    var sp = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    sp.setAttribute('d', trackPathData);
+    sp.setAttribute('class', 'sector-path ' + sec.cls);
+    var startLen = sec.start * totalLength;
+    var endLen = sec.end * totalLength;
+    var sectorLen = endLen - startLen;
+    sp.style.strokeDasharray = sectorLen + ' ' + (totalLength - sectorLen);
+    sp.style.strokeDashoffset = -startLen;
+    (function(sectorNum) {
+      sp.addEventListener('click', function() { onSectorTap(sectorNum); });
+      sp.addEventListener('touchend', function(e) { e.preventDefault(); onSectorTap(sectorNum); });
+    })(idx + 1);
+    svg.appendChild(sp);
+  });
+
+  if (trackMetadata.drs_zones) {
+    trackMetadata.drs_zones.forEach(function(zone) {
+      var dp = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      dp.setAttribute('d', trackPathData);
+      dp.setAttribute('class', 'drs-zone');
+      var startLen = zone.start * totalLength;
+      var endLen = zone.end * totalLength;
+      var zoneLen = endLen < startLen
+        ? (totalLength - startLen) + endLen
+        : endLen - startLen;
+      dp.style.strokeDasharray = zoneLen + ' ' + (totalLength - zoneLen);
+      dp.style.strokeDashoffset = -startLen;
+      svg.appendChild(dp);
+
+      var midFrac = (zone.start + zone.end) / 2;
+      var midLen = midFrac * totalLength;
+      var midPt = basePath.getPointAtLength(midLen % totalLength);
+      var lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      lbl.setAttribute('x', midPt.x);
+      lbl.setAttribute('y', midPt.y - 18);
+      lbl.setAttribute('class', 'drs-label');
+      lbl.textContent = 'DRS';
+      svg.appendChild(lbl);
+    });
+  }
+
+  var turnCount = trackMetadata.turns || 0;
+  if (turnCount > 0) {
+    for (var t = 1; t <= turnCount; t++) {
+      var fraction = t / (turnCount + 1);
+      var point = basePath.getPointAtLength(fraction * totalLength);
+      var ahead = basePath.getPointAtLength(Math.min(fraction * totalLength + 5, totalLength));
+      var dx = ahead.x - point.x;
+      var dy = ahead.y - point.y;
+      var len = Math.sqrt(dx * dx + dy * dy) || 1;
+      var offsetDist = 20;
+      var ox = -(dy / len) * offsetDist;
+      var oy = (dx / len) * offsetDist;
+      var lx = point.x + ox;
+      var ly = point.y + oy;
+
+      var bg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      bg.setAttribute('cx', lx);
+      bg.setAttribute('cy', ly);
+      bg.setAttribute('r', 8);
+      bg.setAttribute('class', 'turn-bg');
+      svg.appendChild(bg);
+
+      var txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      txt.setAttribute('x', lx);
+      txt.setAttribute('y', ly);
+      txt.setAttribute('class', 'turn-label');
+      txt.textContent = t;
+      svg.appendChild(txt);
+    }
+  }
+
+  var startPoint = basePath.getPointAtLength(0);
+  var startAhead = basePath.getPointAtLength(10);
+  var sdx = startAhead.x - startPoint.x;
+  var sdy = startAhead.y - startPoint.y;
+  var slen = Math.sqrt(sdx * sdx + sdy * sdy) || 1;
+  var perpX = -(sdy / slen) * 14;
+  var perpY = (sdx / slen) * 14;
+  var sfLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  sfLine.setAttribute('x1', startPoint.x + perpX);
+  sfLine.setAttribute('y1', startPoint.y + perpY);
+  sfLine.setAttribute('x2', startPoint.x - perpX);
+  sfLine.setAttribute('y2', startPoint.y - perpY);
+  sfLine.setAttribute('class', 'start-finish');
+  svg.appendChild(sfLine);
+}
+
+function onSectorTap(sectorNum) {
+  document.querySelectorAll('.sector-path').forEach(function(p, i) {
+    p.classList.toggle('active', i === sectorNum - 1);
+  });
+
+  var info = document.getElementById('sector-info');
+  var sectorColors = ['#E8D44D', '#4DA6FF', '#FF4D4D'];
+  var sectorNames = ['Sector 1', 'Sector 2', 'Sector 3'];
+
+  var html = '<div class="sector-title" style="color:' + sectorColors[sectorNum-1] + '">' + sectorNames[sectorNum-1] + '</div>';
+
+  if (trackMetadata.notable_turns) {
+    var splits = trackMetadata.sector_splits || [0.33, 0.66];
+    var turnCount = trackMetadata.turns || 0;
+    var sectorStart = sectorNum === 1 ? 0 : splits[sectorNum - 2];
+    var sectorEnd = sectorNum === 3 ? 1.0 : splits[sectorNum - 1];
+    var turnsInSector = [];
+    for (var num in trackMetadata.notable_turns) {
+      var turnFraction = parseInt(num) / (turnCount + 1);
+      if (turnFraction >= sectorStart && turnFraction < sectorEnd) {
+        turnsInSector.push('T' + num + ' ' + trackMetadata.notable_turns[num]);
+      }
+    }
+    if (turnsInSector.length > 0) {
+      html += '<div class="sector-detail">' + turnsInSector.join(' · ') + '</div>';
+    }
+  }
+
+  if (trackMetadata.length_km) {
+    var splits2 = trackMetadata.sector_splits || [0.33, 0.66];
+    var sStart = sectorNum === 1 ? 0 : splits2[sectorNum - 2];
+    var sEnd = sectorNum === 3 ? 1.0 : splits2[sectorNum - 1];
+    var sectorKm = ((sEnd - sStart) * trackMetadata.length_km).toFixed(2);
+    html += '<div class="sector-detail">Length: ~' + sectorKm + ' km</div>';
+  }
+
+  info.innerHTML = html;
+  info.classList.add('visible');
+
+  if (window.Android) {
+    window.Android.onSectorTapped(sectorNum);
+  }
+}
+
+document.getElementById('track-container').addEventListener('click', function(e) {
+  if (e.target.id === 'track-svg' || e.target.id === 'track-container') {
+    document.getElementById('sector-info').classList.remove('visible');
+    document.querySelectorAll('.sector-path').forEach(function(p) { p.classList.remove('active'); });
+  }
+});
+</script>
+</body>
+</html>
