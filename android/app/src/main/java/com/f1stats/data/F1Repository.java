@@ -5,12 +5,14 @@ import android.os.Looper;
 
 import com.f1stats.api.F1ApiService;
 import com.f1stats.db.AppDatabase;
+import com.f1stats.db.CachedCircuitStats;
 import com.f1stats.db.CachedDriver;
 import com.f1stats.db.CachedMeeting;
 import com.f1stats.db.CachedResult;
 import com.f1stats.db.CachedSchedule;
 import com.f1stats.db.CachedSessionKey;
 import com.f1stats.db.CachedStandings;
+import com.f1stats.models.CircuitStatsResponse;
 import com.f1stats.models.RaceResult;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -824,6 +826,55 @@ public class F1Repository {
                 android.util.Log.d("H2H_DEBUG", "ensureSeasonResultsCached schedule error: " + error);
                 callback.onSuccess(null);
             }
+        });
+    }
+
+    // ── Circuit Stats ─────────────────────────────────────────────────────────
+
+    private static final long SEVEN_DAYS_MS = 7L * 24 * 60 * 60 * 1000;
+
+    public void getCircuitStats(String circuitId, RepositoryCallback<CircuitStatsResponse> callback) {
+        executor.execute(() -> {
+            android.util.Log.d("TRACK_STATS", "Loading circuit stats for: " + circuitId);
+            CachedCircuitStats cached = db.circuitStatsDao().get(circuitId);
+            if (cached != null) {
+                long age = System.currentTimeMillis() - cached.cachedAt;
+                android.util.Log.d("TRACK_STATS", "Cache hit: true, age=" + (age / 1000) + "s");
+                if (age < SEVEN_DAYS_MS) {
+                    CircuitStatsResponse response = gson.fromJson(cached.jsonData, CircuitStatsResponse.class);
+                    mainHandler.post(() -> callback.onSuccess(response));
+                    return;
+                }
+            }
+            android.util.Log.d("TRACK_STATS", "Cache hit: false — fetching from backend");
+
+            mainHandler.post(() ->
+                api.getCircuitStats(circuitId).enqueue(new retrofit2.Callback<CircuitStatsResponse>() {
+                    @Override
+                    public void onResponse(retrofit2.Call<CircuitStatsResponse> call,
+                                           retrofit2.Response<CircuitStatsResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            CircuitStatsResponse stats = response.body();
+                            android.util.Log.d("TRACK_STATS", "Stats received: totalRaces=" + stats.totalRaces
+                                    + " mostWins=" + (stats.mostWins != null ? stats.mostWins.name + "(" + stats.mostWins.count + ")" : "null"));
+                            executor.execute(() -> {
+                                CachedCircuitStats entity = new CachedCircuitStats();
+                                entity.circuitId = circuitId;
+                                entity.jsonData  = gson.toJson(stats);
+                                entity.cachedAt  = System.currentTimeMillis();
+                                db.circuitStatsDao().upsert(entity);
+                            });
+                            callback.onSuccess(stats);
+                        } else {
+                            callback.onError("Failed to load circuit stats (HTTP " + response.code() + ")");
+                        }
+                    }
+                    @Override
+                    public void onFailure(retrofit2.Call<CircuitStatsResponse> call, Throwable t) {
+                        callback.onError("Connection error: " + t.getMessage());
+                    }
+                })
+            );
         });
     }
 

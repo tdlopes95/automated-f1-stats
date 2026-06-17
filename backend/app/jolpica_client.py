@@ -65,6 +65,7 @@ class JolpicaClient:
                 "round": int(race.get("round", 0)),
                 "race_name": race.get("raceName"),
                 "circuit": race.get("Circuit", {}).get("circuitName"),
+                "circuit_id": race.get("Circuit", {}).get("circuitId"),
                 "country": race.get("Circuit", {}).get("Location", {}).get("country"),
                 "locality": race.get("Circuit", {}).get("Location", {}).get("locality"),
                 "sessions": self._parse_sessions(race),

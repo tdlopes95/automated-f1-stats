@@ -115,32 +115,73 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <!-- Last Winner -->
-                    <TextView
+                    <!-- Loading indicator -->
+                    <ProgressBar
+                        android:id="@+id/pb_stats_loading"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="LAST WINNER"
-                        android:textColor="@color/text_hint"
-                        android:textSize="11sp"
-                        android:letterSpacing="0.08"
-                        android:layout_marginBottom="4dp" />
-
-                    <TextView
-                        android:id="@+id/tv_last_winner"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:text="—" />
-
-                    <TextView
-                        android:id="@+id/tv_last_winner_year"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp"
+                        android:layout_gravity="center_horizontal"
                         android:visibility="gone" />
+
+                    <!-- Total Races + First GP row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="TOTAL RACES"
+                                android:textColor="@color/text_hint"
+                                android:textSize="11sp"
+                                android:letterSpacing="0.08"
+                                android:layout_marginBottom="2dp" />
+
+                            <TextView
+                                android:id="@+id/tv_total_races"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="@color/text_primary"
+                                android:textSize="20sp"
+                                android:textStyle="bold" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="FIRST GP"
+                                android:textColor="@color/text_hint"
+                                android:textSize="11sp"
+                                android:letterSpacing="0.08"
+                                android:layout_marginBottom="2dp" />
+
+                            <TextView
+                                android:id="@+id/tv_first_gp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="@color/text_primary"
+                                android:textSize="20sp"
+                                android:textStyle="bold" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
 
                     <!-- Divider -->
                     <View
@@ -158,21 +199,31 @@
                         android:textColor="@color/text_hint"
                         android:textSize="11sp"
                         android:letterSpacing="0.08"
-                        android:layout_marginBottom="6dp" />
+                        android:layout_marginBottom="4dp" />
 
                     <LinearLayout
-                        android:id="@+id/ll_wins_container"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical">
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
 
                         <TextView
-                            android:id="@+id/tv_wins_empty"
+                            android:id="@+id/tv_most_wins_driver"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="—"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_most_wins_count"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="No data cached"
-                            android:textColor="@color/text_hint"
-                            android:textSize="13sp" />
+                            android:textColor="@color/f1_red"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
 
                     </LinearLayout>
 
@@ -192,32 +243,123 @@
                         android:textColor="@color/text_hint"
                         android:textSize="11sp"
                         android:letterSpacing="0.08"
-                        android:layout_marginBottom="6dp" />
+                        android:layout_marginBottom="4dp" />
 
                     <LinearLayout
-                        android:id="@+id/ll_poles_container"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical">
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
 
                         <TextView
-                            android:id="@+id/tv_poles_empty"
+                            android:id="@+id/tv_most_poles_driver"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="—"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_most_poles_count"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="No data cached"
-                            android:textColor="@color/text_hint"
-                            android:textSize="13sp" />
+                            android:textColor="@color/f1_red"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
 
                     </LinearLayout>
 
-                    <!-- Cached data note -->
+                    <!-- Divider -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/bg_divider"
+                        android:layout_marginTop="12dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- Most Constructor Wins -->
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Based on cached data"
+                        android:text="MOST CONSTRUCTOR WINS"
                         android:textColor="@color/text_hint"
                         android:textSize="11sp"
-                        android:layout_marginTop="12dp" />
+                        android:letterSpacing="0.08"
+                        android:layout_marginBottom="4dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:id="@+id/tv_top_constructor"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="—"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_top_constructor_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/f1_red"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                    </LinearLayout>
+
+                    <!-- Divider -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/bg_divider"
+                        android:layout_marginTop="12dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- Lap Record -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="LAP RECORD"
+                        android:textColor="@color/text_hint"
+                        android:textSize="11sp"
+                        android:letterSpacing="0.08"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:id="@+id/tv_lap_record_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="@color/text_primary"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_lap_record_driver"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+
+                    <!-- Error state -->
+                    <TextView
+                        android:id="@+id/tv_stats_error"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textColor="@color/text_hint"
+                        android:textSize="13sp"
+                        android:visibility="gone" />
 
                 </LinearLayout>
 

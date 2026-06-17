@@ -103,4 +103,9 @@ public interface F1ApiService {
     @GET("drivers/{year}")
     Call<List<Map<String, Object>>> getDriversByYear(@Path("year") int year);
 
+    // ── Circuit Stats ─────────────────────────────────────────────────────────
+
+    @GET("circuit/{circuitId}/stats")
+    Call<com.f1stats.models.CircuitStatsResponse> getCircuitStats(@Path("circuitId") String circuitId);
+
 }

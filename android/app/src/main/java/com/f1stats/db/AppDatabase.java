@@ -2,9 +2,12 @@ package com.f1stats.db;
 
 import android.content.Context;
 
+import androidx.annotation.NonNull;
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
+import androidx.room.migration.Migration;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 @Database(
     entities = {
@@ -13,9 +16,10 @@ import androidx.room.RoomDatabase;
         CachedStandings.class,
         CachedDriver.class,
         CachedSessionKey.class,
-        CachedMeeting.class
+        CachedMeeting.class,
+        CachedCircuitStats.class
     },
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -27,6 +31,18 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract DriverDao driverDao();
     public abstract SessionKeyDao sessionKeyDao();
     public abstract MeetingDao meetingDao();
+    public abstract CircuitStatsDao circuitStatsDao();
+
+    static final Migration MIGRATION_1_2 = new Migration(1, 2) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                "CREATE TABLE IF NOT EXISTS `cached_circuit_stats` " +
+                "(`circuitId` TEXT NOT NULL, `jsonData` TEXT, `cachedAt` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`circuitId`))"
+            );
+        }
+    };
 
     public static AppDatabase getInstance(Context context) {
         if (instance == null) {
@@ -36,7 +52,7 @@ public abstract class AppDatabase extends RoomDatabase {
                         context.getApplicationContext(),
                         AppDatabase.class,
                         "f1stats.db"
-                    ).build();
+                    ).addMigrations(MIGRATION_1_2).build();
                 }
             }
         }

@@ -118,6 +118,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
                 Intent intent = new Intent(itemView.getContext(), TrackDetailActivity.class);
                 intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_IMAGE, circuitImage);
                 intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_NAME, getString(race, "circuit", ""));
+                intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_ID, getString(race, "circuit_id", ""));
                 intent.putExtra(TrackDetailActivity.EXTRA_COUNTRY, getString(race, "country", ""));
                 intent.putExtra(TrackDetailActivity.EXTRA_LOCALITY, getString(race, "locality", ""));
                 intent.putExtra(TrackDetailActivity.EXTRA_COUNTRY_FLAG, (String) race.get("country_flag"));
