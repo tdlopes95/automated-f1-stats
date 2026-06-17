@@ -21,6 +21,9 @@ public interface ScheduleDao {
     @Query("SELECT * FROM cached_schedule WHERE year = :year ORDER BY round ASC")
     List<CachedSchedule> getByYear(int year);
 
+    @Query("SELECT * FROM cached_schedule WHERE circuit = :circuit ORDER BY year DESC, round DESC")
+    List<CachedSchedule> getByCircuit(String circuit);
+
     @Query("DELETE FROM cached_schedule WHERE year = :year")
     void deleteByYear(int year);
 }

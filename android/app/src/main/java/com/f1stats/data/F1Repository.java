@@ -6,6 +6,7 @@ import android.os.Looper;
 import com.f1stats.api.F1ApiService;
 import com.f1stats.db.AppDatabase;
 import com.f1stats.db.CachedDriver;
+import com.f1stats.db.CachedMeeting;
 import com.f1stats.db.CachedResult;
 import com.f1stats.db.CachedSchedule;
 import com.f1stats.db.CachedSessionKey;
@@ -440,6 +441,236 @@ public class F1Repository {
         });
     }
 
+    // ── Drivers with standings fallback (for old seasons) ────────────────────
+
+    public void fetchDriversForSeason(int year, RepositoryCallback<List<CachedDriver>> callback) {
+        executor.execute(() -> {
+            List<CachedDriver> cached = db.driverDao().getBySeason(year);
+            if (!cached.isEmpty()) {
+                mainHandler.post(() -> callback.onSuccess(cached));
+                return;
+            }
+
+            mainHandler.post(() ->
+                api.getDriversByYear(year).enqueue(new Callback<List<Map<String, Object>>>() {
+                    @Override
+                    public void onResponse(Call<List<Map<String, Object>>> call,
+                                           Response<List<Map<String, Object>>> response) {
+                        if (response.isSuccessful() && response.body() != null
+                                && !response.body().isEmpty()) {
+                            List<Map<String, Object>> raw = response.body();
+                            executor.execute(() -> {
+                                List<CachedDriver> drivers = parseOpenF1Drivers(raw, year);
+                                db.driverDao().upsertAll(drivers);
+                                mainHandler.post(() -> callback.onSuccess(drivers));
+                            });
+                        } else {
+                            fallbackToStandingsDrivers(year, callback);
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {
+                        fallbackToStandingsDrivers(year, callback);
+                    }
+                })
+            );
+        });
+    }
+
+    private void fallbackToStandingsDrivers(int year, RepositoryCallback<List<CachedDriver>> callback) {
+        executor.execute(() -> {
+            CachedStandings cachedStandings = db.standingsDao().get(year, "driver");
+            if (cachedStandings != null && cachedStandings.standingsJson != null) {
+                List<CachedDriver> drivers = parseDriversFromStandingsJson(cachedStandings.standingsJson, year);
+                if (!drivers.isEmpty()) {
+                    mainHandler.post(() -> callback.onSuccess(drivers));
+                    return;
+                }
+            }
+
+            mainHandler.post(() ->
+                api.getDriverStandings(year).enqueue(new Callback<Map<String, Object>>() {
+                    @Override
+                    public void onResponse(Call<Map<String, Object>> call,
+                                           Response<Map<String, Object>> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            Map<String, Object> body = response.body();
+                            executor.execute(() -> {
+                                CachedStandings row = new CachedStandings();
+                                row.year          = year;
+                                row.type          = "driver";
+                                row.standingsJson = gson.toJson(body);
+                                Object started    = body.get("season_started");
+                                row.seasonStarted = started instanceof Boolean && (Boolean) started;
+                                row.leaderGap     = 0;
+                                row.fetchedAt     = System.currentTimeMillis();
+                                db.standingsDao().upsert(row);
+
+                                List<CachedDriver> drivers = parseDriversFromStandingsJson(
+                                        row.standingsJson, year);
+                                mainHandler.post(() -> callback.onSuccess(drivers));
+                            });
+                        } else {
+                            mainHandler.post(() -> callback.onSuccess(new ArrayList<>()));
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<Map<String, Object>> call, Throwable t) {
+                        mainHandler.post(() -> callback.onSuccess(new ArrayList<>()));
+                    }
+                })
+            );
+        });
+    }
+
+    private List<CachedDriver> parseOpenF1Drivers(List<Map<String, Object>> raw, int year) {
+        List<CachedDriver> drivers = new ArrayList<>();
+        long now = System.currentTimeMillis();
+        for (Map<String, Object> d : raw) {
+            CachedDriver driver = new CachedDriver();
+            String acronym = toStr(d.get("name_acronym"));
+            driver.driverId    = acronym != null ? acronym.toLowerCase() : "";
+            driver.code        = acronym;
+            driver.headshotUrl = toStr(d.get("headshot_url"));
+            driver.teamName    = toStr(d.get("team_name"));
+            driver.teamColour  = toStr(d.get("team_colour"));
+            driver.seasonYear  = year;
+            driver.fetchedAt   = now;
+            String fullName = toStr(d.get("full_name"));
+            if (fullName != null) {
+                int sp = fullName.indexOf(' ');
+                if (sp >= 0) {
+                    driver.firstName = fullName.substring(0, sp);
+                    driver.lastName  = fullName.substring(sp + 1);
+                } else {
+                    driver.lastName = fullName;
+                }
+            }
+            drivers.add(driver);
+        }
+        return drivers;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<CachedDriver> parseDriversFromStandingsJson(String standingsJson, int year) {
+        List<CachedDriver> result = new ArrayList<>();
+        try {
+            Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
+            Map<String, Object> body = gson.fromJson(standingsJson, mapType);
+            Object standingsObj = body.get("standings");
+            if (!(standingsObj instanceof List)) return result;
+
+            for (Object entry : (List<?>) standingsObj) {
+                if (!(entry instanceof Map)) continue;
+                Map<String, Object> standing = (Map<String, Object>) entry;
+                Object driverObj = standing.get("Driver");
+                if (!(driverObj instanceof Map)) continue;
+                Map<String, Object> d = (Map<String, Object>) driverObj;
+
+                String teamName = null;
+                Object constructorsObj = standing.get("Constructors");
+                if (constructorsObj instanceof List) {
+                    List<?> constrs = (List<?>) constructorsObj;
+                    if (!constrs.isEmpty() && constrs.get(0) instanceof Map) {
+                        teamName = toStr(((Map<?, ?>) constrs.get(0)).get("name"));
+                    }
+                }
+
+                CachedDriver driver = new CachedDriver();
+                String driverId = toStr(d.get("driverId"));
+                driver.driverId        = driverId != null ? driverId : "";
+                driver.code            = toStr(d.get("code"));
+                driver.firstName       = toStr(d.get("givenName"));
+                driver.lastName        = toStr(d.get("familyName"));
+                driver.nationality     = toStr(d.get("nationality"));
+                driver.permanentNumber = toStr(d.get("permanentNumber"));
+                driver.teamName        = teamName;
+                driver.seasonYear      = year;
+                result.add(driver);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("F1Repository", "Failed to parse drivers from standings", e);
+        }
+        return result;
+    }
+
+    // ── Meetings (cache-first) ────────────────────────────────────────────────
+
+    public void getMeetings(int year, RepositoryCallback<List<Map<String, Object>>> callback) {
+        executor.execute(() -> {
+            List<CachedMeeting> cached = db.meetingDao().getByYear(year);
+            long now = System.currentTimeMillis();
+            boolean isPast  = year < currentYear;
+            boolean isFresh = !cached.isEmpty() &&
+                    (isPast || (now - cached.get(0).fetchedAt) < 7 * ONE_DAY_MS);
+
+            if (isFresh) {
+                mainHandler.post(() -> callback.onSuccess(meetingsToMaps(cached)));
+                return;
+            }
+
+            mainHandler.post(() ->
+                api.getMeetings(year).enqueue(new Callback<List<Map<String, Object>>>() {
+                    @Override
+                    public void onResponse(Call<List<Map<String, Object>>> call,
+                                           Response<List<Map<String, Object>>> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            List<Map<String, Object>> meetings = response.body();
+                            executor.execute(() -> saveMeetings(year, meetings));
+                            callback.onSuccess(meetings);
+                        } else if (!cached.isEmpty()) {
+                            callback.onSuccess(meetingsToMaps(cached));
+                        } else {
+                            callback.onError("Could not load meetings");
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {
+                        if (!cached.isEmpty()) {
+                            callback.onSuccess(meetingsToMaps(cached));
+                        } else {
+                            callback.onError("Connection error: " + t.getMessage());
+                        }
+                    }
+                })
+            );
+        });
+    }
+
+    private void saveMeetings(int year, List<Map<String, Object>> meetings) {
+        List<CachedMeeting> rows = new ArrayList<>();
+        for (int i = 0; i < meetings.size(); i++) {
+            Map<String, Object> m = meetings.get(i);
+            CachedMeeting row = new CachedMeeting();
+            Object keyObj = m.get("meeting_key");
+            row.meetingKey     = keyObj instanceof Number ? ((Number) keyObj).intValue()
+                                                          : year * 1000 + i;
+            row.year           = year;
+            row.meetingName    = toStr(m.get("meeting_name"));
+            row.location       = toStr(m.get("location"));
+            row.countryName    = toStr(m.get("country_name"));
+            row.countryFlagUrl = toStr(m.get("country_flag"));
+            row.circuitImageUrl = toStr(m.get("circuit_image"));
+            row.fetchedAt      = System.currentTimeMillis();
+            rows.add(row);
+        }
+        db.meetingDao().upsertAll(rows);
+    }
+
+    private List<Map<String, Object>> meetingsToMaps(List<CachedMeeting> meetings) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (CachedMeeting m : meetings) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("meeting_name",  m.meetingName);
+            map.put("circuit_image", m.circuitImageUrl);
+            map.put("country_flag",  m.countryFlagUrl);
+            map.put("location",      m.location);
+            map.put("country_name",  m.countryName);
+            out.add(map);
+        }
+        return out;
+    }
+
     // ── Starting Grid (from Jolpica race results) ─────────────────────────────
 
     public void getStartingGridFromResults(int year, int round,
@@ -544,6 +775,8 @@ public class F1Repository {
                                                            Response<Map<String, Object>> response) {
                                         if (response.isSuccessful() && response.body() != null) {
                                             Map<String, Object> body = response.body();
+                                            // decrement AFTER the DB write so computeStatsFromRoom
+                                            // sees the row when the callback fires
                                             executor.execute(() -> {
                                                 CachedResult row = new CachedResult();
                                                 row.year        = year;
@@ -552,10 +785,14 @@ public class F1Repository {
                                                 row.resultsJson = gson.toJson(body);
                                                 row.fetchedAt   = System.currentTimeMillis();
                                                 db.resultDao().upsert(row);
+                                                if (pending.decrementAndGet() == 0) {
+                                                    mainHandler.post(() -> callback.onSuccess(null));
+                                                }
                                             });
-                                        }
-                                        if (pending.decrementAndGet() == 0) {
-                                            mainHandler.post(() -> callback.onSuccess(null));
+                                        } else {
+                                            if (pending.decrementAndGet() == 0) {
+                                                mainHandler.post(() -> callback.onSuccess(null));
+                                            }
                                         }
                                     }
                                     @Override

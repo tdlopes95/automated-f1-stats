@@ -173,6 +173,24 @@ public class LiveFragment extends Fragment {
             Glide.with(this).load(countryFlag).into(ivCountryFlag);
         }
 
+        final String finalCircuitImage = circuitImage;
+        ivCircuitImage.setOnClickListener(v -> {
+            if (finalCircuitImage == null || finalCircuitImage.isEmpty()) return;
+            android.content.Intent intent = new android.content.Intent(
+                    requireContext(), com.f1stats.TrackDetailActivity.class);
+            intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_CIRCUIT_IMAGE, finalCircuitImage);
+            intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_CIRCUIT_NAME,
+                    str(targetRace, "circuit", ""));
+            intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_COUNTRY,
+                    str(targetRace, "country", ""));
+            intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_LOCALITY,
+                    str(targetRace, "locality", ""));
+            intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_COUNTRY_FLAG,
+                    (String) targetRace.get("country_flag"));
+            startActivity(intent);
+            requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+        });
+
         List<Map<String, Object>> sessions = (List<Map<String, Object>>) targetRace.get("sessions");
         if (sessions == null || sessions.isEmpty()) return;
 

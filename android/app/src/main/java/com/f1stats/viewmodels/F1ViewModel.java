@@ -334,16 +334,13 @@ public class F1ViewModel extends ViewModel {
     // ── Meetings ──────────────────────────────────────────────────────────────
 
     public void fetchMeetings(int year) {
-        api.getMeetings(year).enqueue(new Callback<List<Map<String, Object>>>() {
+        repo.getMeetings(year, new F1Repository.RepositoryCallback<List<Map<String, Object>>>() {
             @Override
-            public void onResponse(Call<List<Map<String, Object>>> call,
-                                   Response<List<Map<String, Object>>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    meetings.setValue(response.body());
-                }
+            public void onSuccess(List<Map<String, Object>> data) {
+                meetings.setValue(data);
             }
             @Override
-            public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {}
+            public void onError(String error) {}
         });
     }
 

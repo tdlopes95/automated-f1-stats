@@ -15,6 +15,10 @@
         android:name=".F1App"
         android:theme="@style/Theme.F1Stats">
         <activity
+            android:name=".TrackDetailActivity"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.F1Stats" />
+        <activity
             android:name=".CompareDriversActivity"
             android:parentActivityName=".MainActivity"
             android:theme="@style/Theme.F1Stats" />

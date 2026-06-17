@@ -103,6 +103,17 @@ public class RoundDetailActivity extends AppCompatActivity {
         if (circuitImage != null && !circuitImage.isEmpty()) {
             ivTrackMap.setVisibility(View.VISIBLE);
             Glide.with(this).load(circuitImage).into(ivTrackMap);
+            final String finalCircuitImage = circuitImage;
+            final String finalCircuit = circuit;
+            final String finalCountryFlag = countryFlag;
+            ivTrackMap.setOnClickListener(v -> {
+                Intent intent = new Intent(this, TrackDetailActivity.class);
+                intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_IMAGE, finalCircuitImage);
+                intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_NAME, finalCircuit);
+                intent.putExtra(TrackDetailActivity.EXTRA_COUNTRY_FLAG, finalCountryFlag);
+                startActivity(intent);
+                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+            });
         }
 
         recyclerView      = findViewById(R.id.rv_round_detail);

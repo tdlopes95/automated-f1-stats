@@ -1,5 +1,6 @@
 package com.f1stats.ui.schedule;
 
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +16,7 @@ import androidx.transition.TransitionManager;
 import com.bumptech.glide.Glide;
 import com.f1stats.DateHelper;
 import com.f1stats.R;
+import com.f1stats.TrackDetailActivity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -111,6 +113,16 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
             } else {
                 ivCircuitImage.setImageDrawable(null);
             }
+
+            ivCircuitImage.setOnClickListener(v -> {
+                Intent intent = new Intent(itemView.getContext(), TrackDetailActivity.class);
+                intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_IMAGE, circuitImage);
+                intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_NAME, getString(race, "circuit", ""));
+                intent.putExtra(TrackDetailActivity.EXTRA_COUNTRY, getString(race, "country", ""));
+                intent.putExtra(TrackDetailActivity.EXTRA_LOCALITY, getString(race, "locality", ""));
+                intent.putExtra(TrackDetailActivity.EXTRA_COUNTRY_FLAG, (String) race.get("country_flag"));
+                itemView.getContext().startActivity(intent);
+            });
 
             // Expand / collapse on click
             expanded = false;

@@ -18,8 +18,9 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.f1stats.R;
-import com.f1stats.viewmodels.F1ViewModel;
 import com.f1stats.SeasonHelper;
+import com.f1stats.SeasonPickerHelper;
+import com.f1stats.viewmodels.F1ViewModel;
 
 import java.util.List;
 import java.util.Map;
@@ -63,6 +64,15 @@ public class ScheduleFragment extends Fragment {
         ImageButton btnNext = view.findViewById(R.id.btn_next_year);
 
         tvYear.setText(String.valueOf(selectedYear));
+        tvYear.setOnClickListener(v -> SeasonPickerHelper.showPicker(requireContext(), selectedYear,
+                year -> {
+                    selectedYear = year;
+                    tvYear.setText(String.valueOf(selectedYear));
+                    latestSchedule = null;
+                    latestMeetings = null;
+                    viewModel.fetchSchedule(selectedYear);
+                    viewModel.fetchMeetings(selectedYear);
+                }));
         btnPrev.setOnClickListener(v -> {
             if (selectedYear > 1950) {
                 selectedYear--;

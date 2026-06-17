@@ -23,6 +23,7 @@ import com.f1stats.DriverHelper;
 import com.f1stats.DriverProfileActivity;
 import com.f1stats.R;
 import com.f1stats.SeasonHelper;
+import com.f1stats.SeasonPickerHelper;
 import com.f1stats.models.DriverStanding;
 import com.f1stats.models.RaceResult;
 import com.f1stats.viewmodels.F1ViewModel;
@@ -98,6 +99,12 @@ public class StandingsFragment extends Fragment {
         ImageButton btnNext = view.findViewById(R.id.btn_next_year);
 
         tvYear.setText(String.valueOf(selectedYear));
+        tvYear.setOnClickListener(v -> SeasonPickerHelper.showPicker(requireContext(), selectedYear,
+                year -> {
+                    selectedYear = year;
+                    tvYear.setText(String.valueOf(selectedYear));
+                    loadCurrentTab();
+                }));
         btnPrev.setOnClickListener(v -> {
             if (selectedYear > 1950) {
                 selectedYear--;

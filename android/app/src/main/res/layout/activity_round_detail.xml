@@ -48,6 +48,9 @@
         android:scaleType="fitCenter"
         android:padding="16dp"
         android:background="@color/bg_surface"
+        android:foreground="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
         android:visibility="gone" />
 
     <!-- Weather bar -->

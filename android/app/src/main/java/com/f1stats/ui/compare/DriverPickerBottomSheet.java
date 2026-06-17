@@ -2,11 +2,10 @@ package com.f1stats.ui.compare;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ProgressBar;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -15,11 +14,12 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.f1stats.F1App;
 import com.f1stats.R;
+import com.f1stats.api.F1ApiClient;
+import com.f1stats.data.F1Repository;
 import com.f1stats.db.CachedDriver;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import java.util.List;
-import java.util.concurrent.Executors;
 
 public class DriverPickerBottomSheet extends BottomSheetDialogFragment {
 
@@ -64,21 +64,38 @@ public class DriverPickerBottomSheet extends BottomSheetDialogFragment {
         RecyclerView rv = view.findViewById(R.id.rv_drivers);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
 
+        ProgressBar pbLoading = view.findViewById(R.id.pb_loading_drivers);
+
         DriverPickerAdapter adapter = new DriverPickerAdapter(driver -> {
             if (listener != null) listener.onDriverSelected(driver);
             dismiss();
         });
         rv.setAdapter(adapter);
 
-        Handler mainHandler = new Handler(Looper.getMainLooper());
-        Executors.newSingleThreadExecutor().execute(() -> {
-            List<CachedDriver> drivers = F1App.get().getDatabase().driverDao().getBySeason(year);
-            drivers.sort((a, b) -> {
-                if (a.lastName == null) return 1;
-                if (b.lastName == null) return -1;
-                return a.lastName.compareTo(b.lastName);
-            });
-            mainHandler.post(() -> adapter.setDrivers(drivers));
+        rv.setVisibility(View.GONE);
+        pbLoading.setVisibility(View.VISIBLE);
+
+        F1Repository repo = new F1Repository(
+                F1App.get().getDatabase(),
+                F1ApiClient.getInstance(F1App.get()).getService());
+
+        repo.fetchDriversForSeason(year, new F1Repository.RepositoryCallback<List<CachedDriver>>() {
+            @Override
+            public void onSuccess(List<CachedDriver> drivers) {
+                drivers.sort((a, b) -> {
+                    if (a.lastName == null) return 1;
+                    if (b.lastName == null) return -1;
+                    return a.lastName.compareTo(b.lastName);
+                });
+                pbLoading.setVisibility(View.GONE);
+                rv.setVisibility(View.VISIBLE);
+                adapter.setDrivers(drivers);
+            }
+            @Override
+            public void onError(String error) {
+                pbLoading.setVisibility(View.GONE);
+                rv.setVisibility(View.VISIBLE);
+            }
         });
     }
 }

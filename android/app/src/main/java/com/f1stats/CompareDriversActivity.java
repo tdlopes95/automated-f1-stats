@@ -27,6 +27,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -118,9 +119,39 @@ public class CompareDriversActivity extends AppCompatActivity
         rowPoles    = inflateStatRow("Poles");
 
         setupSeasonSpinner();
+        prefetchDriversForYear(year);
 
         findViewById(R.id.btn_select_driver1).setOnClickListener(v -> openDriverPicker(1));
         findViewById(R.id.btn_select_driver2).setOnClickListener(v -> openDriverPicker(2));
+    }
+
+    private void prefetchDriversForYear(int year) {
+        pbLoading.setVisibility(View.VISIBLE);
+        setDriverSelectionsEnabled(false);
+
+        F1Repository repo = new F1Repository(
+                F1App.get().getDatabase(),
+                F1ApiClient.getInstance(F1App.get()).getService());
+
+        repo.fetchDriversForSeason(year, new F1Repository.RepositoryCallback<List<CachedDriver>>() {
+            @Override
+            public void onSuccess(List<CachedDriver> drivers) {
+                pbLoading.setVisibility(View.GONE);
+                setDriverSelectionsEnabled(true);
+            }
+            @Override
+            public void onError(String error) {
+                pbLoading.setVisibility(View.GONE);
+                setDriverSelectionsEnabled(true);
+            }
+        });
+    }
+
+    private void setDriverSelectionsEnabled(boolean enabled) {
+        View btn1 = findViewById(R.id.btn_select_driver1);
+        View btn2 = findViewById(R.id.btn_select_driver2);
+        if (btn1 != null) btn1.setEnabled(enabled);
+        if (btn2 != null) btn2.setEnabled(enabled);
     }
 
     private void setupSeasonSpinner() {
@@ -129,12 +160,22 @@ public class CompareDriversActivity extends AppCompatActivity
         ImageButton btnNext = findViewById(R.id.btn_next_year);
 
         tvYear.setText(String.valueOf(year));
+
+        tvYear.setOnClickListener(v -> SeasonPickerHelper.showPicker(this, year, newYear -> {
+            year = newYear;
+            tvYear.setText(String.valueOf(year));
+            if (getSupportActionBar() != null) getSupportActionBar().setSubtitle(year + " Season");
+            resetDriverSelection();
+            prefetchDriversForYear(year);
+        }));
+
         btnPrev.setOnClickListener(v -> {
             if (year > 1950) {
                 year--;
                 tvYear.setText(String.valueOf(year));
                 if (getSupportActionBar() != null) getSupportActionBar().setSubtitle(year + " Season");
                 resetDriverSelection();
+                prefetchDriversForYear(year);
             }
         });
         btnNext.setOnClickListener(v -> {
@@ -143,6 +184,7 @@ public class CompareDriversActivity extends AppCompatActivity
                 tvYear.setText(String.valueOf(year));
                 if (getSupportActionBar() != null) getSupportActionBar().setSubtitle(year + " Season");
                 resetDriverSelection();
+                prefetchDriversForYear(year);
             }
         });
     }
