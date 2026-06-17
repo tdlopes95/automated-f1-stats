@@ -47,6 +47,7 @@ public class RoundDetailActivity extends AppCompatActivity {
     public static final String EXTRA_RACE_NAME     = "extra_race_name";
     public static final String EXTRA_CIRCUIT       = "extra_circuit";
     public static final String EXTRA_CIRCUIT_IMAGE = "extra_circuit_image";
+    public static final String EXTRA_CIRCUIT_ID    = "extra_circuit_id";
     public static final String EXTRA_COUNTRY_FLAG  = "extra_country_flag";
     public static final String EXTRA_HAS_SPRINT    = "extra_has_sprint";
 
@@ -82,7 +83,9 @@ public class RoundDetailActivity extends AppCompatActivity {
         String raceName     = getIntent().getStringExtra(EXTRA_RACE_NAME);
         String circuit      = getIntent().getStringExtra(EXTRA_CIRCUIT);
         String circuitImage = getIntent().getStringExtra(EXTRA_CIRCUIT_IMAGE);
+        String circuitId    = getIntent().getStringExtra(EXTRA_CIRCUIT_ID);
         String countryFlag  = getIntent().getStringExtra(EXTRA_COUNTRY_FLAG);
+        android.util.Log.d("CIRCUIT_DEBUG", "RoundDetailActivity received circuitId=" + circuitId);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -106,11 +109,14 @@ public class RoundDetailActivity extends AppCompatActivity {
             final String finalCircuitImage = circuitImage;
             final String finalCircuit = circuit;
             final String finalCountryFlag = countryFlag;
+            final String finalCircuitId = circuitId;
             ivTrackMap.setOnClickListener(v -> {
                 Intent intent = new Intent(this, TrackDetailActivity.class);
                 intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_IMAGE, finalCircuitImage);
                 intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_NAME, finalCircuit);
+                intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_ID, finalCircuitId);
                 intent.putExtra(TrackDetailActivity.EXTRA_COUNTRY_FLAG, finalCountryFlag);
+                android.util.Log.d("CIRCUIT_DEBUG", "RoundDetailActivity passing circuitId=" + finalCircuitId);
                 startActivity(intent);
                 overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
             });

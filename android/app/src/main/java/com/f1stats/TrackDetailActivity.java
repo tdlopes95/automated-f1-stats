@@ -71,6 +71,7 @@ public class TrackDetailActivity extends AppCompatActivity {
         String country      = getIntent().getStringExtra(EXTRA_COUNTRY);
         String locality     = getIntent().getStringExtra(EXTRA_LOCALITY);
         String countryFlag  = getIntent().getStringExtra(EXTRA_COUNTRY_FLAG);
+        Log.d("CIRCUIT_DEBUG", "TrackDetailActivity received circuitId=" + circuitId);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);

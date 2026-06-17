@@ -181,12 +181,15 @@ public class LiveFragment extends Fragment {
             intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_CIRCUIT_IMAGE, finalCircuitImage);
             intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_CIRCUIT_NAME,
                     str(targetRace, "circuit", ""));
+            intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_CIRCUIT_ID,
+                    str(targetRace, "circuit_id", ""));
             intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_COUNTRY,
                     str(targetRace, "country", ""));
             intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_LOCALITY,
                     str(targetRace, "locality", ""));
             intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_COUNTRY_FLAG,
                     (String) targetRace.get("country_flag"));
+            android.util.Log.d("CIRCUIT_DEBUG", "LiveFragment passing circuitId=" + str(targetRace, "circuit_id", ""));
             startActivity(intent);
             requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         });
@@ -275,6 +278,7 @@ public class LiveFragment extends Fragment {
             intent.putExtra(RoundDetailActivity.EXTRA_YEAR, year);
             intent.putExtra(RoundDetailActivity.EXTRA_RACE_NAME, str(race, "race_name", ""));
             intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT, str(race, "circuit", ""));
+            intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT_ID, str(race, "circuit_id", ""));
             intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT_IMAGE, (String) race.get("circuit_image"));
             intent.putExtra(RoundDetailActivity.EXTRA_COUNTRY_FLAG, (String) race.get("country_flag"));
             startActivity(intent);
@@ -304,6 +308,7 @@ public class LiveFragment extends Fragment {
                 intent.putExtra(RoundDetailActivity.EXTRA_YEAR, year);
                 intent.putExtra(RoundDetailActivity.EXTRA_RACE_NAME, str(displayedRace, "race_name", ""));
                 intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT, str(displayedRace, "circuit", ""));
+                intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT_ID, str(displayedRace, "circuit_id", ""));
                 intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT_IMAGE, (String) displayedRace.get("circuit_image"));
                 intent.putExtra(RoundDetailActivity.EXTRA_COUNTRY_FLAG, (String) displayedRace.get("country_flag"));
                 startActivity(intent);

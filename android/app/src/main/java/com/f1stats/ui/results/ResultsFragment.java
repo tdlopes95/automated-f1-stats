@@ -84,6 +84,9 @@ public class ResultsFragment extends Fragment {
                 }
             }
             intent.putExtra(RoundDetailActivity.EXTRA_HAS_SPRINT, hasSprint);
+            if (round.getCircuitId() != null) {
+                intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT_ID, round.getCircuitId());
+            }
             startActivity(intent);
             requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         });
@@ -215,8 +218,12 @@ public class ResultsFragment extends Fragment {
                 }
             }
 
-            rounds.add(new RoundSchedule(round, raceName, circuit,
-                    country, raceDate, sessions));
+            RoundSchedule rs = new RoundSchedule(round, raceName, circuit,
+                    country, raceDate, sessions);
+            if (race.get("circuit_id") != null) {
+                rs.setCircuitId(race.get("circuit_id").toString());
+            }
+            rounds.add(rs);
         }
         return rounds;
     }
