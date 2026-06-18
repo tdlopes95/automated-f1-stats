@@ -80,7 +80,13 @@ public class F1Repository {
                                            Response<List<Map<String, Object>>> response) {
                         if (response.isSuccessful() && response.body() != null) {
                             List<Map<String, Object>> races = response.body();
-                            executor.execute(() -> saveSchedule(year, races, System.currentTimeMillis()));
+                            // Serialize each map on the calling (main) thread before the executor
+                            // starts — Gson's LinkedTreeMap is not thread-safe, and passing the
+                            // live references to both threads causes ConcurrentModificationException.
+                            long fetchedAt = System.currentTimeMillis();
+                            List<String> snapshots = new ArrayList<>(races.size());
+                            for (Map<String, Object> race : races) snapshots.add(gson.toJson(race));
+                            executor.execute(() -> saveSchedule(year, snapshots, fetchedAt));
                             callback.onSuccess(races);
                         } else {
                             if (!cached.isEmpty()) {
@@ -103,18 +109,20 @@ public class F1Repository {
         });
     }
 
-    private void saveSchedule(int year, List<Map<String, Object>> races, long fetchedAt) {
+    private void saveSchedule(int year, List<String> snapshots, long fetchedAt) {
+        Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
         List<CachedSchedule> rows = new ArrayList<>();
-        for (Map<String, Object> race : races) {
+        for (String json : snapshots) {
+            Map<String, Object> race = gson.fromJson(json, mapType);
             CachedSchedule row = new CachedSchedule();
-            row.year        = year;
-            row.round       = toInt(race.get("round"));
-            row.raceName    = toStr(race.get("race_name"));
-            row.circuit     = toStr(race.get("circuit"));
-            row.country     = toStr(race.get("country"));
-            row.locality    = toStr(race.get("locality"));
-            row.sessionsJson = gson.toJson(race);
-            row.fetchedAt   = fetchedAt;
+            row.year         = year;
+            row.round        = toInt(race.get("round"));
+            row.raceName     = toStr(race.get("race_name"));
+            row.circuit      = toStr(race.get("circuit"));
+            row.country      = toStr(race.get("country"));
+            row.locality     = toStr(race.get("locality"));
+            row.sessionsJson = json;
+            row.fetchedAt    = fetchedAt;
             rows.add(row);
         }
         db.scheduleDao().upsertAll(rows);
