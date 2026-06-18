@@ -132,17 +132,19 @@
                                     <TextView
                                         android:id="@+id/tv_next_race_flag"
                                         android:text=""
-                                        android:textSize="@dimen/text_title"
+                                        android:textSize="@dimen/text_display"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
                                         android:layout_marginEnd="@dimen/spacing_sm" />
 
+                                    <!-- Task 4: Race name at text_display (22sp) for premium feel -->
                                     <TextView
                                         android:id="@+id/tv_next_race_name"
                                         android:text=""
                                         android:textColor="@color/text_primary"
-                                        android:textSize="@dimen/text_title"
+                                        android:textSize="@dimen/text_display"
                                         android:textStyle="bold"
+                                        android:letterSpacing="-0.01"
                                         android:layout_width="0dp"
                                         android:layout_height="wrap_content"
                                         android:layout_weight="1"
@@ -155,53 +157,85 @@
 
                         </FrameLayout>
 
-                        <!-- Content below image -->
+                        <!-- Content below image — Task 4: hierarchy is session label → countdown → context -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
                             android:padding="@dimen/spacing_md">
 
+                            <!-- 1. NEXT SESSION LABEL — what session is coming up (eyebrow above countdown) -->
                             <TextView
-                                android:id="@+id/tv_next_race_circuit"
+                                android:id="@+id/tv_next_session"
+                                android:text=""
+                                android:textColor="@color/text_secondary"
+                                android:textSize="@dimen/text_label"
+                                android:letterSpacing="0.1"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:visibility="gone" />
+
+                            <!-- 2. COUNTDOWN — dominant visual element (Task 4: 48sp hero, white) -->
+                            <TextView
+                                android:id="@+id/tv_countdown"
+                                android:text=""
+                                android:textColor="@color/text_primary"
+                                android:textSize="@dimen/text_hero"
+                                android:textStyle="bold"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/spacing_xs" />
+
+                            <!-- 3. HERO STATE — Weekend Complete / Offseason (Task 2: replaces countdown when state changes) -->
+                            <LinearLayout
+                                android:id="@+id/layout_hero_state"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:visibility="gone">
+
+                                <TextView
+                                    android:id="@+id/tv_hero_state_title"
+                                    android:text=""
+                                    android:textColor="@color/text_secondary"
+                                    android:textSize="@dimen/text_title"
+                                    android:textStyle="bold"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="@dimen/spacing_xs" />
+
+                                <TextView
+                                    android:id="@+id/tv_hero_state_subtitle"
+                                    android:text=""
+                                    android:textColor="@color/text_tertiary"
+                                    android:textSize="@dimen/text_metadata"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp" />
+
+                            </LinearLayout>
+
+                            <!-- 4. RACE DATE — secondary supporting context -->
+                            <TextView
+                                android:id="@+id/tv_next_race_date"
                                 android:text=""
                                 android:textColor="@color/text_tertiary"
                                 android:textSize="@dimen/text_metadata"
                                 android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/spacing_xs" />
 
+                            <!-- 5. CIRCUIT NAME — tertiary context -->
                             <TextView
-                                android:id="@+id/tv_next_race_date"
+                                android:id="@+id/tv_next_race_circuit"
                                 android:text=""
-                                android:textColor="@color/text_secondary"
+                                android:textColor="@color/text_hint"
                                 android:textSize="@dimen/text_metadata"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp" />
 
-                            <TextView
-                                android:id="@+id/tv_countdown"
-                                android:text=""
-                                android:textColor="@color/f1_red"
-                                android:textSize="@dimen/text_countdown"
-                                android:textStyle="bold"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/spacing_sm" />
-
-                            <!-- Next session label -->
-                            <TextView
-                                android:id="@+id/tv_next_session"
-                                android:text=""
-                                android:textColor="@color/text_secondary"
-                                android:textSize="@dimen/text_metadata"
-                                android:letterSpacing="0.05"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/spacing_xs"
-                                android:visibility="gone" />
-
-                            <!-- Weekend Timeline container (built programmatically) -->
+                            <!-- 6. Weekend Timeline (visual session progress dots) -->
                             <LinearLayout
                                 android:id="@+id/ll_weekend_timeline"
                                 android:layout_width="match_parent"
@@ -210,7 +244,7 @@
                                 android:layout_marginTop="@dimen/spacing_md"
                                 android:visibility="gone" />
 
-                            <!-- Section times rows -->
+                            <!-- 7. Session times list -->
                             <LinearLayout
                                 android:id="@+id/ll_session_times"
                                 android:layout_width="match_parent"
@@ -225,6 +259,7 @@
 
                 <!-- ══════════════════════════════════════════════════
                      SECTION 2 — CHAMPIONSHIP BATTLE
+                     Task 5: P1/P2 badges, rivalry feel, insight prominence
                      ══════════════════════════════════════════════════ -->
                 <View
                     android:layout_width="match_parent"
@@ -252,13 +287,24 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
 
-                    <!-- P1 row -->
+                    <!-- P1 row — Task 5: position badge adds competitor identity -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
                         android:layout_marginTop="@dimen/spacing_md">
+
+                        <!-- P1 position badge -->
+                        <TextView
+                            android:text="P1"
+                            android:textColor="@color/text_primary"
+                            android:textSize="@dimen/text_metadata"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.05"
+                            android:layout_width="20dp"
+                            android:layout_height="wrap_content"
+                            android:gravity="start" />
 
                         <View
                             android:id="@+id/view_leader_colour"
@@ -331,7 +377,7 @@
 
                     </LinearLayout>
 
-                    <!-- Gap display: lines flanking the central gap number -->
+                    <!-- Gap display: lines flanking the central gap number — Task 5: gap is visual focus -->
                     <LinearLayout
                         android:id="@+id/layout_champ_gap"
                         android:layout_width="match_parent"
@@ -339,7 +385,7 @@
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
                         android:layout_marginTop="@dimen/spacing_sm"
-                        android:layout_marginBottom="@dimen/spacing_sm"
+                        android:layout_marginBottom="@dimen/spacing_xs"
                         android:visibility="gone">
 
                         <View
@@ -366,7 +412,7 @@
                                 android:layout_height="wrap_content" />
 
                             <TextView
-                                android:text="PTS AHEAD"
+                                android:text="PT GAP"
                                 android:textColor="@color/text_tertiary"
                                 android:textSize="@dimen/text_label"
                                 android:letterSpacing="0.1"
@@ -385,7 +431,19 @@
 
                     </LinearLayout>
 
-                    <!-- P2 row -->
+                    <!-- Championship insight — Task 5: between gap and P2 for narrative flow -->
+                    <TextView
+                        android:id="@+id/tv_champ_insight"
+                        android:text=""
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_metadata"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/spacing_xs"
+                        android:gravity="center"
+                        android:visibility="gone" />
+
+                    <!-- P2 row — Task 5: challenger is visually secondary to leader -->
                     <LinearLayout
                         android:id="@+id/layout_p2"
                         android:layout_width="match_parent"
@@ -393,6 +451,17 @@
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
                         android:visibility="gone">
+
+                        <!-- P2 position badge -->
+                        <TextView
+                            android:text="P2"
+                            android:textColor="@color/text_tertiary"
+                            android:textSize="@dimen/text_metadata"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.05"
+                            android:layout_width="20dp"
+                            android:layout_height="wrap_content"
+                            android:gravity="start" />
 
                         <View
                             android:id="@+id/view_p2_colour"
@@ -415,10 +484,11 @@
                             android:orientation="vertical"
                             android:layout_marginStart="@dimen/spacing_md">
 
+                            <!-- P2 name is text_secondary to distinguish challenger from leader -->
                             <TextView
                                 android:id="@+id/tv_p2_name"
                                 android:text=""
-                                android:textColor="@color/text_primary"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/text_card_header"
                                 android:textStyle="bold"
                                 android:layout_width="wrap_content"
@@ -463,18 +533,6 @@
                         </LinearLayout>
 
                     </LinearLayout>
-
-                    <!-- Championship insight -->
-                    <TextView
-                        android:id="@+id/tv_champ_insight"
-                        android:text=""
-                        android:textColor="@color/text_tertiary"
-                        android:textSize="@dimen/text_metadata"
-                        android:textStyle="italic"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/spacing_md"
-                        android:visibility="gone" />
 
                 </LinearLayout>
 

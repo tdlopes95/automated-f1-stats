@@ -21,6 +21,10 @@ public class HomeCacheManager {
     private static final String KEY_LAST_WINNER   = "last_winner";
     private static final String KEY_LAST_TEAM     = "last_team";
     private static final String KEY_LAST_RACE_NAME = "last_race_name";
+    private static final String KEY_LEADER_INSIGHT = "leader_insight";
+    private static final String KEY_P2_NAME   = "p2_name";
+    private static final String KEY_P2_TEAM   = "p2_team";
+    private static final String KEY_P2_POINTS = "p2_points";
 
     private static HomeCacheManager instance;
     private final SharedPreferences prefs;
@@ -52,6 +56,18 @@ public class HomeCacheManager {
                 .apply();
     }
 
+    public void saveLeaderInsight(String insight) {
+        prefs.edit().putString(KEY_LEADER_INSIGHT, insight).apply();
+    }
+
+    public void saveP2(String name, String team, String points) {
+        prefs.edit()
+                .putString(KEY_P2_NAME, name)
+                .putString(KEY_P2_TEAM, team)
+                .putString(KEY_P2_POINTS, points)
+                .apply();
+    }
+
     public void saveLastWinner(String winner, String team, String raceName) {
         prefs.edit()
                 .putString(KEY_LAST_WINNER, winner)
@@ -74,9 +90,13 @@ public class HomeCacheManager {
     public String loadLeaderPoints() { return prefs.getString(KEY_LEADER_POINTS, null); }
     public float  loadLeaderGap()    { return prefs.getFloat(KEY_LEADER_GAP, 0f); }
     public boolean loadSeasonStarted() { return prefs.getBoolean(KEY_SEASON_STARTED, true); }
+    public String loadLeaderInsight() { return prefs.getString(KEY_LEADER_INSIGHT, null); }
     public String loadLastWinner()   { return prefs.getString(KEY_LAST_WINNER, null); }
     public String loadLastTeam()     { return prefs.getString(KEY_LAST_TEAM, null); }
     public String loadLastRaceName() { return prefs.getString(KEY_LAST_RACE_NAME, null); }
+    public String loadP2Name()   { return prefs.getString(KEY_P2_NAME, null); }
+    public String loadP2Team()   { return prefs.getString(KEY_P2_TEAM, null); }
+    public String loadP2Points() { return prefs.getString(KEY_P2_POINTS, null); }
 
     public boolean hasCache() {
         return prefs.getString(KEY_LEADER_NAME, null) != null;

@@ -48,6 +48,8 @@ public class HomeFragment extends Fragment {
     private TextView tvNextRaceName, tvNextRaceCircuit, tvNextRaceDate, tvNextRaceFlag;
     private TextView tvCountdown;
     private TextView tvNextSession;
+    private TextView tvHeroStateTitle, tvHeroStateSubtitle;
+    private LinearLayout layoutHeroState;
     private ImageView ivNextRaceCircuit;
     private LinearLayout llSessionTimes;
     private LinearLayout llWeekendTimeline;
@@ -103,6 +105,9 @@ public class HomeFragment extends Fragment {
         tvNextRaceFlag    = view.findViewById(R.id.tv_next_race_flag);
         tvCountdown       = view.findViewById(R.id.tv_countdown);
         tvNextSession     = view.findViewById(R.id.tv_next_session);
+        tvHeroStateTitle  = view.findViewById(R.id.tv_hero_state_title);
+        tvHeroStateSubtitle = view.findViewById(R.id.tv_hero_state_subtitle);
+        layoutHeroState   = view.findViewById(R.id.layout_hero_state);
         ivNextRaceCircuit = view.findViewById(R.id.iv_next_race_circuit);
         llSessionTimes    = view.findViewById(R.id.ll_session_times);
         llWeekendTimeline = view.findViewById(R.id.ll_weekend_timeline);
@@ -168,29 +173,70 @@ public class HomeFragment extends Fragment {
     // ── Cache ─────────────────────────────────────────────────────────────────
 
     private void loadFromCache() {
-        tvLeaderName.setText(cache.loadLeaderName());
-        tvLeaderTeam.setText(cache.loadLeaderTeam());
-        tvLeaderPoints.setText(stripPtsSuffix(cache.loadLeaderPoints()));
+        // Leader (P1)
+        String leaderName = cache.loadLeaderName();
+        String leaderTeam = cache.loadLeaderTeam();
+        String leaderPoints = cache.loadLeaderPoints();
+
+        if (leaderName != null) {
+            tvLeaderName.setText(leaderName);
+        }
+        if (leaderTeam != null) {
+            tvLeaderTeam.setText(leaderTeam);
+            applyTeamColour(viewLeaderColour, leaderTeam);
+        }
+        if (leaderPoints != null) {
+            tvLeaderPoints.setText(stripPtsSuffix(leaderPoints));
+        }
         tvLeaderTitle.setText(cache.loadSeasonStarted() ?
                 "CHAMPIONSHIP BATTLE" : "LAST SEASON CHAMPION");
 
+        // Gap and insight — Task 3: all championship data complete from cache
         float gap = cache.loadLeaderGap();
         if (gap > 0) {
             tvChampGap.setText(String.valueOf((int) gap));
             layoutChampGap.setVisibility(View.VISIBLE);
-            String insight = generateChampInsight(gap);
+            String insight = cache.loadLeaderInsight();
+            if (insight == null || insight.isEmpty()) {
+                insight = generateChampInsight(gap);
+            }
             if (!insight.isEmpty()) {
                 tvChampInsight.setText(insight);
                 tvChampInsight.setVisibility(View.VISIBLE);
             }
         } else {
             layoutChampGap.setVisibility(View.GONE);
+            tvChampInsight.setVisibility(View.GONE);
         }
 
-        tvLastWinner.setText(cache.loadLastWinner());
-        tvLastRaceTeam.setText(cache.loadLastTeam());
-        tvLastRaceName.setText(cache.loadLastRaceName());
+        // P2 — Task 3: P2 data fully cached so it appears instantly
+        String p2Name = cache.loadP2Name();
+        String p2Team = cache.loadP2Team();
+        String p2Points = cache.loadP2Points();
+        if (p2Name != null) {
+            tvP2Name.setText(p2Name);
+            tvP2Team.setText(p2Team != null ? p2Team : "");
+            tvP2Points.setText(stripPtsSuffix(p2Points != null ? p2Points : ""));
+            if (p2Team != null) applyTeamColour(viewP2Colour, p2Team);
+            layoutP2.setVisibility(View.VISIBLE);
+        }
 
+        // Last winner
+        String lastWinner = cache.loadLastWinner();
+        if (lastWinner != null) {
+            tvLastWinner.setText(lastWinner);
+        }
+        String lastTeam = cache.loadLastTeam();
+        if (lastTeam != null) {
+            tvLastRaceTeam.setText(lastTeam);
+            applyTeamColour(viewLastWinnerColour, lastTeam);
+        }
+        String lastRaceName = cache.loadLastRaceName();
+        if (lastRaceName != null) {
+            tvLastRaceName.setText(lastRaceName);
+        }
+
+        // Next race
         Map<String, Object> race = cache.loadNextRace();
         if (race != null) {
             tvNextRaceName.setText(getStr(race, "race_name", ""));
@@ -200,16 +246,10 @@ public class HomeFragment extends Fragment {
                     (List<Map<String, Object>>) race.get("sessions");
             if (sessions != null) {
                 buildSessionTimes(sessions);
-                for (Map<String, Object> session : sessions) {
-                    if ("Race".equals(session.get("name"))) {
-                        String dateStr = (String) session.get("datetime");
-                        if (dateStr != null) {
-                            tvNextRaceDate.setText(formatDate(dateStr));
-                            startCountdown(dateStr);
-                        }
-                        break;
-                    }
-                }
+            } else {
+                // No sessions data — show race date if available as fallback
+                tvNextRaceDate.setText("");
+                showNormalCountdownState();
             }
         }
     }
@@ -268,7 +308,13 @@ public class HomeFragment extends Fragment {
     private void observeViewModel() {
 
         viewModel.getNextRace().observe(getViewLifecycleOwner(), race -> {
-            if (race == null) return;
+            if (race == null) {
+                // Task 6: guard null race — show offseason if no upcoming race
+                showOffseasonState();
+                nextRaceLoaded = true;
+                checkAllLoaded();
+                return;
+            }
             tvNextRaceName.setText(getStr(race, "race_name", "Unknown Race"));
             tvNextRaceCircuit.setText(getStr(race, "circuit", ""));
             tvNextRaceFlag.setText(DriverHelper.getFlagForCountry(getStr(race, "country", "")));
@@ -277,16 +323,10 @@ public class HomeFragment extends Fragment {
                     (List<Map<String, Object>>) race.get("sessions");
             if (sessions != null) {
                 buildSessionTimes(sessions);
-                for (Map<String, Object> session : sessions) {
-                    if ("Race".equals(session.get("name"))) {
-                        String dateStr = (String) session.get("datetime");
-                        if (dateStr != null) {
-                            tvNextRaceDate.setText(formatDate(dateStr));
-                            startCountdown(dateStr);
-                        }
-                        break;
-                    }
-                }
+            } else {
+                // Task 6: no session data — show race name without sessions
+                tvNextRaceDate.setText("");
+                showNormalCountdownState();
             }
             cache.saveNextRace(race);
             nextRaceLoaded = true;
@@ -309,14 +349,17 @@ public class HomeFragment extends Fragment {
             leaderCode = leader.getDriver() != null ? leader.getDriver().getCode() : null;
             loadHeadshot(ivLeaderHeadshot, leaderCode, viewModel.getDriverHeadshotMap().getValue());
 
-            // Gap display
+            // Gap and insight display
+            String insight = "";
             if (gap > 0) {
                 tvChampGap.setText(String.valueOf((int) gap));
                 layoutChampGap.setVisibility(View.VISIBLE);
-                String insight = generateChampInsight(gap);
+                insight = generateChampInsight(gap);
                 if (!insight.isEmpty()) {
                     tvChampInsight.setText(insight);
                     tvChampInsight.setVisibility(View.VISIBLE);
+                } else {
+                    tvChampInsight.setVisibility(View.GONE);
                 }
             } else {
                 layoutChampGap.setVisibility(View.GONE);
@@ -335,10 +378,14 @@ public class HomeFragment extends Fragment {
                 p2Code = p2.getDriver() != null ? p2.getDriver().getCode() : null;
                 loadHeadshot(ivP2Headshot, p2Code, viewModel.getDriverHeadshotMap().getValue());
                 layoutP2.setVisibility(View.VISIBLE);
+                // Task 3: persist P2 so cold-start shows complete championship section
+                cache.saveP2(p2Name, p2Team, p2.getPoints());
             } else {
                 layoutP2.setVisibility(View.GONE);
             }
 
+            // Task 3: persist insight alongside gap so cache is complete
+            cache.saveLeaderInsight(insight);
             standingsLoaded = true;
             checkAllLoaded();
         });
@@ -434,8 +481,107 @@ public class HomeFragment extends Fragment {
     private void buildSessionTimes(List<Map<String, Object>> sessions) {
         if (sessions == null || getContext() == null) return;
         buildWeekendTimeline(sessions);
-        updateNextSession(sessions);
+        updateNextSessionLabel(sessions);
         buildSessionList(sessions);
+
+        // Task 1: countdown targets next relevant session, not always the race
+        Map<String, Object> nextSession = findNextUpcomingSession(sessions);
+        if (nextSession != null) {
+            String dateStr = (String) nextSession.get("datetime");
+            if (dateStr != null) {
+                // Show race date as context when next session is the race itself
+                String sessionName = (String) nextSession.get("name");
+                if ("Race".equals(sessionName)) {
+                    tvNextRaceDate.setText(formatDate(dateStr));
+                } else {
+                    tvNextRaceDate.setText("");
+                }
+                startCountdown(dateStr);
+            }
+            showNormalCountdownState();
+        } else {
+            // Task 2: all sessions complete → show Weekend Complete state
+            showWeekendCompleteState();
+        }
+
+        // Always show full race date for context if we have it
+        if (tvNextRaceDate.getText().toString().isEmpty()) {
+            for (Map<String, Object> session : sessions) {
+                if ("Race".equals(session.get("name"))) {
+                    String raceDate = (String) session.get("datetime");
+                    if (raceDate != null) {
+                        tvNextRaceDate.setText(formatDate(raceDate));
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    /** Returns the first session that has not yet ended (current or upcoming). */
+    private Map<String, Object> findNextUpcomingSession(List<Map<String, Object>> sessions) {
+        if (sessions == null) return null;
+        long now = System.currentTimeMillis();
+        long sessionDurationMs = 3 * 60 * 60 * 1000L;
+        for (Map<String, Object> session : sessions) {
+            String dateStr = (String) session.get("datetime");
+            if (dateStr == null) continue;
+            long millis = DateHelper.toMillis(dateStr);
+            if (millis == -1) continue;
+            if (millis + sessionDurationMs > now) {
+                return session;
+            }
+        }
+        return null;
+    }
+
+    /** True if the first session is more than 60 days away (likely offseason). */
+    private boolean isOffseason(List<Map<String, Object>> sessions) {
+        if (sessions == null || sessions.isEmpty()) return false;
+        Map<String, Object> firstSession = sessions.get(0);
+        String dateStr = (String) firstSession.get("datetime");
+        if (dateStr == null) return false;
+        long millis = DateHelper.toMillis(dateStr);
+        if (millis == -1) return false;
+        long sixtyDaysMs = 60L * 24 * 60 * 60 * 1000;
+        return millis > System.currentTimeMillis() + sixtyDaysMs;
+    }
+
+    /** Show normal countdown + session label, hide state panel. */
+    private void showNormalCountdownState() {
+        tvCountdown.setVisibility(View.VISIBLE);
+        layoutHeroState.setVisibility(View.GONE);
+    }
+
+    /**
+     * Task 2: Weekend Complete — all sessions done, awaiting next race.
+     * Hides countdown, shows a clear completion message.
+     */
+    private void showWeekendCompleteState() {
+        if (countDownTimer != null) countDownTimer.cancel();
+        tvCountdown.setVisibility(View.GONE);
+        tvNextSession.setText("WEEKEND COMPLETE");
+        tvNextSession.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
+        tvNextSession.setVisibility(View.VISIBLE);
+        tvHeroStateTitle.setText("WEEKEND COMPLETE");
+        tvHeroStateSubtitle.setText("Updating schedule...");
+        layoutHeroState.setVisibility(View.VISIBLE);
+        llWeekendTimeline.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * Task 2: Offseason — no upcoming race in the near future.
+     * Shows a winter break or preseason message.
+     */
+    private void showOffseasonState() {
+        if (countDownTimer != null) countDownTimer.cancel();
+        tvCountdown.setVisibility(View.GONE);
+        tvNextSession.setText("OFFSEASON");
+        tvNextSession.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_tertiary));
+        tvNextSession.setVisibility(View.VISIBLE);
+        tvHeroStateTitle.setText("WINTER BREAK");
+        tvHeroStateSubtitle.setText("The season will resume soon.");
+        layoutHeroState.setVisibility(View.VISIBLE);
     }
 
     private void buildWeekendTimeline(List<Map<String, Object>> sessions) {
@@ -445,7 +591,7 @@ public class HomeFragment extends Fragment {
         float d = requireContext().getResources().getDisplayMetrics().density;
         int dotSizePx   = Math.round(10 * d);
         int dotTopPx    = Math.round(8 * d);
-        int lineTopPx   = dotTopPx + (dotSizePx / 2); // center of dot
+        int lineTopPx   = dotTopPx + (dotSizePx / 2);
         int labelTopPx  = Math.round(4 * d);
         int totalHeight = Math.round(44 * d);
 
@@ -457,13 +603,11 @@ public class HomeFragment extends Fragment {
         int labelActive  = Color.WHITE;
         int labelPending = ContextCompat.getColor(requireContext(), R.color.text_hint);
 
-        // Outer FrameLayout layers the connector line behind the dot nodes
         FrameLayout frame = new FrameLayout(requireContext());
         LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, totalHeight);
         frame.setLayoutParams(frameParams);
 
-        // Horizontal connector line at dot center
         View line = new View(requireContext());
         FrameLayout.LayoutParams lineParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, Math.max(1, Math.round(1 * d)));
@@ -471,7 +615,6 @@ public class HomeFragment extends Fragment {
         line.setBackgroundColor(colorLine);
         frame.addView(line, lineParams);
 
-        // Nodes row on top
         LinearLayout nodesRow = new LinearLayout(requireContext());
         nodesRow.setOrientation(LinearLayout.HORIZONTAL);
         frame.addView(nodesRow, new FrameLayout.LayoutParams(
@@ -497,7 +640,6 @@ public class HomeFragment extends Fragment {
             nodeParams.weight = 1;
             node.setLayoutParams(nodeParams);
 
-            // Dot
             GradientDrawable dotBg = new GradientDrawable();
             dotBg.setShape(GradientDrawable.OVAL);
             if (filled) {
@@ -512,10 +654,10 @@ public class HomeFragment extends Fragment {
             dot.setBackground(dotBg);
             node.addView(dot, dotParams);
 
-            // Label
             TextView label = new TextView(requireContext());
             label.setText(abbr);
-            label.setTextSize(8f);
+            // Task 7: use text_label size (10sp) for consistency with design system
+            label.setTextSize(10f);
             label.setTextColor(labelColor);
             label.setGravity(Gravity.CENTER_HORIZONTAL);
             LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
@@ -530,7 +672,11 @@ public class HomeFragment extends Fragment {
         llWeekendTimeline.setVisibility(View.VISIBLE);
     }
 
-    private void updateNextSession(List<Map<String, Object>> sessions) {
+    /**
+     * Task 1: Updates the session label eyebrow above the countdown.
+     * Shows which session is next, or live status.
+     */
+    private void updateNextSessionLabel(List<Map<String, Object>> sessions) {
         if (tvNextSession == null || sessions == null) return;
         long now = System.currentTimeMillis();
         long sessionDurationMs = 3 * 60 * 60 * 1000L;
@@ -543,22 +689,23 @@ public class HomeFragment extends Fragment {
             if (millis + sessionDurationMs > now) {
                 String name = (String) session.get("name");
                 String abbr = getSessionAbbr(name != null ? name : "");
-                String time = DateHelper.formatForDisplay(dateStr, "EEE, HH:mm");
                 boolean isLive = millis <= now;
-                tvNextSession.setText(isLive
-                        ? "LIVE · " + abbr
-                        : "NEXT · " + abbr + " · " + time);
-                tvNextSession.setTextColor(isLive
-                        ? ContextCompat.getColor(requireContext(), R.color.color_race_live)
-                        : ContextCompat.getColor(requireContext(), R.color.text_secondary));
+                if (isLive) {
+                    tvNextSession.setText("LIVE  ·  " + abbr);
+                    tvNextSession.setTextColor(
+                            ContextCompat.getColor(requireContext(), R.color.color_race_live));
+                } else {
+                    String time = DateHelper.formatForDisplay(dateStr, "EEE, HH:mm");
+                    tvNextSession.setText("NEXT  ·  " + abbr + "  ·  " + time);
+                    tvNextSession.setTextColor(
+                            ContextCompat.getColor(requireContext(), R.color.text_secondary));
+                }
                 tvNextSession.setVisibility(View.VISIBLE);
                 return;
             }
         }
-        // All sessions finished — weekend complete
-        tvNextSession.setText("WEEKEND COMPLETE");
-        tvNextSession.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_tertiary));
-        tvNextSession.setVisibility(View.VISIBLE);
+        // All sessions finished — weekend complete handled in buildSessionTimes
+        tvNextSession.setVisibility(View.GONE);
     }
 
     private void buildSessionList(List<Map<String, Object>> sessions) {
@@ -566,13 +713,27 @@ public class HomeFragment extends Fragment {
         llSessionTimes.removeAllViews();
         float density = requireContext().getResources().getDisplayMetrics().density;
         int topMarginPx = Math.round(4 * density);
-        int colorHint = ContextCompat.getColor(requireContext(), R.color.text_hint);
-        int colorSecondary = ContextCompat.getColor(requireContext(), R.color.text_secondary);
+        // Task 7: status-aware colors for session rows
+        long now = System.currentTimeMillis();
+        long sessionDurationMs = 3 * 60 * 60 * 1000L;
 
         for (Map<String, Object> session : sessions) {
             String name    = (String) session.get("name");
             String dateStr = (String) session.get("datetime");
             if (name == null || dateStr == null) continue;
+
+            long millis = DateHelper.toMillis(dateStr);
+            boolean isDone = millis != -1 && (millis + sessionDurationMs) < now;
+            boolean isLive = millis != -1 && millis <= now && (millis + sessionDurationMs) > now;
+
+            int nameColor = isDone
+                    ? ContextCompat.getColor(requireContext(), R.color.text_hint)
+                    : (isLive
+                        ? ContextCompat.getColor(requireContext(), R.color.color_race_live)
+                        : ContextCompat.getColor(requireContext(), R.color.text_secondary));
+            int timeColor = isDone
+                    ? ContextCompat.getColor(requireContext(), R.color.text_hint)
+                    : ContextCompat.getColor(requireContext(), R.color.text_secondary);
 
             LinearLayout row = new LinearLayout(requireContext());
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -582,20 +743,23 @@ public class HomeFragment extends Fragment {
             rowParams.topMargin = topMarginPx;
             row.setLayoutParams(rowParams);
 
+            // Task 7: use text_caption (13sp) consistently
             TextView tvName = new TextView(requireContext());
             tvName.setLayoutParams(new LinearLayout.LayoutParams(
                     0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
             tvName.setText(name);
-            tvName.setTextSize(13);
-            tvName.setTextColor(colorHint);
+            tvName.setTextSize(13f);
+            tvName.setTextColor(nameColor);
 
             TextView tvTime = new TextView(requireContext());
             tvTime.setLayoutParams(new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT));
-            tvTime.setText(DateHelper.formatForDisplay(dateStr, "EEE, HH:mm"));
-            tvTime.setTextSize(13);
-            tvTime.setTextColor(colorSecondary);
+            tvTime.setText(isLive ? "LIVE" : DateHelper.formatForDisplay(dateStr, "EEE, HH:mm"));
+            tvTime.setTextSize(13f);
+            tvTime.setTextColor(isLive
+                    ? ContextCompat.getColor(requireContext(), R.color.color_race_live)
+                    : timeColor);
 
             row.addView(tvName);
             row.addView(tvTime);
@@ -605,15 +769,32 @@ public class HomeFragment extends Fragment {
 
     // ── Countdown ─────────────────────────────────────────────────────────────
 
+    /**
+     * Task 1: Countdown targets the provided session datetime (any session, not just Race).
+     * Handles live, upcoming, and finished states cleanly.
+     */
     private void startCountdown(String isoDateStr) {
         try {
             long millis = DateHelper.toMillis(isoDateStr);
             if (millis == -1) return;
+
             long diff = millis - System.currentTimeMillis();
+            long sessionDurationMs = 3 * 60 * 60 * 1000L;
+
             if (diff <= 0) {
-                tvCountdown.setText("Race started!");
+                // Session is currently live
+                if (millis + sessionDurationMs > System.currentTimeMillis()) {
+                    tvCountdown.setText("LIVE NOW");
+                    tvCountdown.setTextColor(
+                            ContextCompat.getColor(requireContext(), R.color.color_race_live));
+                }
                 return;
             }
+
+            // Reset to normal countdown color
+            tvCountdown.setTextColor(
+                    ContextCompat.getColor(requireContext(), R.color.text_primary));
+
             if (countDownTimer != null) countDownTimer.cancel();
             countDownTimer = new CountDownTimer(diff, 1000) {
                 @Override
@@ -622,14 +803,20 @@ public class HomeFragment extends Fragment {
                     long hours   = (millisUntilFinished % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60);
                     long minutes = (millisUntilFinished % (1000 * 60 * 60)) / (1000 * 60);
                     SpannableStringBuilder sb = new SpannableStringBuilder();
-                    appendCountdownUnit(sb, String.valueOf(days), "d  ");
-                    appendCountdownUnit(sb, String.format(Locale.getDefault(), "%02d", hours), "h  ");
-                    appendCountdownUnit(sb, String.format(Locale.getDefault(), "%02d", minutes), "m");
+                    if (days > 0) {
+                        appendCountdownUnit(sb, String.valueOf(days), "d  ");
+                        appendCountdownUnit(sb, String.format(Locale.getDefault(), "%02d", hours), "h");
+                    } else {
+                        appendCountdownUnit(sb, String.format(Locale.getDefault(), "%02d", hours), "h  ");
+                        appendCountdownUnit(sb, String.format(Locale.getDefault(), "%02d", minutes), "m");
+                    }
                     tvCountdown.setText(sb, TextView.BufferType.SPANNABLE);
                 }
                 @Override
                 public void onFinish() {
-                    tvCountdown.setText("Race started!");
+                    tvCountdown.setText("LIVE NOW");
+                    tvCountdown.setTextColor(
+                            ContextCompat.getColor(requireContext(), R.color.color_race_live));
                 }
             }.start();
         } catch (Exception e) {
@@ -641,7 +828,7 @@ public class HomeFragment extends Fragment {
         sb.append(number);
         int start = sb.length();
         sb.append(unit);
-        sb.setSpan(new RelativeSizeSpan(0.5f), start, sb.length(),
+        sb.setSpan(new RelativeSizeSpan(0.45f), start, sb.length(),
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
@@ -663,7 +850,7 @@ public class HomeFragment extends Fragment {
         colours.put("Kick Sauber",  "#52E252");
         colours.put("Sauber",       "#52E252");
         colours.put("Cadillac",     "#CC0000");
-        String hex = "#FFFFFF";
+        String hex = "#3A3A3A";
         for (Map.Entry<String, String> entry : colours.entrySet()) {
             if (teamName.contains(entry.getKey())) {
                 hex = entry.getValue();
@@ -717,7 +904,7 @@ public class HomeFragment extends Fragment {
         int g = (int) gap;
         if (g <= 0) return "";
         if (g < 26)  return "Less than one race win separates the title contenders.";
-        if (g < 52)  return "Within two race wins. Championship fully alive.";
+        if (g < 52)  return "Within two race wins — championship fully alive.";
         if (g < 100) return "Championship within reach. Every point matters.";
         return "Significant gap at the top.";
     }
