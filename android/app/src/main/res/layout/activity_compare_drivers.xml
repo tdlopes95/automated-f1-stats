@@ -29,12 +29,12 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:background="@color/bg_surface"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
+                android:paddingStart="@dimen/spacing_sm"
+                android:paddingEnd="@dimen/spacing_sm"
+                android:paddingTop="@dimen/spacing_xs"
+                android:paddingBottom="@dimen/spacing_xs"
                 android:gravity="center_vertical|end"
-                android:layout_marginBottom="8dp">
+                android:layout_marginBottom="@dimen/spacing_sm">
 
                 <ImageButton
                     android:id="@+id/btn_prev_year"
@@ -51,7 +51,7 @@
                     android:layout_height="wrap_content"
                     android:gravity="center"
                     android:textColor="@color/text_primary"
-                    android:textSize="16sp"
+                    android:textSize="@dimen/text_subheading"
                     android:textStyle="bold" />
 
                 <ImageButton
@@ -71,8 +71,8 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:background="@color/bg_surface"
-                android:padding="16dp"
-                android:layout_marginBottom="8dp">
+                android:padding="@dimen/spacing_md"
+                android:layout_marginBottom="@dimen/spacing_sm">
 
                 <!-- Driver 1 -->
                 <LinearLayout
@@ -85,7 +85,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:background="?attr/selectableItemBackground"
-                    android:padding="8dp">
+                    android:padding="@dimen/spacing_sm">
 
                     <ImageView
                         android:id="@+id/iv_headshot1"
@@ -100,15 +100,15 @@
                         android:layout_height="wrap_content"
                         android:text="Tap to select"
                         android:textColor="@color/text_secondary"
-                        android:textSize="13sp"
+                        android:textSize="@dimen/text_caption"
                         android:gravity="center"
-                        android:layout_marginTop="8dp"/>
+                        android:layout_marginTop="@dimen/spacing_sm"/>
 
                     <TextView
                         android:id="@+id/tv_driver1_team"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="11sp"
+                        android:textSize="@dimen/text_small"
                         android:gravity="center"
                         android:layout_marginTop="2dp"
                         android:visibility="gone"/>
@@ -121,11 +121,11 @@
                     android:layout_height="wrap_content"
                     android:text="VS"
                     android:textColor="@color/text_hint"
-                    android:textSize="13sp"
+                    android:textSize="@dimen/text_caption"
                     android:textStyle="bold"
                     android:layout_gravity="center_vertical"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp"/>
+                    android:paddingStart="@dimen/spacing_sm"
+                    android:paddingEnd="@dimen/spacing_sm"/>
 
                 <!-- Driver 2 -->
                 <LinearLayout
@@ -138,7 +138,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:background="?attr/selectableItemBackground"
-                    android:padding="8dp">
+                    android:padding="@dimen/spacing_sm">
 
                     <ImageView
                         android:id="@+id/iv_headshot2"
@@ -153,15 +153,15 @@
                         android:layout_height="wrap_content"
                         android:text="Tap to select"
                         android:textColor="@color/text_secondary"
-                        android:textSize="13sp"
+                        android:textSize="@dimen/text_caption"
                         android:gravity="center"
-                        android:layout_marginTop="8dp"/>
+                        android:layout_marginTop="@dimen/spacing_sm"/>
 
                     <TextView
                         android:id="@+id/tv_driver2_team"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="11sp"
+                        android:textSize="@dimen/text_small"
                         android:gravity="center"
                         android:layout_marginTop="2dp"
                         android:visibility="gone"/>
@@ -176,8 +176,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
-                android:layout_marginTop="32dp"
-                android:layout_marginBottom="32dp"
+                android:layout_marginTop="@dimen/spacing_xl"
+                android:layout_marginBottom="@dimen/spacing_xl"
                 android:visibility="gone"/>
 
             <!-- Season comparison stats -->
@@ -188,16 +188,16 @@
                 android:orientation="vertical"
                 android:visibility="gone"
                 android:background="@color/bg_surface"
-                android:layout_marginBottom="8dp">
+                android:layout_marginBottom="@dimen/spacing_sm">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Season Comparison"
                     android:textColor="@color/text_primary"
-                    android:textSize="15sp"
+                    android:textSize="@dimen/text_body"
                     android:textStyle="bold"
-                    android:padding="16dp"/>
+                    android:padding="@dimen/spacing_md"/>
 
                 <View
                     android:layout_width="match_parent"
@@ -220,16 +220,16 @@
                 android:orientation="vertical"
                 android:visibility="gone"
                 android:background="@color/bg_surface"
-                android:layout_marginBottom="24dp">
+                android:layout_marginBottom="@dimen/spacing_lg">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Head-to-Head"
                     android:textColor="@color/text_primary"
-                    android:textSize="15sp"
+                    android:textSize="@dimen/text_body"
                     android:textStyle="bold"
-                    android:padding="16dp"/>
+                    android:padding="@dimen/spacing_md"/>
 
                 <View
                     android:layout_width="match_parent"
@@ -240,23 +240,23 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/spacing_md">
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="When both finished a race"
                         android:textColor="@color/text_secondary"
-                        android:textSize="12sp"
+                        android:textSize="@dimen/text_metadata"
                         android:gravity="center"
-                        android:layout_marginBottom="12dp"/>
+                        android:layout_marginBottom="@dimen/spacing_row"/>
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="12dp">
+                        android:layout_marginBottom="@dimen/spacing_row">
 
                         <TextView
                             android:id="@+id/tv_h2h_d1"
@@ -264,7 +264,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:textColor="@color/text_primary"
-                            android:textSize="36sp"
+                            android:textSize="@dimen/text_countdown"
                             android:textStyle="bold"
                             android:gravity="end"
                             android:paddingEnd="20dp"/>
@@ -274,7 +274,7 @@
                             android:layout_height="wrap_content"
                             android:text="–"
                             android:textColor="@color/text_secondary"
-                            android:textSize="24sp"/>
+                            android:textSize="@dimen/text_section_header"/>
 
                         <TextView
                             android:id="@+id/tv_h2h_d2"
@@ -282,7 +282,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:textColor="@color/text_primary"
-                            android:textSize="36sp"
+                            android:textSize="@dimen/text_countdown"
                             android:textStyle="bold"
                             android:gravity="start"
                             android:paddingStart="20dp"/>

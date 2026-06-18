@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ── Spacing Tokens ─────────────────────────────────── -->
+    <dimen name="spacing_xs">4dp</dimen>
+    <dimen name="spacing_sm">8dp</dimen>
+    <dimen name="spacing_row">12dp</dimen>
+    <dimen name="spacing_md">16dp</dimen>
+    <dimen name="spacing_lg">24dp</dimen>
+    <dimen name="spacing_xl">32dp</dimen>
+    <dimen name="spacing_xxl">48dp</dimen>
+
+    <!-- ── Component Sizes ────────────────────────────────── -->
+    <dimen name="team_strip_width">3dp</dimen>
+    <dimen name="headshot_size_sm">40dp</dimen>
+    <dimen name="headshot_size_md">48dp</dimen>
+    <dimen name="headshot_size_lg">64dp</dimen>
+    <dimen name="card_corner_radius">8dp</dimen>
+    <dimen name="hero_image_height">160dp</dimen>
+    <dimen name="bottom_nav_height">72dp</dimen>
+
+    <!-- ── Typography Scale ───────────────────────────────── -->
+    <!-- Hero: countdowns, championship gaps, race-day numbers -->
+    <dimen name="text_hero">48sp</dimen>
+    <!-- Countdown: large live/race numbers -->
+    <dimen name="text_countdown">36sp</dimen>
+    <!-- Section Header: screen-level section labels -->
+    <dimen name="text_section_header">24sp</dimen>
+    <!-- Display: prominent headers (driver names on profile, compare) -->
+    <dimen name="text_display">22sp</dimen>
+    <!-- Title: race names in hero contexts, round headers -->
+    <dimen name="text_title">20sp</dimen>
+    <!-- Card Header: card/item primary name labels -->
+    <dimen name="text_card_header">18sp</dimen>
+    <!-- Subheading: season picker, medium-emphasis headers -->
+    <dimen name="text_subheading">16sp</dimen>
+    <!-- Body: standard readable content -->
+    <dimen name="text_body">15sp</dimen>
+    <!-- Body Small: compact body, driver codes, grid positions -->
+    <dimen name="text_body_sm">14sp</dimen>
+    <!-- Caption: slightly prominent metadata, session info -->
+    <dimen name="text_caption">13sp</dimen>
+    <!-- Metadata: dates, team names, secondary labels -->
+    <dimen name="text_metadata">12sp</dimen>
+    <!-- Small: wins, podiums, tertiary info -->
+    <dimen name="text_small">11sp</dimen>
+    <!-- Label: ALL-CAPS micro-labels, section eyebrows -->
+    <dimen name="text_label">10sp</dimen>
+
+</resources>

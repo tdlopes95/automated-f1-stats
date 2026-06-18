@@ -4,8 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
+    android:paddingStart="@dimen/spacing_row"
+    android:paddingEnd="@dimen/spacing_row"
     android:paddingTop="10dp"
     android:paddingBottom="10dp"
     android:gravity="center_vertical">
@@ -25,7 +25,7 @@
         android:layout_height="wrap_content"
         android:text="1"
         android:textColor="@color/text_primary"
-        android:textSize="15sp"
+        android:textSize="@dimen/text_body"
         android:textStyle="bold" />
 
     <!-- Driver acronym + name -->
@@ -41,7 +41,7 @@
             android:layout_height="wrap_content"
             android:text="VER"
             android:textColor="@color/text_primary"
-            android:textSize="15sp"
+            android:textSize="@dimen/text_body"
             android:textStyle="bold" />
 
         <TextView
@@ -50,7 +50,7 @@
             android:layout_height="wrap_content"
             android:text="Red Bull Racing"
             android:textColor="@color/text_secondary"
-            android:textSize="11sp" />
+            android:textSize="@dimen/text_small" />
 
     </LinearLayout>
 
@@ -61,7 +61,7 @@
         android:layout_height="wrap_content"
         android:text="+1.234"
         android:textColor="@color/text_primary"
-        android:textSize="13sp"
+        android:textSize="@dimen/text_caption"
         android:gravity="end" />
 
     <!-- Tyre compound badge -->
@@ -69,10 +69,10 @@
         android:id="@+id/tv_tyre"
         android:layout_width="28dp"
         android:layout_height="28dp"
-        android:layout_marginStart="8dp"
+        android:layout_marginStart="@dimen/spacing_sm"
         android:text="S"
         android:textColor="@color/bg_dark"
-        android:textSize="12sp"
+        android:textSize="@dimen/text_metadata"
         android:textStyle="bold"
         android:gravity="center"
         android:background="@drawable/tyre_badge_background" />
@@ -85,7 +85,7 @@
         android:layout_marginStart="2dp"
         android:text="5"
         android:textColor="@color/text_secondary"
-        android:textSize="11sp"
+        android:textSize="@dimen/text_small"
         android:gravity="center" />
 
     <!-- Pit stop count -->
@@ -95,7 +95,7 @@
         android:layout_height="wrap_content"
         android:text="1"
         android:textColor="@color/text_secondary"
-        android:textSize="13sp"
+        android:textSize="@dimen/text_caption"
         android:gravity="center" />
 
 </LinearLayout>

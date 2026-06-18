@@ -4,8 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
+    android:paddingStart="@dimen/spacing_row"
+    android:paddingEnd="@dimen/spacing_row"
     android:paddingTop="10dp"
     android:paddingBottom="10dp"
     android:gravity="center_vertical">
@@ -17,7 +17,7 @@
         android:layout_height="wrap_content"
         android:text="1"
         android:textColor="@color/text_secondary"
-        android:textSize="14sp" />
+        android:textSize="@dimen/text_body_sm" />
 
     <!-- Team colour strip -->
     <View
@@ -40,7 +40,7 @@
             android:layout_height="wrap_content"
             android:text="Max Verstappen"
             android:textColor="@color/text_primary"
-            android:textSize="14sp"
+            android:textSize="@dimen/text_body_sm"
             android:textStyle="bold" />
 
         <TextView
@@ -49,7 +49,7 @@
             android:layout_height="wrap_content"
             android:text="Red Bull Racing"
             android:textColor="@color/text_secondary"
-            android:textSize="11sp" />
+            android:textSize="@dimen/text_small" />
 
     </LinearLayout>
 
@@ -60,8 +60,8 @@
         android:layout_height="wrap_content"
         android:text="Lap 24"
         android:textColor="@color/text_secondary"
-        android:textSize="12sp"
-        android:layout_marginEnd="12dp" />
+        android:textSize="@dimen/text_metadata"
+        android:layout_marginEnd="@dimen/spacing_row" />
 
     <!-- Stop duration -->
     <TextView
@@ -70,7 +70,7 @@
         android:layout_height="wrap_content"
         android:text="2.345s"
         android:textColor="@color/text_primary"
-        android:textSize="16sp"
+        android:textSize="@dimen/text_subheading"
         android:textStyle="bold" />
 
 </LinearLayout>

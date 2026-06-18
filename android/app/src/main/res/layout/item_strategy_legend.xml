@@ -3,8 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
+    android:paddingStart="@dimen/spacing_row"
+    android:paddingEnd="@dimen/spacing_row"
     android:paddingTop="10dp"
     android:paddingBottom="10dp"
     android:gravity="center_vertical">
@@ -20,9 +20,9 @@
         android:layout_height="wrap_content"
         android:text="Soft"
         android:textColor="@color/text_secondary"
-        android:textSize="11sp"
-        android:layout_marginStart="4dp"
-        android:layout_marginEnd="12dp" />
+        android:textSize="@dimen/text_small"
+        android:layout_marginStart="@dimen/spacing_xs"
+        android:layout_marginEnd="@dimen/spacing_row" />
 
     <View
         android:id="@+id/dot_medium"
@@ -35,9 +35,9 @@
         android:layout_height="wrap_content"
         android:text="Medium"
         android:textColor="@color/text_secondary"
-        android:textSize="11sp"
-        android:layout_marginStart="4dp"
-        android:layout_marginEnd="12dp" />
+        android:textSize="@dimen/text_small"
+        android:layout_marginStart="@dimen/spacing_xs"
+        android:layout_marginEnd="@dimen/spacing_row" />
 
     <View
         android:id="@+id/dot_hard"
@@ -50,9 +50,9 @@
         android:layout_height="wrap_content"
         android:text="Hard"
         android:textColor="@color/text_secondary"
-        android:textSize="11sp"
-        android:layout_marginStart="4dp"
-        android:layout_marginEnd="12dp" />
+        android:textSize="@dimen/text_small"
+        android:layout_marginStart="@dimen/spacing_xs"
+        android:layout_marginEnd="@dimen/spacing_row" />
 
     <View
         android:id="@+id/dot_inter"
@@ -65,9 +65,9 @@
         android:layout_height="wrap_content"
         android:text="Inter"
         android:textColor="@color/text_secondary"
-        android:textSize="11sp"
-        android:layout_marginStart="4dp"
-        android:layout_marginEnd="12dp" />
+        android:textSize="@dimen/text_small"
+        android:layout_marginStart="@dimen/spacing_xs"
+        android:layout_marginEnd="@dimen/spacing_row" />
 
     <View
         android:id="@+id/dot_wet"
@@ -80,7 +80,7 @@
         android:layout_height="wrap_content"
         android:text="Wet"
         android:textColor="@color/text_secondary"
-        android:textSize="11sp"
-        android:layout_marginStart="4dp" />
+        android:textSize="@dimen/text_small"
+        android:layout_marginStart="@dimen/spacing_xs" />
 
 </LinearLayout>

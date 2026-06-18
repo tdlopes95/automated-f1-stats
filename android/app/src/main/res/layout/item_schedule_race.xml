@@ -1,20 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="12dp"
-    android:layout_marginEnd="12dp"
-    android:layout_marginBottom="10dp"
-    app:cardBackgroundColor="@color/bg_surface"
-    app:cardCornerRadius="10dp">
+    android:orientation="vertical"
+    android:background="?attr/selectableItemBackground"
+    android:foreground="?attr/selectableItemBackground">
 
+    <!-- Row content -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="14dp">
+        android:paddingStart="@dimen/spacing_md"
+        android:paddingEnd="@dimen/spacing_md"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp">
 
         <!-- Round + race name row -->
         <LinearLayout
@@ -29,16 +30,16 @@
                 android:layout_height="wrap_content"
                 android:text="R1"
                 android:textColor="@color/f1_red"
-                android:textSize="11sp"
+                android:textSize="@dimen/text_small"
                 android:textStyle="bold"
-                android:layout_marginEnd="8dp" />
+                android:layout_marginEnd="@dimen/spacing_sm" />
 
             <ImageView
                 android:id="@+id/iv_country_flag"
                 android:layout_width="28dp"
                 android:layout_height="20dp"
                 android:scaleType="fitCenter"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="@dimen/spacing_sm"
                 android:visibility="gone" />
 
             <TextView
@@ -48,7 +49,7 @@
                 android:layout_weight="1"
                 android:text="Bahrain Grand Prix"
                 android:textColor="@color/text_primary"
-                android:textSize="15sp"
+                android:textSize="@dimen/text_body"
                 android:textStyle="bold" />
 
             <TextView
@@ -57,7 +58,7 @@
                 android:layout_height="wrap_content"
                 android:text="16 Mar"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                android:textSize="@dimen/text_metadata" />
 
         </LinearLayout>
 
@@ -68,7 +69,7 @@
             android:layout_height="wrap_content"
             android:text="Bahrain International Circuit"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_metadata"
             android:layout_marginTop="2dp" />
 
         <!-- Circuit map image (shown when expanded) -->
@@ -77,8 +78,8 @@
             android:layout_width="match_parent"
             android:layout_height="160dp"
             android:scaleType="fitCenter"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:layout_marginBottom="@dimen/spacing_sm"
             android:foreground="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
@@ -90,7 +91,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="@dimen/spacing_sm"
             android:visibility="gone" />
 
         <!-- Expand/collapse button -->
@@ -99,10 +100,16 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="▼ Sessions"
-            android:textColor="@color/f1_red"
-            android:textSize="12sp"
-            android:layout_marginTop="8dp" />
+            android:textColor="@color/text_tertiary"
+            android:textSize="@dimen/text_metadata"
+            android:layout_marginTop="@dimen/spacing_sm" />
 
     </LinearLayout>
 
-</androidx.cardview.widget.CardView>
+    <!-- Bottom divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/bg_elevated" />
+
+</LinearLayout>

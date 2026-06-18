@@ -20,12 +20,12 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="32dp"
+        android:padding="@dimen/spacing_xl"
         android:visibility="gone">
 
         <TextView
             android:text="⚠️"
-            android:textSize="48sp"
+            android:textSize="@dimen/text_hero"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center" />
@@ -34,20 +34,19 @@
             android:id="@+id/tv_error_message"
             android:text="Could not load data.\nCheck your connection."
             android:textColor="@color/text_secondary"
-            android:textSize="16sp"
+            android:textSize="@dimen/text_body"
             android:textAlignment="center"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp" />
+            android:layout_marginTop="@dimen/spacing_md" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_retry"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Retry"
-            android:layout_marginTop="24dp"
-            style="@style/Widget.Material3.Button"
-            android:backgroundTint="@color/f1_red" />
+            android:layout_marginTop="@dimen/spacing_lg"
+            style="@style/Widget.F1.Button.Primary" />
 
     </LinearLayout>
 
@@ -64,37 +63,35 @@
             android:layout_height="match_parent"
             android:fillViewport="true"
             android:clipToPadding="false"
-            android:paddingBottom="72dp">
+            android:paddingBottom="@dimen/bottom_nav_height">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="16dp"
-                android:paddingBottom="16dp">
+                android:orientation="vertical">
 
-                <!-- ── Next Race Card ──────────────────────────────────── -->
+                <!-- ══════════════════════════════════════════════════
+                     SECTION 1 — RACE WEEKEND HERO
+                     ══════════════════════════════════════════════════ -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_next_race"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    app:cardBackgroundColor="@color/bg_surface"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
+                    android:layout_marginStart="@dimen/spacing_md"
+                    android:layout_marginEnd="@dimen/spacing_md"
+                    android:layout_marginTop="@dimen/spacing_md"
+                    android:layout_marginBottom="@dimen/spacing_md"
+                    style="@style/Widget.F1.Card.Hero">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <!-- Hero image with gradient overlay and race name -->
+                        <!-- Circuit image with gradient overlay -->
                         <FrameLayout
                             android:layout_width="match_parent"
-                            android:layout_height="140dp">
+                            android:layout_height="@dimen/hero_image_height">
 
                             <ImageView
                                 android:id="@+id/iv_next_race_circuit"
@@ -113,14 +110,14 @@
                                 android:layout_height="wrap_content"
                                 android:layout_gravity="bottom"
                                 android:orientation="vertical"
-                                android:paddingStart="14dp"
-                                android:paddingEnd="14dp"
-                                android:paddingBottom="12dp">
+                                android:paddingStart="@dimen/spacing_md"
+                                android:paddingEnd="@dimen/spacing_md"
+                                android:paddingBottom="@dimen/spacing_md">
 
                                 <TextView
                                     android:text="NEXT RACE"
                                     android:textColor="@color/f1_red"
-                                    android:textSize="10sp"
+                                    android:textSize="@dimen/text_label"
                                     android:letterSpacing="0.12"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content" />
@@ -130,21 +127,21 @@
                                     android:layout_height="wrap_content"
                                     android:orientation="horizontal"
                                     android:gravity="center_vertical"
-                                    android:layout_marginTop="2dp">
+                                    android:layout_marginTop="@dimen/spacing_xs">
 
                                     <TextView
                                         android:id="@+id/tv_next_race_flag"
                                         android:text=""
-                                        android:textSize="18sp"
+                                        android:textSize="@dimen/text_title"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:layout_marginEnd="7dp" />
+                                        android:layout_marginEnd="@dimen/spacing_sm" />
 
                                     <TextView
                                         android:id="@+id/tv_next_race_name"
                                         android:text=""
                                         android:textColor="@color/text_primary"
-                                        android:textSize="20sp"
+                                        android:textSize="@dimen/text_title"
                                         android:textStyle="bold"
                                         android:layout_width="0dp"
                                         android:layout_height="wrap_content"
@@ -163,13 +160,13 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:padding="16dp">
+                            android:padding="@dimen/spacing_md">
 
                             <TextView
                                 android:id="@+id/tv_next_race_circuit"
                                 android:text=""
-                                android:textColor="@color/text_hint"
-                                android:textSize="13sp"
+                                android:textColor="@color/text_tertiary"
+                                android:textSize="@dimen/text_metadata"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content" />
 
@@ -177,7 +174,7 @@
                                 android:id="@+id/tv_next_race_date"
                                 android:text=""
                                 android:textColor="@color/text_secondary"
-                                android:textSize="13sp"
+                                android:textSize="@dimen/text_metadata"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp" />
@@ -186,239 +183,402 @@
                                 android:id="@+id/tv_countdown"
                                 android:text=""
                                 android:textColor="@color/f1_red"
-                                android:textSize="28sp"
+                                android:textSize="@dimen/text_countdown"
                                 android:textStyle="bold"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="10dp" />
+                                android:layout_marginTop="@dimen/spacing_sm" />
 
-                            <!-- Session times rows injected here -->
+                            <!-- Next session label -->
+                            <TextView
+                                android:id="@+id/tv_next_session"
+                                android:text=""
+                                android:textColor="@color/text_secondary"
+                                android:textSize="@dimen/text_metadata"
+                                android:letterSpacing="0.05"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="@dimen/spacing_xs"
+                                android:visibility="gone" />
+
+                            <!-- Weekend Timeline container (built programmatically) -->
+                            <LinearLayout
+                                android:id="@+id/ll_weekend_timeline"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:layout_marginTop="@dimen/spacing_md"
+                                android:visibility="gone" />
+
+                            <!-- Section times rows -->
                             <LinearLayout
                                 android:id="@+id/ll_session_times"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:orientation="vertical"
-                                android:layout_marginTop="10dp" />
+                                android:layout_marginTop="@dimen/spacing_sm" />
 
                         </LinearLayout>
 
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- ── Championship Leader Card ────────────────────────── -->
-                <com.google.android.material.card.MaterialCardView
+                <!-- ══════════════════════════════════════════════════
+                     SECTION 2 — CHAMPIONSHIP BATTLE
+                     ══════════════════════════════════════════════════ -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/bg_elevated" />
+
+                <LinearLayout
                     android:id="@+id/card_leader"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    app:cardBackgroundColor="@color/bg_surface"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
+                    android:orientation="vertical"
+                    android:background="@color/bg_surface"
+                    android:paddingStart="@dimen/spacing_md"
+                    android:paddingEnd="@dimen/spacing_md"
+                    android:paddingTop="@dimen/spacing_md"
+                    android:paddingBottom="@dimen/spacing_md">
 
+                    <!-- Section eyebrow -->
+                    <TextView
+                        android:id="@+id/tv_leader_title"
+                        android:text="CHAMPIONSHIP BATTLE"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="@dimen/text_label"
+                        android:letterSpacing="0.1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+
+                    <!-- P1 row -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal">
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="@dimen/spacing_md">
 
-                        <!-- Team colour accent strip -->
                         <View
                             android:id="@+id/view_leader_colour"
-                            android:layout_width="4dp"
-                            android:layout_height="match_parent"
-                            android:background="@color/text_hint" />
+                            android:layout_width="@dimen/team_strip_width"
+                            android:layout_height="48dp"
+                            android:background="@color/team_default"
+                            android:layout_marginEnd="@dimen/spacing_md" />
+
+                        <ImageView
+                            android:id="@+id/iv_leader_headshot"
+                            android:layout_width="@dimen/headshot_size_md"
+                            android:layout_height="@dimen/headshot_size_md"
+                            android:scaleType="centerCrop"
+                            android:background="@color/bg_elevated" />
 
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:orientation="vertical"
-                            android:padding="16dp">
+                            android:layout_marginStart="@dimen/spacing_md">
 
                             <TextView
-                                android:id="@+id/tv_leader_title"
-                                android:text="CHAMPIONSHIP LEADER"
-                                android:textColor="@color/f1_red"
-                                android:textSize="11sp"
-                                android:letterSpacing="0.1"
+                                android:id="@+id/tv_leader_name"
+                                android:text=""
+                                android:textColor="@color/text_primary"
+                                android:textSize="@dimen/text_card_header"
+                                android:textStyle="bold"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content" />
 
-                            <LinearLayout
-                                android:layout_width="match_parent"
+                            <TextView
+                                android:id="@+id/tv_leader_team"
+                                android:text=""
+                                android:textColor="@color/text_secondary"
+                                android:textSize="@dimen/text_metadata"
+                                android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:gravity="center_vertical"
-                                android:layout_marginTop="10dp">
+                                android:layout_marginTop="2dp" />
 
-                                <ImageView
-                                    android:id="@+id/iv_leader_headshot"
-                                    android:layout_width="48dp"
-                                    android:layout_height="48dp"
-                                    android:scaleType="centerCrop"
-                                    android:background="@color/bg_dark" />
+                        </LinearLayout>
 
-                                <LinearLayout
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:orientation="vertical"
-                                    android:layout_marginStart="12dp">
+                        <!-- Points block (right-aligned) -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="end">
 
-                                    <TextView
-                                        android:id="@+id/tv_leader_name"
-                                        android:text=""
-                                        android:textColor="@color/text_primary"
-                                        android:textSize="17sp"
-                                        android:textStyle="bold"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content" />
+                            <TextView
+                                android:id="@+id/tv_leader_points"
+                                android:text=""
+                                android:textColor="@color/text_primary"
+                                android:textSize="@dimen/text_title"
+                                android:textStyle="bold"
+                                android:gravity="end"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
 
-                                    <TextView
-                                        android:id="@+id/tv_leader_team"
-                                        android:text=""
-                                        android:textColor="@color/text_secondary"
-                                        android:textSize="13sp"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginTop="2dp" />
-
-                                    <LinearLayout
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:orientation="horizontal"
-                                        android:gravity="center_vertical"
-                                        android:layout_marginTop="4dp">
-
-                                        <TextView
-                                            android:id="@+id/tv_leader_points"
-                                            android:text=""
-                                            android:textColor="@color/text_primary"
-                                            android:textSize="20sp"
-                                            android:textStyle="bold"
-                                            android:layout_width="wrap_content"
-                                            android:layout_height="wrap_content" />
-
-                                        <TextView
-                                            android:id="@+id/tv_leader_gap"
-                                            android:text=""
-                                            android:textColor="@color/color_race_live"
-                                            android:textSize="12sp"
-                                            android:layout_width="wrap_content"
-                                            android:layout_height="wrap_content"
-                                            android:layout_marginStart="8dp"
-                                            android:visibility="gone" />
-
-                                    </LinearLayout>
-
-                                </LinearLayout>
-
-                            </LinearLayout>
+                            <TextView
+                                android:text="PTS"
+                                android:textColor="@color/text_tertiary"
+                                android:textSize="@dimen/text_label"
+                                android:letterSpacing="0.1"
+                                android:gravity="end"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
 
                         </LinearLayout>
 
                     </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
 
-                <!-- ── Last Race Winner Card ───────────────────────────── -->
-                <com.google.android.material.card.MaterialCardView
+                    <!-- Gap display: lines flanking the central gap number -->
+                    <LinearLayout
+                        android:id="@+id/layout_champ_gap"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="@dimen/spacing_sm"
+                        android:layout_marginBottom="@dimen/spacing_sm"
+                        android:visibility="gone">
+
+                        <View
+                            android:layout_width="0dp"
+                            android:layout_height="1dp"
+                            android:layout_weight="1"
+                            android:background="@color/bg_elevated"
+                            android:layout_marginEnd="@dimen/spacing_md" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="center">
+
+                            <TextView
+                                android:id="@+id/tv_champ_gap"
+                                android:text=""
+                                android:textColor="@color/f1_red"
+                                android:textSize="@dimen/text_countdown"
+                                android:textStyle="bold"
+                                android:gravity="center"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+
+                            <TextView
+                                android:text="PTS AHEAD"
+                                android:textColor="@color/text_tertiary"
+                                android:textSize="@dimen/text_label"
+                                android:letterSpacing="0.1"
+                                android:gravity="center"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="0dp"
+                            android:layout_height="1dp"
+                            android:layout_weight="1"
+                            android:background="@color/bg_elevated"
+                            android:layout_marginStart="@dimen/spacing_md" />
+
+                    </LinearLayout>
+
+                    <!-- P2 row -->
+                    <LinearLayout
+                        android:id="@+id/layout_p2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:visibility="gone">
+
+                        <View
+                            android:id="@+id/view_p2_colour"
+                            android:layout_width="@dimen/team_strip_width"
+                            android:layout_height="48dp"
+                            android:background="@color/team_default"
+                            android:layout_marginEnd="@dimen/spacing_md" />
+
+                        <ImageView
+                            android:id="@+id/iv_p2_headshot"
+                            android:layout_width="@dimen/headshot_size_md"
+                            android:layout_height="@dimen/headshot_size_md"
+                            android:scaleType="centerCrop"
+                            android:background="@color/bg_elevated" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="@dimen/spacing_md">
+
+                            <TextView
+                                android:id="@+id/tv_p2_name"
+                                android:text=""
+                                android:textColor="@color/text_primary"
+                                android:textSize="@dimen/text_card_header"
+                                android:textStyle="bold"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+
+                            <TextView
+                                android:id="@+id/tv_p2_team"
+                                android:text=""
+                                android:textColor="@color/text_secondary"
+                                android:textSize="@dimen/text_metadata"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="end">
+
+                            <TextView
+                                android:id="@+id/tv_p2_points"
+                                android:text=""
+                                android:textColor="@color/text_secondary"
+                                android:textSize="@dimen/text_title"
+                                android:textStyle="bold"
+                                android:gravity="end"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+
+                            <TextView
+                                android:text="PTS"
+                                android:textColor="@color/text_tertiary"
+                                android:textSize="@dimen/text_label"
+                                android:letterSpacing="0.1"
+                                android:gravity="end"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <!-- Championship insight -->
+                    <TextView
+                        android:id="@+id/tv_champ_insight"
+                        android:text=""
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="@dimen/text_metadata"
+                        android:textStyle="italic"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacing_md"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+
+                <!-- ══════════════════════════════════════════════════
+                     SECTION 3 — LAST RACE WINNER
+                     ══════════════════════════════════════════════════ -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/bg_elevated" />
+
+                <LinearLayout
                     android:id="@+id/card_last_race"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/bg_surface"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
+                    android:orientation="horizontal"
+                    android:background="@color/bg_surface">
+
+                    <View
+                        android:id="@+id/view_last_winner_colour"
+                        android:layout_width="@dimen/team_strip_width"
+                        android:layout_height="match_parent"
+                        android:background="@color/team_default" />
 
                     <LinearLayout
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal">
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:padding="@dimen/spacing_md">
 
-                        <!-- Team colour accent strip -->
-                        <View
-                            android:id="@+id/view_last_winner_colour"
-                            android:layout_width="4dp"
-                            android:layout_height="match_parent"
-                            android:background="@color/text_hint" />
+                        <TextView
+                            android:text="LAST WINNER"
+                            android:textColor="@color/text_primary"
+                            android:textSize="@dimen/text_label"
+                            android:letterSpacing="0.12"
+                            android:paddingStart="6dp"
+                            android:paddingEnd="6dp"
+                            android:paddingTop="3dp"
+                            android:paddingBottom="3dp"
+                            android:background="@drawable/bg_badge_red"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
 
                         <LinearLayout
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:padding="16dp">
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginTop="@dimen/spacing_sm">
 
-                            <!-- LAST WINNER badge -->
-                            <TextView
-                                android:text="LAST WINNER"
-                                android:textColor="@color/text_primary"
-                                android:textSize="10sp"
-                                android:letterSpacing="0.12"
-                                android:paddingStart="7dp"
-                                android:paddingEnd="7dp"
-                                android:paddingTop="3dp"
-                                android:paddingBottom="3dp"
-                                android:background="@drawable/bg_badge_red"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
+                            <ImageView
+                                android:id="@+id/iv_last_winner_headshot"
+                                android:layout_width="@dimen/headshot_size_md"
+                                android:layout_height="@dimen/headshot_size_md"
+                                android:scaleType="centerCrop"
+                                android:background="@color/bg_elevated" />
 
                             <LinearLayout
-                                android:layout_width="match_parent"
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:gravity="center_vertical"
-                                android:layout_marginTop="10dp">
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginStart="@dimen/spacing_md">
 
-                                <ImageView
-                                    android:id="@+id/iv_last_winner_headshot"
-                                    android:layout_width="48dp"
-                                    android:layout_height="48dp"
-                                    android:scaleType="centerCrop"
-                                    android:background="@color/bg_dark" />
+                                <TextView
+                                    android:id="@+id/tv_last_winner"
+                                    android:text=""
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="@dimen/text_card_header"
+                                    android:textStyle="bold"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content" />
 
-                                <LinearLayout
-                                    android:layout_width="0dp"
+                                <TextView
+                                    android:id="@+id/tv_last_race_team"
+                                    android:text=""
+                                    android:textColor="@color/text_secondary"
+                                    android:textSize="@dimen/text_metadata"
+                                    android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:orientation="vertical"
-                                    android:layout_marginStart="12dp">
+                                    android:layout_marginTop="2dp" />
 
-                                    <TextView
-                                        android:id="@+id/tv_last_winner"
-                                        android:text=""
-                                        android:textColor="@color/text_primary"
-                                        android:textSize="17sp"
-                                        android:textStyle="bold"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content" />
-
-                                    <TextView
-                                        android:id="@+id/tv_last_race_team"
-                                        android:text=""
-                                        android:textColor="@color/text_secondary"
-                                        android:textSize="13sp"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginTop="2dp" />
-
-                                    <TextView
-                                        android:id="@+id/tv_last_race_name"
-                                        android:text=""
-                                        android:textColor="@color/text_hint"
-                                        android:textSize="12sp"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginTop="2dp" />
-
-                                </LinearLayout>
+                                <TextView
+                                    android:id="@+id/tv_last_race_name"
+                                    android:text=""
+                                    android:textColor="@color/text_tertiary"
+                                    android:textSize="@dimen/text_metadata"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp" />
 
                             </LinearLayout>
 
                         </LinearLayout>
 
                     </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/bg_elevated" />
 
             </LinearLayout>
         </ScrollView>

@@ -12,10 +12,10 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:background="@color/bg_surface"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
+        android:paddingStart="@dimen/spacing_sm"
+        android:paddingEnd="@dimen/spacing_sm"
+        android:paddingTop="@dimen/spacing_xs"
+        android:paddingBottom="@dimen/spacing_xs"
         android:gravity="center_vertical|end">
 
         <ImageButton
@@ -33,7 +33,7 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:textColor="@color/text_primary"
-            android:textSize="16sp"
+            android:textSize="@dimen/text_subheading"
             android:textStyle="bold" />
 
         <ImageButton
@@ -62,7 +62,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
-                android:paddingTop="8dp"
+                android:paddingTop="@dimen/spacing_sm"
                 android:paddingBottom="90dp"
                 android:layoutAnimation="@anim/layout_fall_down" />
 
@@ -72,7 +72,7 @@
                 android:layout_height="match_parent"
                 android:gravity="center"
                 android:textColor="@color/text_secondary"
-                android:textSize="15sp"
+                android:textSize="@dimen/text_body"
                 android:visibility="gone" />
 
         </FrameLayout>

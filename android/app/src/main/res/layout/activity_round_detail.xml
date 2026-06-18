@@ -25,8 +25,8 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:paddingStart="@dimen/spacing_md"
+        android:paddingEnd="@dimen/spacing_md"
         android:paddingTop="6dp"
         android:paddingBottom="6dp"
         android:background="@color/bg_surface"
@@ -46,7 +46,7 @@
         android:layout_width="match_parent"
         android:layout_height="180dp"
         android:scaleType="fitCenter"
-        android:padding="16dp"
+        android:padding="@dimen/spacing_md"
         android:background="@color/bg_surface"
         android:foreground="?attr/selectableItemBackground"
         android:clickable="true"
@@ -60,10 +60,10 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
+        android:paddingStart="@dimen/spacing_sm"
+        android:paddingEnd="@dimen/spacing_sm"
+        android:paddingTop="@dimen/spacing_sm"
+        android:paddingBottom="@dimen/spacing_sm"
         android:background="@color/bg_surface"
         android:visibility="gone">
 
@@ -74,7 +74,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            android:textSize="@dimen/text_metadata" />
 
         <TextView
             android:id="@+id/tv_weather_track"
@@ -83,7 +83,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            android:textSize="@dimen/text_metadata" />
 
         <TextView
             android:id="@+id/tv_weather_humidity"
@@ -92,7 +92,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            android:textSize="@dimen/text_metadata" />
 
         <TextView
             android:id="@+id/tv_weather_rain"
@@ -101,7 +101,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            android:textSize="@dimen/text_metadata" />
 
         <TextView
             android:id="@+id/tv_weather_wind"
@@ -110,7 +110,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            android:textSize="@dimen/text_metadata" />
 
     </LinearLayout>
 
@@ -133,7 +133,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#2A2A2A" />
+        android:background="@color/no_session_gray" />
 
     <!-- Sticky strategy header (legend + lap axis) -->
     <LinearLayout
@@ -149,8 +149,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
+            android:paddingStart="@dimen/spacing_row"
+            android:paddingEnd="@dimen/spacing_row"
             android:paddingTop="6dp"
             android:paddingBottom="2dp"
             android:gravity="center_vertical">
@@ -170,35 +170,35 @@
                     android:layout_width="8dp" android:layout_height="8dp"
                     android:layout_marginEnd="3dp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="S" android:textColor="@color/text_hint" android:textSize="10sp"
-                    android:layout_marginEnd="8dp" />
+                    android:text="S" android:textColor="@color/text_hint" android:textSize="@dimen/text_label"
+                    android:layout_marginEnd="@dimen/spacing_sm" />
 
                 <View android:id="@+id/strategy_dot_medium"
                     android:layout_width="8dp" android:layout_height="8dp"
                     android:layout_marginEnd="3dp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="M" android:textColor="@color/text_hint" android:textSize="10sp"
-                    android:layout_marginEnd="8dp" />
+                    android:text="M" android:textColor="@color/text_hint" android:textSize="@dimen/text_label"
+                    android:layout_marginEnd="@dimen/spacing_sm" />
 
                 <View android:id="@+id/strategy_dot_hard"
                     android:layout_width="8dp" android:layout_height="8dp"
                     android:layout_marginEnd="3dp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="H" android:textColor="@color/text_hint" android:textSize="10sp"
-                    android:layout_marginEnd="8dp" />
+                    android:text="H" android:textColor="@color/text_hint" android:textSize="@dimen/text_label"
+                    android:layout_marginEnd="@dimen/spacing_sm" />
 
                 <View android:id="@+id/strategy_dot_inter"
                     android:layout_width="8dp" android:layout_height="8dp"
                     android:layout_marginEnd="3dp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="I" android:textColor="@color/text_hint" android:textSize="10sp"
-                    android:layout_marginEnd="8dp" />
+                    android:text="I" android:textColor="@color/text_hint" android:textSize="@dimen/text_label"
+                    android:layout_marginEnd="@dimen/spacing_sm" />
 
                 <View android:id="@+id/strategy_dot_wet"
                     android:layout_width="8dp" android:layout_height="8dp"
                     android:layout_marginEnd="3dp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="W" android:textColor="@color/text_hint" android:textSize="10sp" />
+                    android:text="W" android:textColor="@color/text_hint" android:textSize="@dimen/text_label" />
 
             </LinearLayout>
 
@@ -209,9 +209,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="4dp">
+            android:paddingStart="@dimen/spacing_row"
+            android:paddingEnd="@dimen/spacing_row"
+            android:paddingBottom="@dimen/spacing_xs">
 
             <View android:layout_width="80dp" android:layout_height="1dp" />
 
@@ -234,7 +234,7 @@
 
         </LinearLayout>
 
-        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#1AFFFFFF" />
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider_subtle" />
 
     </LinearLayout>
 
@@ -254,8 +254,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp"
+                android:paddingTop="@dimen/spacing_sm"
+                android:paddingBottom="@dimen/spacing_sm"
                 android:layoutAnimation="@anim/layout_fall_down" />
 
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
@@ -271,10 +271,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="16dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp" />
+                android:paddingTop="@dimen/spacing_sm"
+                android:paddingBottom="@dimen/spacing_md"
+                android:paddingStart="@dimen/spacing_sm"
+                android:paddingEnd="@dimen/spacing_sm" />
 
         </ScrollView>
 
@@ -285,9 +285,9 @@
             android:layout_gravity="center"
             android:text="No strategy data available for this race.\nStrategy data is only available from the 2023 season onwards."
             android:textColor="@color/text_secondary"
-            android:textSize="14sp"
+            android:textSize="@dimen/text_body_sm"
             android:gravity="center"
-            android:padding="32dp"
+            android:padding="@dimen/spacing_xl"
             android:visibility="gone" />
 
     </FrameLayout>

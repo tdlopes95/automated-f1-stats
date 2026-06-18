@@ -4,8 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
+    android:paddingStart="@dimen/spacing_row"
+    android:paddingEnd="@dimen/spacing_row"
     android:paddingTop="10dp"
     android:paddingBottom="10dp"
     android:gravity="center_vertical">
@@ -25,7 +25,7 @@
         android:layout_height="wrap_content"
         android:text="1"
         android:textColor="@color/text_primary"
-        android:textSize="15sp"
+        android:textSize="@dimen/text_body"
         android:textStyle="bold" />
 
     <!-- Driver + team -->
@@ -41,7 +41,7 @@
             android:layout_height="wrap_content"
             android:text="Max Verstappen"
             android:textColor="@color/text_primary"
-            android:textSize="14sp"
+            android:textSize="@dimen/text_body_sm"
             android:textStyle="bold" />
 
         <TextView
@@ -50,7 +50,7 @@
             android:layout_height="wrap_content"
             android:text="Red Bull Racing"
             android:textColor="@color/text_secondary"
-            android:textSize="11sp" />
+            android:textSize="@dimen/text_small" />
 
     </LinearLayout>
 
@@ -67,7 +67,7 @@
             android:layout_height="wrap_content"
             android:text="Q1: 1:28.123"
             android:textColor="@color/text_secondary"
-            android:textSize="11sp"
+            android:textSize="@dimen/text_small"
             android:gravity="end" />
 
         <TextView
@@ -76,7 +76,7 @@
             android:layout_height="wrap_content"
             android:text="Q2: 1:27.456"
             android:textColor="@color/text_secondary"
-            android:textSize="11sp"
+            android:textSize="@dimen/text_small"
             android:gravity="end" />
 
         <TextView
@@ -85,7 +85,7 @@
             android:layout_height="wrap_content"
             android:text="Q3: 1:26.789"
             android:textColor="@color/text_primary"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_metadata"
             android:textStyle="bold"
             android:gravity="end" />
 

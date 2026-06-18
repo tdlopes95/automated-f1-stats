@@ -5,17 +5,17 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp"
+    android:padding="@dimen/spacing_lg"
     android:background="@color/bg_dark">
 
     <TextView
         android:text="SETTINGS"
         android:textColor="@color/f1_red"
-        android:textSize="11sp"
+        android:textSize="@dimen/text_small"
         android:letterSpacing="0.1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp" />
+        android:layout_marginBottom="@dimen/spacing_lg" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
@@ -39,17 +39,17 @@
     <TextView
         android:text="Include full URL with https:// — no trailing slash needed."
         android:textColor="@color/text_hint"
-        android:textSize="12sp"
+        android:textSize="@dimen/text_metadata"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp" />
+        android:layout_marginTop="@dimen/spacing_sm" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_save_url"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Save URL"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="@dimen/spacing_lg"
         style="@style/Widget.Material3.Button"
         android:backgroundTint="@color/f1_red" />
 

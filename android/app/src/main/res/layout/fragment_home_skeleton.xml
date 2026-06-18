@@ -10,13 +10,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="@dimen/spacing_md">
 
         <!-- Next Race skeleton card -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="@dimen/spacing_md"
             app:cardBackgroundColor="@color/bg_surface"
             app:cardCornerRadius="12dp">
 
@@ -24,7 +24,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/spacing_md">
 
                 <!-- Label -->
                 <View
@@ -43,14 +43,14 @@
                 <View
                     android:layout_width="140dp"
                     android:layout_height="14dp"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="@dimen/spacing_sm"
                     android:background="@color/bg_shimmer" />
 
                 <!-- Date -->
                 <View
                     android:layout_width="160dp"
                     android:layout_height="14dp"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="@dimen/spacing_sm"
                     android:background="@color/bg_shimmer" />
 
                 <!-- Countdown -->
@@ -67,7 +67,7 @@
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="@dimen/spacing_md"
             app:cardBackgroundColor="@color/bg_surface"
             app:cardCornerRadius="12dp">
 
@@ -75,7 +75,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/spacing_md">
 
                 <View
                     android:layout_width="120dp"
@@ -91,13 +91,13 @@
                 <View
                     android:layout_width="100dp"
                     android:layout_height="14dp"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="@dimen/spacing_sm"
                     android:background="@color/bg_shimmer" />
 
                 <View
                     android:layout_width="80dp"
                     android:layout_height="14dp"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="@dimen/spacing_sm"
                     android:background="@color/bg_shimmer" />
 
             </LinearLayout>
@@ -114,7 +114,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/spacing_md">
 
                 <View
                     android:layout_width="100dp"
@@ -130,7 +130,7 @@
                 <View
                     android:layout_width="120dp"
                     android:layout_height="14dp"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="@dimen/spacing_sm"
                     android:background="@color/bg_shimmer" />
 
             </LinearLayout>

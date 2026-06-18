@@ -4,32 +4,50 @@
     <color name="white">#FFFFFFFF</color>
     <color name="ic_launcher_background">#E10600</color>
 
-    <!-- Brand -->
+    <!-- ── Brand ──────────────────────────────────────────── -->
     <color name="f1_red">#E10600</color>
 
-    <!-- Backgrounds -->
-    <color name="bg_dark">#121212</color>
-    <color name="bg_surface">#1E1E1E</color>
-    <color name="bg_toolbar">#1A1A1A</color>
-    <color name="bg_divider">#2A2A2A</color>
-    <color name="bg_shimmer">#2D2D2D</color>
+    <!-- ── Global Surfaces ────────────────────────────────── -->
+    <color name="bg_dark">#0A0A0A</color>
+    <color name="bg_surface">#141414</color>
+    <color name="bg_elevated">#1E1E1E</color>
+    <!-- Legacy aliases kept for compatibility -->
+    <color name="bg_toolbar">#141414</color>
+    <color name="bg_divider">#1E1E1E</color>
+    <color name="bg_shimmer">#242424</color>
 
-    <!-- Text -->
+    <!-- ── Text ───────────────────────────────────────────── -->
     <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#AAAAAA</color>
-    <color name="text_tertiary">#888888</color>
-    <color name="text_hint">#666666</color>
-    <color name="text_disabled">#555555</color>
+    <color name="text_secondary">#9E9E9E</color>
+    <color name="text_tertiary">#666666</color>
+    <color name="text_hint">#444444</color>
+    <color name="text_disabled">#333333</color>
 
-    <!-- Status indicators -->
+    <!-- ── Status ─────────────────────────────────────────── -->
     <color name="status_green">#39B54A</color>
     <color name="status_orange">#FFA500</color>
     <color name="status_red">#FF0000</color>
     <color name="status_yellow">#FFD700</color>
-    <color name="no_session_gray">#333333</color>
+    <color name="no_session_gray">#2A2A2A</color>
 
-    <!-- Semantic -->
+    <!-- ── Dividers ──────────────────────────────────────────── -->
+    <color name="divider_subtle">#1AFFFFFF</color>
+
+    <!-- ── Semantic ───────────────────────────────────────── -->
     <color name="color_eliminated">#FF4444</color>
     <color name="color_fastest_lap">#B84FDB</color>
     <color name="color_race_live">#4CAF50</color>
+
+    <!-- ── Team Colors ────────────────────────────────────── -->
+    <color name="team_ferrari">#DC0000</color>
+    <color name="team_mclaren">#FF8700</color>
+    <color name="team_mercedes">#00D2BE</color>
+    <color name="team_red_bull">#1E41FF</color>
+    <color name="team_aston_martin">#006F62</color>
+    <color name="team_williams">#005AFF</color>
+    <color name="team_alpine">#0090FF</color>
+    <color name="team_racing_bulls">#6692FF</color>
+    <color name="team_haas">#B6BABD</color>
+    <color name="team_sauber">#52E252</color>
+    <color name="team_default">#3A3A3A</color>
 </resources>

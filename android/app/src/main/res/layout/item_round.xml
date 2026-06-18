@@ -4,8 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp"
+    android:paddingStart="@dimen/spacing_md"
+    android:paddingEnd="@dimen/spacing_md"
     android:paddingTop="14dp"
     android:paddingBottom="14dp"
     android:gravity="center_vertical"
@@ -18,7 +18,7 @@
         android:layout_height="wrap_content"
         android:text="R1"
         android:textColor="@color/f1_red"
-        android:textSize="12sp"
+        android:textSize="@dimen/text_metadata"
         android:textStyle="bold" />
 
     <ImageView
@@ -26,7 +26,7 @@
         android:layout_width="28dp"
         android:layout_height="20dp"
         android:scaleType="fitCenter"
-        android:layout_marginEnd="8dp"
+        android:layout_marginEnd="@dimen/spacing_sm"
         android:visibility="gone" />
 
     <!-- Race name + circuit -->
@@ -42,7 +42,7 @@
             android:layout_height="wrap_content"
             android:text="Bahrain Grand Prix"
             android:textColor="@color/text_primary"
-            android:textSize="15sp"
+            android:textSize="@dimen/text_body"
             android:textStyle="bold" />
 
         <TextView
@@ -51,7 +51,7 @@
             android:layout_height="wrap_content"
             android:text="Bahrain International Circuit"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_metadata"
             android:layout_marginTop="2dp" />
 
     </LinearLayout>
@@ -69,7 +69,7 @@
             android:layout_height="wrap_content"
             android:text="16 Mar"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_metadata"
             android:gravity="end" />
 
         <TextView
@@ -77,7 +77,7 @@
             android:layout_height="wrap_content"
             android:text="›"
             android:textColor="@color/f1_red"
-            android:textSize="20sp"
+            android:textSize="@dimen/text_title"
             android:gravity="end" />
 
     </LinearLayout>

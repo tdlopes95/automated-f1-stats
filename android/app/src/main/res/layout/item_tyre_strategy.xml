@@ -3,10 +3,10 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp"
+    android:paddingStart="@dimen/spacing_row"
+    android:paddingEnd="@dimen/spacing_row"
+    android:paddingTop="@dimen/spacing_xs"
+    android:paddingBottom="@dimen/spacing_xs"
     android:gravity="center_vertical">
 
     <!-- Finishing position badge -->
@@ -15,7 +15,7 @@
         android:layout_width="28dp"
         android:layout_height="wrap_content"
         android:textColor="@color/text_hint"
-        android:textSize="11sp"
+        android:textSize="@dimen/text_small"
         android:textStyle="bold"
         android:gravity="center"
         android:text="" />
@@ -32,7 +32,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/text_primary"
-            android:textSize="13sp"
+            android:textSize="@dimen/text_caption"
             android:textStyle="bold"
             android:fontFamily="sans-serif-condensed" />
 
@@ -41,7 +41,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/text_hint"
-            android:textSize="10sp" />
+            android:textSize="@dimen/text_label" />
 
     </LinearLayout>
 

@@ -11,8 +11,8 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:paddingStart="@dimen/spacing_md"
+        android:paddingEnd="@dimen/spacing_md"
         android:paddingTop="9dp"
         android:paddingBottom="9dp">
 
@@ -22,7 +22,7 @@
             android:layout_width="28dp"
             android:layout_height="wrap_content"
             android:textColor="@color/text_hint"
-            android:textSize="11sp"
+            android:textSize="@dimen/text_small"
             android:gravity="center" />
 
         <!-- Race name -->
@@ -32,9 +32,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:textColor="@color/text_primary"
-            android:textSize="13sp"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
+            android:textSize="@dimen/text_caption"
+            android:layout_marginStart="@dimen/spacing_sm"
+            android:layout_marginEnd="@dimen/spacing_sm"
             android:maxLines="1"
             android:ellipsize="end" />
 
@@ -44,7 +44,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/status_orange"
-            android:textSize="10sp"
+            android:textSize="@dimen/text_label"
             android:textStyle="bold"
             android:layout_marginEnd="6dp"
             android:visibility="gone" />
@@ -63,7 +63,7 @@
             android:id="@+id/tv_position"
             android:layout_width="42dp"
             android:layout_height="22dp"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_metadata"
             android:textStyle="bold"
             android:gravity="center" />
 
@@ -73,7 +73,7 @@
             android:layout_width="52dp"
             android:layout_height="wrap_content"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_metadata"
             android:gravity="end"
             android:layout_marginStart="6dp" />
 

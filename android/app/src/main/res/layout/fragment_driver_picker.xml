@@ -10,12 +10,12 @@
         android:layout_height="wrap_content"
         android:text="Select Driver"
         android:textColor="@color/text_primary"
-        android:textSize="18sp"
+        android:textSize="@dimen/text_card_header"
         android:textStyle="bold"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="16dp"
-        android:paddingBottom="12dp"/>
+        android:paddingStart="@dimen/spacing_md"
+        android:paddingEnd="@dimen/spacing_md"
+        android:paddingTop="@dimen/spacing_md"
+        android:paddingBottom="@dimen/spacing_row"/>
 
     <View
         android:layout_width="match_parent"
@@ -27,8 +27,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
-        android:layout_marginTop="32dp"
-        android:layout_marginBottom="32dp"
+        android:layout_marginTop="@dimen/spacing_xl"
+        android:layout_marginBottom="@dimen/spacing_xl"
         android:visibility="visible"/>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -36,7 +36,7 @@
         android:layout_width="match_parent"
         android:layout_height="400dp"
         android:clipToPadding="false"
-        android:paddingBottom="24dp"
+        android:paddingBottom="@dimen/spacing_lg"
         android:layoutAnimation="@anim/layout_fall_down"
         android:visibility="gone"/>
 

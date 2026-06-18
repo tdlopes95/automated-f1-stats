@@ -16,15 +16,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="12dp"
-            android:paddingBottom="24dp">
+            android:padding="@dimen/spacing_row"
+            android:paddingBottom="@dimen/spacing_lg">
 
             <!-- ── Main Card: Next Session or Latest Results ─────────────── -->
             <androidx.cardview.widget.CardView
                 android:id="@+id/card_main"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
+                android:layout_marginBottom="@dimen/spacing_row"
                 app:cardBackgroundColor="@color/bg_surface"
                 app:cardCornerRadius="8dp"
                 app:cardElevation="2dp"
@@ -47,7 +47,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="@dimen/spacing_md">
 
                         <!-- Flag + Race Name -->
                         <LinearLayout
@@ -55,14 +55,14 @@
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
                             android:gravity="center_vertical"
-                            android:layout_marginBottom="8dp">
+                            android:layout_marginBottom="@dimen/spacing_sm">
 
                             <ImageView
                                 android:id="@+id/iv_country_flag"
                                 android:layout_width="28dp"
                                 android:layout_height="20dp"
                                 android:scaleType="fitCenter"
-                                android:layout_marginEnd="8dp" />
+                                android:layout_marginEnd="@dimen/spacing_sm" />
 
                             <TextView
                                 android:id="@+id/tv_race_name"
@@ -70,7 +70,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:textColor="@color/text_primary"
-                                android:textSize="18sp"
+                                android:textSize="@dimen/text_card_header"
                                 android:textStyle="bold" />
                         </LinearLayout>
 
@@ -81,9 +81,9 @@
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="6dp"
                             android:textColor="@color/text_primary"
-                            android:textSize="11sp"
+                            android:textSize="@dimen/text_small"
                             android:textStyle="bold"
-                            android:paddingHorizontal="8dp"
+                            android:paddingHorizontal="@dimen/spacing_sm"
                             android:paddingVertical="3dp"
                             android:background="@color/f1_red" />
 
@@ -93,8 +93,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:textColor="@color/text_secondary"
-                            android:textSize="14sp"
-                            android:layout_marginBottom="8dp" />
+                            android:textSize="@dimen/text_body_sm"
+                            android:layout_marginBottom="@dimen/spacing_sm" />
 
                         <!-- Countdown (shown for upcoming sessions) -->
                         <TextView
@@ -105,7 +105,7 @@
                             android:textSize="30sp"
                             android:textStyle="bold"
                             android:fontFamily="monospace"
-                            android:layout_marginBottom="4dp"
+                            android:layout_marginBottom="@dimen/spacing_xs"
                             android:visibility="gone" />
 
                         <!-- Local start/end time -->
@@ -114,8 +114,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:textColor="@color/text_secondary"
-                            android:textSize="13sp"
-                            android:layout_marginBottom="12dp"
+                            android:textSize="@dimen/text_caption"
+                            android:layout_marginBottom="@dimen/spacing_row"
                             android:visibility="gone" />
 
                         <!-- Quick results (top 10, shown after a result session) -->
@@ -125,7 +125,7 @@
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
                             android:visibility="gone"
-                            android:layout_marginBottom="12dp" />
+                            android:layout_marginBottom="@dimen/spacing_row" />
 
                         <!-- Open full results button -->
                         <TextView
@@ -134,7 +134,7 @@
                             android:layout_height="40dp"
                             android:text="VIEW FULL RESULTS"
                             android:textColor="@color/text_primary"
-                            android:textSize="12sp"
+                            android:textSize="@dimen/text_metadata"
                             android:textStyle="bold"
                             android:gravity="center"
                             android:background="@color/bg_divider"
@@ -158,7 +158,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/spacing_md">
 
                     <TextView
                         android:id="@+id/tv_timeline_header"
@@ -166,10 +166,10 @@
                         android:layout_height="wrap_content"
                         android:text="RACE WEEKEND"
                         android:textColor="@color/text_secondary"
-                        android:textSize="11sp"
+                        android:textSize="@dimen/text_small"
                         android:textStyle="bold"
                         android:letterSpacing="0.1"
-                        android:layout_marginBottom="12dp" />
+                        android:layout_marginBottom="@dimen/spacing_row" />
 
                     <LinearLayout
                         android:id="@+id/ll_sessions"
@@ -187,8 +187,8 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:textColor="@color/text_secondary"
-                android:textSize="15sp"
-                android:padding="48dp"
+                android:textSize="@dimen/text_body"
+                android:padding="@dimen/spacing_xxl"
                 android:text="Loading schedule..."
                 android:visibility="visible" />
 

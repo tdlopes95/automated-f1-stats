@@ -18,10 +18,10 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="horizontal"
-        android:paddingLeft="12dp"
-        android:paddingRight="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
+        android:paddingLeft="@dimen/spacing_row"
+        android:paddingRight="@dimen/spacing_row"
+        android:paddingTop="@dimen/spacing_sm"
+        android:paddingBottom="@dimen/spacing_sm"
         android:gravity="center_vertical">
 
         <LinearLayout
@@ -35,8 +35,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Loading…"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_body_sm"
                 android:maxLines="1"
                 android:ellipsize="end" />
 
@@ -45,8 +45,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=""
-                android:textColor="#AAAAAA"
-                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_metadata"
                 android:layout_marginTop="2dp" />
 
             <TextView
@@ -54,10 +54,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=""
-                android:textColor="#FFFFFF"
-                android:textSize="20sp"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_title"
                 android:textStyle="bold"
-                android:layout_marginTop="4dp" />
+                android:layout_marginTop="@dimen/spacing_xs" />
 
         </LinearLayout>
 

@@ -4,11 +4,13 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
-    android:paddingTop="12dp"
-    android:paddingBottom="12dp"
-    android:gravity="center_vertical">
+    android:background="?attr/selectableItemBackground"
+    android:paddingStart="@dimen/spacing_md"
+    android:paddingEnd="@dimen/spacing_md"
+    android:paddingTop="@dimen/spacing_row"
+    android:paddingBottom="@dimen/spacing_row"
+    android:gravity="center_vertical"
+    android:minHeight="56dp">
 
     <!-- Position -->
     <TextView
@@ -17,15 +19,15 @@
         android:layout_height="wrap_content"
         android:text="1"
         android:textColor="@color/text_secondary"
-        android:textSize="14sp" />
+        android:textSize="@dimen/text_body_sm" />
 
     <!-- Team colour strip -->
     <View
         android:id="@+id/view_team_colour"
-        android:layout_width="4dp"
-        android:layout_height="40dp"
-        android:layout_marginEnd="10dp"
-        android:background="@color/text_primary" />
+        android:layout_width="@dimen/team_strip_width"
+        android:layout_height="36dp"
+        android:layout_marginEnd="@dimen/spacing_sm"
+        android:background="@color/team_default" />
 
     <!-- Flag + name + team -->
     <LinearLayout
@@ -46,8 +48,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="🇬🇧"
-                android:textSize="14sp"
-                android:layout_marginEnd="4dp" />
+                android:textSize="@dimen/text_body_sm"
+                android:layout_marginEnd="@dimen/spacing_xs" />
 
             <TextView
                 android:id="@+id/tv_name"
@@ -55,7 +57,7 @@
                 android:layout_height="wrap_content"
                 android:text="Lando Norris"
                 android:textColor="@color/text_primary"
-                android:textSize="15sp"
+                android:textSize="@dimen/text_body"
                 android:textStyle="bold" />
 
             <TextView
@@ -63,8 +65,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="#4"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
+                android:textColor="@color/text_tertiary"
+                android:textSize="@dimen/text_metadata"
                 android:layout_marginStart="6dp" />
 
         </LinearLayout>
@@ -83,7 +85,7 @@
                 android:layout_height="wrap_content"
                 android:text="McLaren"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                android:textSize="@dimen/text_metadata" />
 
             <TextView
                 android:id="@+id/tv_dnf"
@@ -91,8 +93,8 @@
                 android:layout_height="wrap_content"
                 android:text=""
                 android:textColor="@color/color_eliminated"
-                android:textSize="11sp"
-                android:layout_marginStart="8dp"
+                android:textSize="@dimen/text_small"
+                android:layout_marginStart="@dimen/spacing_sm"
                 android:visibility="gone" />
 
         </LinearLayout>
@@ -112,7 +114,7 @@
             android:layout_height="wrap_content"
             android:text="423"
             android:textColor="@color/text_primary"
-            android:textSize="18sp"
+            android:textSize="@dimen/text_card_header"
             android:textStyle="bold"
             android:gravity="end" />
 
@@ -128,7 +130,7 @@
                 android:layout_height="wrap_content"
                 android:text="7 wins"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp"
+                android:textSize="@dimen/text_small"
                 android:gravity="end" />
 
             <TextView
@@ -137,7 +139,7 @@
                 android:layout_height="wrap_content"
                 android:text=""
                 android:textColor="@color/status_yellow"
-                android:textSize="11sp"
+                android:textSize="@dimen/text_small"
                 android:layout_marginStart="6dp"
                 android:gravity="end" />
 

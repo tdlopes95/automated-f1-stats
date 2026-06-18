@@ -48,7 +48,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="fitCenter"
-                    android:padding="16dp"
+                    android:padding="@dimen/spacing_md"
                     android:contentDescription="Circuit map" />
 
             </FrameLayout>
@@ -57,9 +57,9 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="12dp"
-                android:layout_marginTop="12dp"
+                android:layout_marginStart="@dimen/spacing_row"
+                android:layout_marginEnd="@dimen/spacing_row"
+                android:layout_marginTop="@dimen/spacing_row"
                 app:cardBackgroundColor="@color/bg_surface"
                 app:cardCornerRadius="10dp"
                 app:cardElevation="0dp">
@@ -68,16 +68,16 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/spacing_md">
 
                     <TextView
                         android:id="@+id/tv_circuit_name"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/text_primary"
-                        android:textSize="22sp"
+                        android:textSize="@dimen/text_display"
                         android:textStyle="bold"
-                        android:layout_marginBottom="8dp" />
+                        android:layout_marginBottom="@dimen/spacing_sm" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -90,7 +90,7 @@
                             android:layout_width="28dp"
                             android:layout_height="20dp"
                             android:scaleType="fitCenter"
-                            android:layout_marginEnd="8dp"
+                            android:layout_marginEnd="@dimen/spacing_sm"
                             android:visibility="gone" />
 
                         <TextView
@@ -98,7 +98,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textColor="@color/text_secondary"
-                            android:textSize="14sp" />
+                            android:textSize="@dimen/text_body_sm" />
 
                     </LinearLayout>
 
@@ -110,10 +110,10 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="12dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="12dp"
+                android:layout_marginStart="@dimen/spacing_row"
+                android:layout_marginEnd="@dimen/spacing_row"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:layout_marginBottom="@dimen/spacing_row"
                 app:cardBackgroundColor="@color/bg_surface"
                 app:cardCornerRadius="10dp"
                 app:cardElevation="0dp">
@@ -122,7 +122,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/spacing_md">
 
                     <!-- Loading indicator -->
                     <ProgressBar
@@ -149,7 +149,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="TOTAL RACES"
                                 android:textColor="@color/text_hint"
-                                android:textSize="11sp"
+                                android:textSize="@dimen/text_small"
                                 android:letterSpacing="0.08"
                                 android:layout_marginBottom="2dp" />
 
@@ -159,7 +159,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="—"
                                 android:textColor="@color/text_primary"
-                                android:textSize="20sp"
+                                android:textSize="@dimen/text_title"
                                 android:textStyle="bold" />
 
                         </LinearLayout>
@@ -175,7 +175,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="FIRST GP"
                                 android:textColor="@color/text_hint"
-                                android:textSize="11sp"
+                                android:textSize="@dimen/text_small"
                                 android:letterSpacing="0.08"
                                 android:layout_marginBottom="2dp" />
 
@@ -185,7 +185,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="—"
                                 android:textColor="@color/text_primary"
-                                android:textSize="20sp"
+                                android:textSize="@dimen/text_title"
                                 android:textStyle="bold" />
 
                         </LinearLayout>
@@ -197,8 +197,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:background="@color/bg_divider"
-                        android:layout_marginTop="12dp"
-                        android:layout_marginBottom="12dp" />
+                        android:layout_marginTop="@dimen/spacing_row"
+                        android:layout_marginBottom="@dimen/spacing_row" />
 
                     <!-- Most Wins -->
                     <TextView
@@ -206,9 +206,9 @@
                         android:layout_height="wrap_content"
                         android:text="MOST WINS"
                         android:textColor="@color/text_hint"
-                        android:textSize="11sp"
+                        android:textSize="@dimen/text_small"
                         android:letterSpacing="0.08"
-                        android:layout_marginBottom="4dp" />
+                        android:layout_marginBottom="@dimen/spacing_xs" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -223,7 +223,7 @@
                             android:layout_weight="1"
                             android:text="—"
                             android:textColor="@color/text_primary"
-                            android:textSize="15sp"
+                            android:textSize="@dimen/text_body"
                             android:textStyle="bold" />
 
                         <TextView
@@ -231,7 +231,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textColor="@color/f1_red"
-                            android:textSize="14sp"
+                            android:textSize="@dimen/text_body_sm"
                             android:textStyle="bold" />
 
                     </LinearLayout>
@@ -241,8 +241,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:background="@color/bg_divider"
-                        android:layout_marginTop="12dp"
-                        android:layout_marginBottom="12dp" />
+                        android:layout_marginTop="@dimen/spacing_row"
+                        android:layout_marginBottom="@dimen/spacing_row" />
 
                     <!-- Most Poles -->
                     <TextView
@@ -250,9 +250,9 @@
                         android:layout_height="wrap_content"
                         android:text="MOST POLES"
                         android:textColor="@color/text_hint"
-                        android:textSize="11sp"
+                        android:textSize="@dimen/text_small"
                         android:letterSpacing="0.08"
-                        android:layout_marginBottom="4dp" />
+                        android:layout_marginBottom="@dimen/spacing_xs" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -267,7 +267,7 @@
                             android:layout_weight="1"
                             android:text="—"
                             android:textColor="@color/text_primary"
-                            android:textSize="15sp"
+                            android:textSize="@dimen/text_body"
                             android:textStyle="bold" />
 
                         <TextView
@@ -275,7 +275,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textColor="@color/f1_red"
-                            android:textSize="14sp"
+                            android:textSize="@dimen/text_body_sm"
                             android:textStyle="bold" />
 
                     </LinearLayout>
@@ -285,8 +285,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:background="@color/bg_divider"
-                        android:layout_marginTop="12dp"
-                        android:layout_marginBottom="12dp" />
+                        android:layout_marginTop="@dimen/spacing_row"
+                        android:layout_marginBottom="@dimen/spacing_row" />
 
                     <!-- Most Constructor Wins -->
                     <TextView
@@ -294,9 +294,9 @@
                         android:layout_height="wrap_content"
                         android:text="MOST CONSTRUCTOR WINS"
                         android:textColor="@color/text_hint"
-                        android:textSize="11sp"
+                        android:textSize="@dimen/text_small"
                         android:letterSpacing="0.08"
-                        android:layout_marginBottom="4dp" />
+                        android:layout_marginBottom="@dimen/spacing_xs" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -311,7 +311,7 @@
                             android:layout_weight="1"
                             android:text="—"
                             android:textColor="@color/text_primary"
-                            android:textSize="15sp"
+                            android:textSize="@dimen/text_body"
                             android:textStyle="bold" />
 
                         <TextView
@@ -319,7 +319,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textColor="@color/f1_red"
-                            android:textSize="14sp"
+                            android:textSize="@dimen/text_body_sm"
                             android:textStyle="bold" />
 
                     </LinearLayout>
@@ -329,8 +329,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:background="@color/bg_divider"
-                        android:layout_marginTop="12dp"
-                        android:layout_marginBottom="12dp" />
+                        android:layout_marginTop="@dimen/spacing_row"
+                        android:layout_marginBottom="@dimen/spacing_row" />
 
                     <!-- Lap Record -->
                     <TextView
@@ -338,9 +338,9 @@
                         android:layout_height="wrap_content"
                         android:text="LAP RECORD"
                         android:textColor="@color/text_hint"
-                        android:textSize="11sp"
+                        android:textSize="@dimen/text_small"
                         android:letterSpacing="0.08"
-                        android:layout_marginBottom="4dp" />
+                        android:layout_marginBottom="@dimen/spacing_xs" />
 
                     <TextView
                         android:id="@+id/tv_lap_record_time"
@@ -348,7 +348,7 @@
                         android:layout_height="wrap_content"
                         android:text="—"
                         android:textColor="@color/text_primary"
-                        android:textSize="18sp"
+                        android:textSize="@dimen/text_card_header"
                         android:textStyle="bold"
                         android:fontFamily="monospace" />
 
@@ -357,7 +357,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/text_secondary"
-                        android:textSize="12sp"
+                        android:textSize="@dimen/text_metadata"
                         android:layout_marginTop="2dp" />
 
                     <!-- Error state -->
@@ -367,7 +367,7 @@
                         android:layout_height="wrap_content"
                         android:text=""
                         android:textColor="@color/text_hint"
-                        android:textSize="13sp"
+                        android:textSize="@dimen/text_caption"
                         android:visibility="gone" />
 
                 </LinearLayout>

@@ -41,7 +41,7 @@
                 android:id="@+id/card_header"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="12dp"
+                android:layout_margin="@dimen/spacing_row"
                 app:cardBackgroundColor="@color/bg_surface"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="0dp"
@@ -95,22 +95,22 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:orientation="vertical"
-                            android:layout_marginStart="16dp">
+                            android:layout_marginStart="@dimen/spacing_md">
 
                             <TextView
                                 android:id="@+id/tv_driver_name"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:textColor="@color/text_primary"
-                                android:textSize="22sp"
+                                android:textSize="@dimen/text_display"
                                 android:textStyle="bold" />
 
                             <TextView
                                 android:id="@+id/tv_team_name"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:textSize="14sp"
+                                android:layout_marginTop="@dimen/spacing_xs"
+                                android:textSize="@dimen/text_body_sm"
                                 android:textStyle="bold" />
 
                             <TextView
@@ -119,15 +119,15 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="6dp"
                                 android:textColor="@color/text_secondary"
-                                android:textSize="13sp" />
+                                android:textSize="@dimen/text_caption" />
 
                             <TextView
                                 android:id="@+id/tv_dob"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
+                                android:layout_marginTop="@dimen/spacing_xs"
                                 android:textColor="@color/text_tertiary"
-                                android:textSize="12sp"
+                                android:textSize="@dimen/text_metadata"
                                 android:visibility="gone" />
 
                         </LinearLayout>
@@ -142,26 +142,26 @@
                 android:layout_height="wrap_content"
                 android:text="SEASON STATS"
                 android:textColor="@color/text_hint"
-                android:textSize="11sp"
+                android:textSize="@dimen/text_small"
                 android:letterSpacing="0.1"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="8dp" />
+                android:paddingStart="@dimen/spacing_md"
+                android:paddingEnd="@dimen/spacing_md"
+                android:paddingBottom="@dimen/spacing_sm" />
 
             <!-- Row 1: Points | Wins -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:layout_marginBottom="8dp">
+                android:paddingStart="@dimen/spacing_row"
+                android:paddingEnd="@dimen/spacing_row"
+                android:layout_marginBottom="@dimen/spacing_sm">
 
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginEnd="4dp"
+                    android:layout_marginEnd="@dimen/spacing_xs"
                     app:cardBackgroundColor="@color/bg_surface"
                     app:cardCornerRadius="10dp"
                     app:cardElevation="0dp"
@@ -178,15 +178,15 @@
                             android:layout_height="wrap_content"
                             android:text="--"
                             android:textColor="@color/text_primary"
-                            android:textSize="24sp"
+                            android:textSize="@dimen/text_section_header"
                             android:textStyle="bold" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="POINTS"
                             android:textColor="@color/text_hint"
-                            android:textSize="11sp"
-                            android:layout_marginTop="4dp" />
+                            android:textSize="@dimen/text_small"
+                            android:layout_marginTop="@dimen/spacing_xs" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -194,7 +194,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="4dp"
+                    android:layout_marginStart="@dimen/spacing_xs"
                     app:cardBackgroundColor="@color/bg_surface"
                     app:cardCornerRadius="10dp"
                     app:cardElevation="0dp"
@@ -210,16 +210,16 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="--"
-                            android:textColor="#FFD700"
-                            android:textSize="24sp"
+                            android:textColor="@color/status_yellow"
+                            android:textSize="@dimen/text_section_header"
                             android:textStyle="bold" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="WINS"
                             android:textColor="@color/text_hint"
-                            android:textSize="11sp"
-                            android:layout_marginTop="4dp" />
+                            android:textSize="@dimen/text_small"
+                            android:layout_marginTop="@dimen/spacing_xs" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -230,15 +230,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:layout_marginBottom="8dp">
+                android:paddingStart="@dimen/spacing_row"
+                android:paddingEnd="@dimen/spacing_row"
+                android:layout_marginBottom="@dimen/spacing_sm">
 
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginEnd="4dp"
+                    android:layout_marginEnd="@dimen/spacing_xs"
                     app:cardBackgroundColor="@color/bg_surface"
                     app:cardCornerRadius="10dp"
                     app:cardElevation="0dp"
@@ -255,15 +255,15 @@
                             android:layout_height="wrap_content"
                             android:text="--"
                             android:textColor="@color/text_primary"
-                            android:textSize="24sp"
+                            android:textSize="@dimen/text_section_header"
                             android:textStyle="bold" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="PODIUMS"
                             android:textColor="@color/text_hint"
-                            android:textSize="11sp"
-                            android:layout_marginTop="4dp" />
+                            android:textSize="@dimen/text_small"
+                            android:layout_marginTop="@dimen/spacing_xs" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -271,7 +271,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="4dp"
+                    android:layout_marginStart="@dimen/spacing_xs"
                     app:cardBackgroundColor="@color/bg_surface"
                     app:cardCornerRadius="10dp"
                     app:cardElevation="0dp"
@@ -287,16 +287,16 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="--"
-                            android:textColor="#FF4444"
-                            android:textSize="24sp"
+                            android:textColor="@color/color_eliminated"
+                            android:textSize="@dimen/text_section_header"
                             android:textStyle="bold" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="DNFs"
                             android:textColor="@color/text_hint"
-                            android:textSize="11sp"
-                            android:layout_marginTop="4dp" />
+                            android:textSize="@dimen/text_small"
+                            android:layout_marginTop="@dimen/spacing_xs" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -307,15 +307,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:layout_marginBottom="16dp">
+                android:paddingStart="@dimen/spacing_row"
+                android:paddingEnd="@dimen/spacing_row"
+                android:layout_marginBottom="@dimen/spacing_md">
 
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginEnd="4dp"
+                    android:layout_marginEnd="@dimen/spacing_xs"
                     app:cardBackgroundColor="@color/bg_surface"
                     app:cardCornerRadius="10dp"
                     app:cardElevation="0dp"
@@ -332,15 +332,15 @@
                             android:layout_height="wrap_content"
                             android:text="--"
                             android:textColor="@color/text_primary"
-                            android:textSize="24sp"
+                            android:textSize="@dimen/text_section_header"
                             android:textStyle="bold" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="BEST GRID"
                             android:textColor="@color/text_hint"
-                            android:textSize="11sp"
-                            android:layout_marginTop="4dp" />
+                            android:textSize="@dimen/text_small"
+                            android:layout_marginTop="@dimen/spacing_xs" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -348,7 +348,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="4dp"
+                    android:layout_marginStart="@dimen/spacing_xs"
                     app:cardBackgroundColor="@color/bg_surface"
                     app:cardCornerRadius="10dp"
                     app:cardElevation="0dp"
@@ -365,15 +365,15 @@
                             android:layout_height="wrap_content"
                             android:text="--"
                             android:textColor="@color/text_primary"
-                            android:textSize="24sp"
+                            android:textSize="@dimen/text_section_header"
                             android:textStyle="bold" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="POLES"
                             android:textColor="@color/text_hint"
-                            android:textSize="11sp"
-                            android:layout_marginTop="4dp" />
+                            android:textSize="@dimen/text_small"
+                            android:layout_marginTop="@dimen/spacing_xs" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -385,11 +385,11 @@
                 android:layout_height="wrap_content"
                 android:text="RACE RESULTS"
                 android:textColor="@color/text_hint"
-                android:textSize="11sp"
+                android:textSize="@dimen/text_small"
                 android:letterSpacing="0.1"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="8dp" />
+                android:paddingStart="@dimen/spacing_md"
+                android:paddingEnd="@dimen/spacing_md"
+                android:paddingBottom="@dimen/spacing_sm" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rv_driver_results"
@@ -397,7 +397,7 @@
                 android:layout_height="wrap_content"
                 android:nestedScrollingEnabled="false"
                 android:clipToPadding="false"
-                android:paddingBottom="24dp"
+                android:paddingBottom="@dimen/spacing_lg"
                 android:layoutAnimation="@anim/layout_fall_down" />
 
         </LinearLayout>
