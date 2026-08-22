@@ -1,6 +1,6 @@
 # 🏎️ automated-f1-stats
 
-A personal F1 companion app — live race timing, results, qualifying, sprint, standings, and schedule, all in one place.
+A personal F1 companion app -> live race timing, results, qualifying, sprint, standings, and schedule, all in one place.
 
 > **Unofficial project. Not affiliated with Formula 1 or FOM.**
 
@@ -11,7 +11,7 @@ A personal F1 companion app — live race timing, results, qualifying, sprint, s
 ```
 automated-f1-stats/
 ├── backend/        # Python FastAPI server (data engine)
-├── android/        # Android app — Java + Material Design 3
+├── android/        # Android app - Java + Material Design 3
 ├── .gitignore
 └── README.md       ← you are here
 ```
@@ -26,11 +26,11 @@ OpenF1 API  ──┐
 Jolpica API ──┘     (APScheduler)         JSON
 ```
 
-- **OpenF1** provides live timing during sessions (~1–3s delay)
+- **OpenF1** provides live timing during sessions (~1-3s delay)
 - **Jolpica** provides the race calendar, final results, and standings
 - **APScheduler** arms polling jobs automatically based on real session times
 - **Android app** calls your backend over your local network or a deployed server
-- **Koyeb** (or any cloud provider) hosts the backend — configure the URL inside the app without rebuilding
+- **Koyeb** (or any cloud provider) hosts the backend, configure the URL inside the app without rebuilding
 
 ---
 
@@ -41,11 +41,11 @@ Jolpica API ──┘     (APScheduler)         JSON
 | Software | Version | Why | Download |
 |---|---|---|---|
 | **Python** | 3.11+ | Runs the backend | [python.org](https://python.org) |
-| **pip** | Comes with Python | Installs packages | — |
+| **pip** | Comes with Python | Installs packages | - |
 | **Git** | Any | Version control | [git-scm.com](https://git-scm.com) |
 
 > **Optional but recommended:**
-> A code editor — [VS Code](https://code.visualstudio.com) is free and works great.
+> A code editor - [VS Code](https://code.visualstudio.com) is free and works great.
 > ⚠️ If you install the VS Code Java extension, make sure Android Studio's Gradle JDK is not accidentally pointing to the VS Code JRE. Set `org.gradle.java.home=C:/Program Files/Android/Android Studio/jbr` in `gradle.properties` if needed.
 
 Once Python is installed, everything else is handled by `pip install -r requirements.txt`.
@@ -57,12 +57,12 @@ Once Python is installed, everything else is handled by `pip install -r requirem
 | Software | Version | Why | Download |
 |---|---|---|---|
 | **Android Studio** | Hedgehog (2023.1.1) or newer | Full Android IDE | [developer.android.com/studio](https://developer.android.com/studio) |
-| **JDK (Java)** | 17+ | Bundled inside Android Studio | — |
-| **Android SDK** | API 26+ (Android 8.0) | Bundled inside Android Studio | — |
-| **Gradle** | Bundled | Build tool | — |
+| **JDK (Java)** | 17+ | Bundled inside Android Studio | - |
+| **Android SDK** | API 26+ (Android 8.0) | Bundled inside Android Studio | - |
+| **Gradle** | Bundled | Build tool | - |
 
-> ⚠️ Android Studio is a large download (~1GB installer, ~3–4GB once set up).
-> You do **not** need to install Java/JDK separately — Android Studio bundles it.
+> ⚠️ Android Studio is a large download (~1GB installer, ~3-4GB once set up).
+> You do **not** need to install Java/JDK separately, Android Studio bundles it.
 > A physical Android phone with **USB Debugging enabled** is recommended over the emulator.
 
 ---
@@ -77,7 +77,7 @@ The backend can be deployed to any cloud provider that supports Docker. Recommen
 | **Railway** | $5 credit/month | Frankfurt | Easy GitHub deploy, sleeps on inactivity |
 | **Render** | Free tier | Frankfurt | Similar to Railway, ~30s cold start |
 
-> Once deployed, update the backend URL in the Android app via **Settings → gear icon** — no rebuild needed.
+> Once deployed, update the backend URL in the Android app via **Settings → gear icon** , no rebuild needed.
 
 ---
 
@@ -130,7 +130,7 @@ For **Koyeb**:
 
 ---
 
-## Android App — Features
+## Android App - Features
 
 | Screen | Features |
 |---|---|
@@ -153,7 +153,7 @@ For **Koyeb**:
 
 ---
 
-## Backend API — Quick Reference
+## Backend API - Quick Reference
 
 | Endpoint | Rate Limit | Description |
 |---|---|---|
@@ -171,9 +171,9 @@ For **Koyeb**:
 Full docs auto-generated at `/docs` when the server is running.
 
 ### Caching Strategy
-- **5 minutes** — live/current data (standings, next race, latest results)
-- **7 days** — historical data (past seasons, completed rounds)
-- **SQLite** — current season standings and results persisted across restarts
+- **5 minutes** - live/current data (standings, next race, latest results)
+- **7 days** - historical data (past seasons, completed rounds)
+- **SQLite** - current season standings and results persisted across restarts
 
 ---
 
@@ -188,23 +188,23 @@ Full docs auto-generated at `/docs` when the server is running.
 
 ## Roadmap
 
-- [x] Python backend — FastAPI + APScheduler + SQLite cache
+- [x] Python backend - FastAPI + APScheduler + SQLite cache
 - [x] Dual-tier caching (5-min live, 7-day historical)
-- [x] Rate limiting (slowapi — 30–60 req/min per IP)
-- [x] Android app — home screen with countdown, leader, last winner
-- [x] Android app — live timing screen (all session types)
-- [x] Android app — results screen (race, qualifying, sprint)
-- [x] Android app — standings screen (drivers + constructors)
-- [x] Android app — schedule screen
-- [x] Android app — shimmer loading skeleton
-- [x] Android app — instant cache load on reopen
-- [x] Android app — pull-to-refresh with snackbar on all screens
-- [x] Android app — error state with retry button
-- [x] Android app — settings screen (configure backend URL without rebuild)
-- [x] Android app — season selector (back to 1950)
-- [x] Android app — app icon + splash screen
+- [x] Rate limiting (slowapi - 30-60 req/min per IP)
+- [x] Android app - home screen with countdown, leader, last winner
+- [x] Android app - live timing screen (all session types)
+- [x] Android app - results screen (race, qualifying, sprint)
+- [x] Android app - standings screen (drivers + constructors)
+- [x] Android app - schedule screen
+- [x] Android app - shimmer loading skeleton
+- [x] Android app - instant cache load on reopen
+- [x] Android app - pull-to-refresh with snackbar on all screens
+- [x] Android app - error state with retry button
+- [x] Android app - settings screen (configure backend URL without rebuild)
+- [x] Android app - season selector (back to 1950)
+- [x] Android app - app icon + splash screen
 - [x] Off-season fallback (shows last season champion with correct label)
-- [x] Backend deployed to cloud (Koyeb — Frankfurt, always-on, free)
+- [x] Backend deployed to cloud (Koyeb - Frankfurt, always-on, free)
 - [ ] Push notifications for session start / results available
 
 ---
