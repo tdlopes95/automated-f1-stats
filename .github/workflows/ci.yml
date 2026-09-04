@@ -21,22 +21,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          req=$(find . -name requirements.txt | head -n1)
-          echo "Installing from ${req:-requirements.txt}"
-          pip install -r "${req:-requirements.txt}"
-          pip install ruff pytest
+          pip install -r backend/requirements-dev.txt
+          pip install ruff
 
       - name: Lint with ruff (non-blocking)
         continue-on-error: true
         run: ruff check --output-format=github .
 
       - name: Syntax check
-        run: python -m compileall -q .
+        run: python -m compileall -q backend
 
-      - name: Run tests (if present)
-        run: |
-          if find . -type f \( -name 'test_*.py' -o -name '*_test.py' \) | grep -q .; then
-            pytest -q
-          else
-            echo "No tests yet — add them under tests/ to turn this green with real coverage."
-          fi
+      - name: Run tests
+        run: cd backend && python -m pytest -q
