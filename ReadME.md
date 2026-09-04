@@ -3,7 +3,11 @@
 A personal F1 companion app -> live race timing, results, qualifying, sprint, standings, and schedule, all in one place.
 
 > **Unofficial project. Not affiliated with Formula 1 or FOM.**
-![CI](https://github.com/tdlopes95/REPLACE-WITH-REPO-NAME/actions/workflows/ci.yml/badge.svg)
+>
+> 
+![CI](https://github.com/tdlopes95/automated-f1-stats/actions/workflows/ci.yml/badge.svg)
+
+
 ---
 
 ## Project Structure
