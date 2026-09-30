@@ -12,13 +12,11 @@ from typing import Any, Optional
 
 import httpx
 
+from .errors import UpstreamError
+
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://api.openf1.org/v1"
-
-# Rate limits (free tier: 3 req/s, 30 req/min)
-# We stay well under by spacing calls
-FREE_TIER_DELAY = 0.4   # ~2.5 req/s, safe margin
 
 
 class OpenF1Client:
@@ -38,26 +36,38 @@ class OpenF1Client:
         )
 
     async def _get(self, endpoint: str, params: dict = None):
+        """
+        200 -> parsed JSON. 404 -> [] (OpenF1 uses 404 for "No results found").
+        429 -> exponential backoff; UpstreamError once retries are exhausted.
+        Any other HTTP error, network error or invalid JSON -> UpstreamError.
+        """
+        path = f"/{endpoint}"
         for attempt in range(3):
             try:
-                response = await self._client.get(
-                    f"/{endpoint}",
-                    params=params
-                )
-                response.raise_for_status()
-                return response.json()
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    wait = 2 ** attempt
-                    logger.warning(f"Rate limited, retrying in {wait}s...")
-                    await asyncio.sleep(wait)
-                else:
-                    logger.error(f"OpenF1 HTTP error {e.response.status_code} on {endpoint}: {e}")
-                    return []
-            except Exception as e:
-                logger.error(f"OpenF1 request failed on {endpoint}: {e}")
+                response = await self._client.get(path, params=params)
+            except httpx.RequestError as e:
+                logger.error(f"OpenF1 request error on {endpoint}: {e}")
+                raise UpstreamError("openf1", path) from e
+
+            if response.status_code == 429:
+                wait = 2 ** attempt
+                logger.warning(f"OpenF1 429 on {endpoint}, retrying in {wait}s")
+                await asyncio.sleep(wait)
+                continue
+            if response.status_code == 404:
                 return []
-        return []
+            if response.status_code != 200:
+                logger.error(f"OpenF1 HTTP error {response.status_code} on {endpoint}")
+                raise UpstreamError("openf1", path, response.status_code)
+
+            try:
+                return response.json()
+            except ValueError as e:
+                logger.error(f"OpenF1 invalid JSON on {endpoint}: {e}")
+                raise UpstreamError("openf1", path, response.status_code) from e
+
+        logger.error(f"OpenF1: exhausted retries on {endpoint}")
+        raise UpstreamError("openf1", path, 429)
 
     # ── Sessions & Meetings ──────────────────────────────────────────────────
 
@@ -230,7 +240,9 @@ class OpenF1Client:
         Use this during a live session (sponsor tier recommended for real-time).
         """
         # Run all requests concurrently for speed
-        positions, intervals, stints, pit_stops, race_control, weather, drivers = await asyncio.gather(
+        (sessions, positions, intervals, stints, pit_stops,
+         race_control, weather, drivers) = await asyncio.gather(
+            self._get("sessions", {"session_key": session_key}),
             self.get_latest_positions(session_key),
             self.get_latest_intervals(session_key),
             self.get_stints(session_key),
@@ -290,14 +302,23 @@ class OpenF1Client:
                 "last_updated": pos.get("date"),
             })
 
+        session = sessions[0] if sessions else {}
+        # last_updated reflects the data itself (not when we fetched it), so an old
+        # session doesn't look fresh to clients.
+        position_dates = [p.get("date") for p in positions if p.get("date")]
+        last_updated = max(position_dates) if position_dates else session.get("date_end")
+
         return {
             "session_key": session_key,
+            "session_name": session.get("session_name"),
+            "session_type": session.get("session_type"),
             "latest_flag": current_flag,
             "safety_car_active": safety_car_active,
             "vsc_active": vsc_active,
             "drivers": driver_states,
             "weather": weather,
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": last_updated,
+            "captured_at": datetime.now(timezone.utc).isoformat(),
         }
 
     async def close(self):

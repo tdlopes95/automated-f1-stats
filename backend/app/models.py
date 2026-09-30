@@ -276,3 +276,5 @@ class CircuitStatsResponse(BaseModel):
     mostPoles: Optional[DriverStat] = None
     mostConstructorWins: Optional[ConstructorStat] = None
     lapRecord: Optional[LapRecord] = None
+    lapRecordSinceYear: Optional[int] = None   # earliest season with a timed fastest lap
+    dataNote: Optional[str] = None

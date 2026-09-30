@@ -3,18 +3,25 @@ F1 Backend - FastAPI Main Application
 Run with: uvicorn app.main:app --reload --port 8000
 """
 
+from dotenv import load_dotenv
+
+# Must run before anything reads os.getenv (database.py reads DB_PATH at import time).
+load_dotenv()
+
 import asyncio
 import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .database import Database
+from .errors import UpstreamError
 from .jolpica_client import JolpicaClient
 from .openf1_client import OpenF1Client
 from .scheduler import F1Scheduler
@@ -36,31 +43,45 @@ limiter = Limiter(key_func=get_remote_address)
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
-    level=logging.INFO,
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 # ── In-memory cache ───────────────────────────────────────────────────────────
 _cache: dict = {}
-CACHE_TTL         = 300        # 5 minutes  — live/current data
-CACHE_TTL_FOREVER = 86400 * 7  # 7 days     — historical data (never changes)
+CACHE_TTL           = 300        # 5 minutes  — live/current data
+CACHE_TTL_STANDINGS = 1800       # 30 minutes — current-season standings
+CACHE_TTL_FOREVER   = 86400 * 7  # 7 days     — historical data (never changes)
+
+# Current-season results for a race this recent may still change (post-race penalties)
+RESULTS_VOLATILE_WINDOW = timedelta(hours=72)
+RESULTS_VOLATILE_MAX_AGE = timedelta(hours=1)
+
+# Live snapshots
+LIVE_STORED_MAX_AGE = timedelta(minutes=2)   # a stored (poller) snapshot is served if newer
+LIVE_IS_LIVE_MAX_AGE = timedelta(seconds=60) # ...and flagged is_live only if newer than this
+LATEST_SESSION_CACHE_KEY = "latest_session"
 
 def cache_get(key: str):
-    if key in _cache:
-        entry = _cache[key]
-        ttl  = entry[2] if len(entry) == 3 else CACHE_TTL
-        data, ts = entry[0], entry[1]
-        if time.time() - ts < ttl:
-            return data
-        del _cache[key]
+    entry = _cache.get(key)
+    if entry is None:
+        return None
+    data, ts, ttl = entry
+    if time.time() - ts < ttl:
+        return data
+    del _cache[key]
     return None
 
-def cache_set(key: str, data):
-    _cache[key] = (data, time.time())
+def cache_set(key: str, data, ttl: float = CACHE_TTL):
+    _cache[key] = (data, time.time(), ttl)
 
 def cache_set_historical(key: str, data):
-    _cache[key] = (data, time.time(), CACHE_TTL_FOREVER)
+    cache_set(key, data, CACHE_TTL_FOREVER)
+
+def cache_invalidate(prefix: str):
+    for key in [k for k in _cache if k.startswith(prefix)]:
+        del _cache[key]
 
 def add_gap_to_second(standings: list) -> list:
     if not standings or len(standings) < 2:
@@ -73,54 +94,100 @@ def add_gap_to_second(standings: list) -> list:
         standings[0]["gap_to_second"] = 0
     return standings
 
+def race_datetime(race: dict) -> Optional[datetime]:
+    """UTC datetime of a schedule entry's Race session, or None."""
+    for session in race.get("sessions", []):
+        if session.get("name") == "Race" and session.get("datetime"):
+            try:
+                dt = datetime.fromisoformat(session["datetime"])
+            except ValueError:
+                return None
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    return None
+
+def last_completed_round(schedule: list, now: Optional[datetime] = None) -> int:
+    """Highest round whose Race start is at or before now (UTC); 0 if none."""
+    now = now or datetime.now(timezone.utc)
+    last_round = 0
+    for race in schedule:
+        dt = race_datetime(race)
+        if dt and dt <= now:
+            last_round = max(last_round, int(race.get("round", 0)))
+    return last_round
+
+def final_round(schedule: list) -> int:
+    return max((int(r.get("round", 0)) for r in schedule), default=0)
+
+async def fetch_results(year: int, round_number: int, session_type: str) -> list:
+    if session_type == "Race":
+        return await jolpica.get_race_results(year, round_number)
+    if session_type == "Qualifying":
+        return await jolpica.get_qualifying_results(year, round_number)
+    return await jolpica.get_sprint_results(year, round_number)
+
 # ── Globals ───────────────────────────────────────────────────────────────────
 db: Database        = None
 jolpica: JolpicaClient  = None
 openf1: OpenF1Client    = None
 scheduler: F1Scheduler  = None
-_active_session_key: Optional[int] = None
+
+
+async def resolve_latest_session() -> Optional[dict]:
+    """OpenF1's latest session, cached in memory for 5 minutes."""
+    cached = cache_get(LATEST_SESSION_CACHE_KEY)
+    if cached is not None:
+        return cached or None
+    session = await openf1.get_latest_session()
+    cache_set(LATEST_SESSION_CACHE_KEY, session or {})
+    return session
 
 # ── Scheduler callbacks ───────────────────────────────────────────────────────
 
 async def on_live_poll(session_name: str, race_name: str):
-    global _active_session_key
     try:
-        if _active_session_key is None:
-            session = await openf1.get_latest_session()
-            if session:
-                _active_session_key = session.get("session_key")
-                await db.upsert_session(session)
-        if _active_session_key:
-            snapshot = await openf1.get_live_snapshot(_active_session_key)
-            snapshot["session_name"] = session_name
-            snapshot["is_live"] = True
-            await db.save_snapshot(_active_session_key, snapshot)
-            logger.info(f"[LIVE] Snapshot saved for session {_active_session_key}")
+        session = await resolve_latest_session()
+        if not session:
+            return
+        session_key = session.get("session_key")
+        await db.upsert_session(session)
+        snapshot = await openf1.get_live_snapshot(session_key)
+        snapshot["session_name"] = session_name
+        await db.save_snapshot(session_key, snapshot)
+        logger.info(f"[LIVE] Snapshot saved for session {session_key}")
+    except UpstreamError as e:
+        logger.error(f"on_live_poll upstream error: {e}")
     except Exception as e:
         logger.error(f"on_live_poll error: {e}")
 
 
-async def on_session_ended(session_name: str, race_name: str, round_number: int):
-    global _active_session_key
+async def on_session_ended(session_name: str, race_name: str, round_number: int, year: int):
     try:
-        year = datetime.now(timezone.utc).year
-        if session_name == "Race":
-            results = await jolpica.get_race_results(year, round_number)
-            await db.save_results(year, round_number, "Race", results)
-            standings = await jolpica.get_driver_standings(year)
-            await db.save_driver_standings(year, round_number, standings)
-            c_standings = await jolpica.get_constructor_standings(year)
-            await db.save_constructor_standings(year, round_number, c_standings)
-        elif session_name == "Qualifying":
-            results = await jolpica.get_qualifying_results(year, round_number)
-            await db.save_results(year, round_number, "Qualifying", results)
-        elif session_name == "Sprint":
-            results = await jolpica.get_sprint_results(year, round_number)
-            await db.save_results(year, round_number, "Sprint", results)
-        _active_session_key = None
-        logger.info(f"[RESULTS] {session_name} results saved for {race_name} R{round_number}")
+        if session_name in ("Race", "Qualifying", "Sprint"):
+            try:
+                results = await fetch_results(year, round_number, session_name)
+                if results:
+                    await db.save_results(year, round_number, session_name, results)
+                    logger.info(f"[RESULTS] {session_name} results saved for {race_name} R{round_number}")
+                else:
+                    logger.warning(f"[RESULTS] {session_name} results for {race_name} R{round_number} "
+                                   f"not available yet from Jolpica")
+            finally:
+                # Standings are not saved here: Jolpica often lags the flag by more than
+                # 30 minutes. Dropping the caches makes the next request fetch fresh data.
+                cache_invalidate(f"driver_standings_{year}")
+                cache_invalidate(f"constructor_standings_{year}")
+                cache_invalidate("results_latest_")
+                cache_invalidate(f"results_{year}_{round_number}_")
+                jolpica.invalidate_schedule()
+        cache_invalidate(LATEST_SESSION_CACHE_KEY)
+    except UpstreamError as e:
+        logger.error(f"on_session_ended upstream error: {e}")
     except Exception as e:
         logger.error(f"on_session_ended error: {e}")
+
+
+async def on_prune():
+    await db.prune_snapshots(older_than_hours=48)
 
 
 # ── App Lifespan ──────────────────────────────────────────────────────────────
@@ -136,6 +203,8 @@ async def lifespan(app: FastAPI):
         jolpica=jolpica,
         on_live_poll=on_live_poll,
         on_session_ended=on_session_ended,
+        live_polling_enabled=bool(os.getenv("OPENF1_TOKEN")),
+        on_prune=on_prune,
     )
     await scheduler.start()
     logger.info("F1 Backend started and ready.")
@@ -159,6 +228,15 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+@app.exception_handler(UpstreamError)
+async def upstream_error_handler(request: Request, exc: UpstreamError):
+    logger.error(f"Upstream failure serving {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=502,
+        content={"detail": "Upstream data source unavailable", "source": exc.source},
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -179,18 +257,8 @@ async def root():
 @app.get("/schedule", response_model=list[RaceSchedule])
 @limiter.limit("30/minute")
 async def get_schedule(request: Request, year: Optional[int] = None):
-    cache_key = f"schedule_{year or 'current'}"
-    cached = cache_get(cache_key)
-    if cached:
-        return cached
-    result = await jolpica.get_schedule(year)
-    if result:
-        current_year = datetime.now(timezone.utc).year
-        if year and year < current_year:
-            cache_set_historical(cache_key, result)
-        else:
-            cache_set(cache_key, result)
-    return result
+    # Cached inside JolpicaClient (1h current/future, 7 days past seasons).
+    return await jolpica.get_schedule(year)
 
 
 @app.get("/schedule/next")
@@ -209,32 +277,46 @@ async def get_upcoming_sessions(days: int = Query(default=14, le=30)):
 
 # ── Live Session ──────────────────────────────────────────────────────────────
 
+async def get_snapshot(session_key: int) -> Optional[dict]:
+    """
+    A poller-saved snapshot if one was captured in the last 2 minutes, otherwise an
+    on-demand snapshot built from OpenF1 (memory-cached for 5 minutes, never stored).
+    is_live is true only for a poller snapshot less than 60 seconds old.
+    """
+    stored = await db.get_latest_snapshot_entry(session_key)
+    if stored:
+        age = datetime.now(timezone.utc) - stored["captured_at"]
+        if age < LIVE_STORED_MAX_AGE:
+            return {**stored["snapshot"], "is_live": age < LIVE_IS_LIVE_MAX_AGE}
+
+    cache_key = f"live_snapshot_{session_key}"
+    snapshot = cache_get(cache_key)
+    if snapshot is None:
+        snapshot = await openf1.get_live_snapshot(session_key)
+        if not snapshot.get("drivers") and not snapshot.get("session_name"):
+            return None
+        cache_set(cache_key, snapshot)
+    return {**snapshot, "is_live": False}
+
+
 @app.get("/live")
 @limiter.limit("60/minute")
 async def get_live_session(request: Request):
-    global _active_session_key
-    if _active_session_key is None:
-        session = await openf1.get_latest_session()
-        if session:
-            _active_session_key = session.get("session_key")
-    if not _active_session_key:
+    session = await resolve_latest_session()
+    if not session or not session.get("session_key"):
         raise HTTPException(status_code=404, detail="No active session found")
-    snapshot = await db.get_latest_snapshot(_active_session_key)
-    if not snapshot:
-        snapshot = await openf1.get_live_snapshot(_active_session_key)
-        await db.save_snapshot(_active_session_key, snapshot)
+    snapshot = await get_snapshot(session["session_key"])
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="No active session found")
     return snapshot
 
 
 @app.get("/live/{session_key}")
 @limiter.limit("60/minute")
 async def get_live_by_session(request: Request, session_key: int):
-    snapshot = await db.get_latest_snapshot(session_key)
-    if not snapshot:
-        snapshot = await openf1.get_live_snapshot(session_key)
-        if not snapshot:
-            raise HTTPException(status_code=404, detail="Session not found")
-        await db.save_snapshot(session_key, snapshot)
+    snapshot = await get_snapshot(session_key)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Session not found")
     return snapshot
 
 
@@ -247,68 +329,63 @@ async def get_latest_results(
     session_type: str = Query(default="Race", enum=["Race", "Qualifying", "Sprint"]),
     year: Optional[int] = None
 ):
-    """Latest race winner — falls back to previous year if season hasn't started."""
+    """
+    Latest results. With no year (or the current year): the last completed round of
+    the current season, falling back to last season's final round if it hasn't
+    started. With a past year: that season's final round.
+    """
     current_year = datetime.now(timezone.utc).year
+    cache_key = f"results_latest_{session_type}_{year if year is not None else 'default'}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
 
-    try:
-        current_schedule = await jolpica.get_schedule(current_year)
-        today = datetime.now(timezone.utc).date()
-        current_year_has_results = False
-        if current_schedule:
-            for race in current_schedule:
-                for session in race.get("sessions", []):
-                    if session.get("name") == "Race":
-                        dt_str = session.get("datetime", "")
-                        if dt_str:
-                            race_date = datetime.fromisoformat(dt_str[:10]).date()
-                            if race_date <= today:
-                                current_year_has_results = True
-                                break
-                if current_year_has_results:
-                    break
-    except Exception as e:
-        logger.error(f"Schedule check error: {e}")
-        current_year_has_results = False
-
-    target_year = current_year if current_year_has_results else current_year - 1
-
-    try:
+    if year is not None and year < current_year:
+        target_year = year
         schedule = await jolpica.get_schedule(target_year)
-        if not schedule:
-            raise HTTPException(status_code=404, detail="No schedule found")
+        target_round = final_round(schedule)
+    else:
+        target_year = year if year is not None else current_year
+        schedule = await jolpica.get_schedule(target_year)
+        target_round = last_completed_round(schedule)
+        if target_round == 0 and target_year == current_year:
+            target_year = current_year - 1
+            schedule = await jolpica.get_schedule(target_year)
+            target_round = final_round(schedule)
 
-        today = datetime.now(timezone.utc).date()
-        last_round = 0
-        for race in schedule:
-            for session in race.get("sessions", []):
-                if session.get("name") == "Race":
-                    dt_str = session.get("datetime", "")
-                    if dt_str:
-                        race_date = datetime.fromisoformat(dt_str[:10]).date()
-                        if race_date <= today:
-                            rnd = race.get("round")
-                            if rnd and int(rnd) > last_round:
-                                last_round = int(rnd)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="No schedule found")
+    if target_round == 0:
+        raise HTTPException(status_code=404, detail="No results found")
 
-        if last_round == 0:
-            last_round = max(r["round"] for r in schedule)
+    race_name = next(
+        (r.get("race_name", "") for r in schedule if int(r.get("round", 0)) == target_round), ""
+    )
+    results = await fetch_results(target_year, target_round, session_type)
+    if not results:
+        raise HTTPException(status_code=404, detail="No results found")
 
-        race_name = ""
-        for race in schedule:
-            if int(race.get("round", 0)) == last_round:
-                race_name = race.get("race_name", "")
-                break
+    response = {"source": "live", "year": target_year, "round": target_round,
+                "session_type": session_type, "race_name": race_name, "results": results}
+    cache_set(cache_key, response)
+    return response
 
-        results = await jolpica.get_race_results(target_year, last_round)
-        if results:
-            return {"source": "live", "year": target_year,
-                    "round": last_round, "race_name": race_name, "results": results}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Latest results error: {e}")
 
-    raise HTTPException(status_code=404, detail="No results found")
+async def _results_row_is_fresh(year: int, round_number: int, fetched_at: datetime) -> bool:
+    """
+    Current-season rows for a race in (or shortly after) its weekend may still
+    change (post-race penalties), so only trust them if recently fetched.
+    """
+    try:
+        schedule = await jolpica.get_schedule(year)
+    except UpstreamError:
+        return True  # can't tell; a stored row beats a 502
+    race = next((r for r in schedule if int(r.get("round", 0)) == round_number), None)
+    race_dt = race_datetime(race) if race else None
+    now = datetime.now(timezone.utc)
+    if race_dt is None or now - race_dt >= RESULTS_VOLATILE_WINDOW:
+        return True
+    return now - fetched_at < RESULTS_VOLATILE_MAX_AGE
 
 
 @app.get("/results/{year}/{round}", response_model=ResultsResponse)
@@ -319,33 +396,40 @@ async def get_results(
     round: int,
     session_type: str = Query(default="Race", enum=["Race", "Qualifying", "Sprint"])
 ):
-    cached = await db.get_results(year, round, session_type)
-    if cached:
-        return {"source": "cache", "year": year, "round": round,
-                "session_type": session_type, "results": cached}
-
     current_year = datetime.now(timezone.utc).year
+    cache_key = f"results_{year}_{round}_{session_type}"
     if year < current_year:
-        cache_key = f"results_{year}_{round}_{session_type}"
         mem_cached = cache_get(cache_key)
-        if mem_cached:
+        if mem_cached is not None:
             return mem_cached
 
-    if session_type == "Race":
-        results = await jolpica.get_race_results(year, round)
-    elif session_type == "Qualifying":
-        results = await jolpica.get_qualifying_results(year, round)
-    else:
-        results = await jolpica.get_sprint_results(year, round)
+    stored = await db.get_results_entry(year, round, session_type)
+    if stored:
+        stored_response = {"source": "cache", "year": year, "round": round,
+                           "session_type": session_type, "results": stored["results"]}
+        if year < current_year or await _results_row_is_fresh(year, round, stored["fetched_at"]):
+            return stored_response
 
-    if results:
-        await db.save_results(year, round, session_type, results)
-        if year < current_year:
-            cache_set_historical(
-                f"results_{year}_{round}_{session_type}",
-                {"source": "cache", "year": year, "round": round,
-                 "session_type": session_type, "results": results}
-            )
+    try:
+        results = await fetch_results(year, round, session_type)
+    except UpstreamError:
+        if stored:
+            return {**stored_response, "source": "stale"}
+        raise
+
+    if not results:
+        if stored:
+            return stored_response
+        return {"source": "live", "year": year, "round": round,
+                "session_type": session_type, "results": results}
+
+    await db.save_results(year, round, session_type, results)
+    if year < current_year:
+        cache_set_historical(
+            cache_key,
+            {"source": "cache", "year": year, "round": round,
+             "session_type": session_type, "results": results}
+        )
 
     return {"source": "live", "year": year, "round": round,
             "session_type": session_type, "results": results}
@@ -358,60 +442,48 @@ async def get_results(
 async def get_driver_standings(request: Request, year: Optional[int] = None):
     current_year = datetime.now(timezone.utc).year
     target_year  = year or current_year
+    cache_key    = f"driver_standings_{target_year}"
 
-    season_started = True
-    if target_year == current_year:
-        try:
-            current_schedule = await jolpica.get_schedule(current_year)
-            today = datetime.now(timezone.utc).date()
-            season_started = False
-            if current_schedule:
-                for race in current_schedule:
-                    for session in race.get("sessions", []):
-                        if session.get("name") == "Race":
-                            dt_str = session.get("datetime", "")
-                            if dt_str:
-                                race_date = datetime.fromisoformat(dt_str[:10]).date()
-                                if race_date <= today:
-                                    season_started = True
-                                    break
-                    if season_started:
-                        break
-        except Exception as e:
-            logger.error(f"Season check error: {e}")
-            season_started = True
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
 
     if target_year != current_year:
-        cache_key = f"driver_standings_{target_year}"
-        cached = cache_get(cache_key)
-        if cached:
-            return cached
-
-    if target_year == current_year:
-        cached = await db.get_latest_driver_standings()
-        if cached and season_started:
-            return {"source": "cache", "season_started": True, "standings": cached}
-
-    standings = await jolpica.get_driver_standings(target_year)
-
-    if not standings and target_year == current_year:
-        standings = await jolpica.get_driver_standings(current_year - 1)
-        standings = add_gap_to_second(standings)
-        return {"source": "fallback", "year": current_year - 1,
-                "season_started": False, "standings": standings}
-
-    standings = add_gap_to_second(standings)
-
-    if standings:
-        if target_year == current_year:
-            await db.save_driver_standings(target_year, None, standings)
-        else:
+        standings = add_gap_to_second(await jolpica.get_driver_standings(target_year))
+        if standings:
             cache_set_historical(
-                f"driver_standings_{target_year}",
+                cache_key,
                 {"source": "cache", "season_started": True, "standings": standings}
             )
+        return {"source": "live", "season_started": True, "standings": standings}
 
-    return {"source": "live", "season_started": season_started, "standings": standings}
+    try:
+        schedule = await jolpica.get_schedule(current_year)
+        season_started = last_completed_round(schedule) > 0
+        standings = await jolpica.get_driver_standings(current_year)
+    except UpstreamError:
+        stale = await db.get_latest_driver_standings(current_year)
+        if stale:
+            logger.warning("Serving stale driver standings from SQLite")
+            return {"source": "stale", "year": current_year,
+                    "season_started": True, "standings": stale}
+        raise
+
+    if not standings:
+        # Season hasn't started (or Jolpica has nothing yet) -> last season's final table
+        standings = add_gap_to_second(await jolpica.get_driver_standings(current_year - 1))
+        response = {"source": "fallback", "year": current_year - 1,
+                    "season_started": False, "standings": standings}
+        if standings:
+            cache_set(cache_key, response, CACHE_TTL_STANDINGS)
+        return response
+
+    standings = add_gap_to_second(standings)
+    response = {"source": "live", "year": current_year,
+                "season_started": season_started, "standings": standings}
+    cache_set(cache_key, response, CACHE_TTL_STANDINGS)
+    await db.save_driver_standings(current_year, None, standings)
+    return response
 
 
 @app.get("/standings/constructors", response_model=ConstructorStandingsResponse)
@@ -419,33 +491,38 @@ async def get_driver_standings(request: Request, year: Optional[int] = None):
 async def get_constructor_standings(request: Request, year: Optional[int] = None):
     current_year = datetime.now(timezone.utc).year
     target_year  = year or current_year
+    cache_key    = f"constructor_standings_{target_year}"
 
-    if target_year == current_year:
-        cached = await db.get_latest_constructor_standings()
-        if cached:
-            return {"source": "cache", "standings": cached}
-    else:
-        cache_key = f"constructor_standings_{target_year}"
-        cached = cache_get(cache_key)
-        if cached:
-            return cached
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
 
-    standings = await jolpica.get_constructor_standings(target_year)
+    if target_year != current_year:
+        standings = await jolpica.get_constructor_standings(target_year)
+        if standings:
+            cache_set_historical(cache_key, {"source": "cache", "standings": standings})
+        return {"source": "live", "standings": standings}
 
-    if not standings and target_year == current_year:
+    try:
+        standings = await jolpica.get_constructor_standings(current_year)
+    except UpstreamError:
+        stale = await db.get_latest_constructor_standings(current_year)
+        if stale:
+            logger.warning("Serving stale constructor standings from SQLite")
+            return {"source": "stale", "year": current_year, "standings": stale}
+        raise
+
+    if not standings:
         standings = await jolpica.get_constructor_standings(current_year - 1)
-        return {"source": "fallback", "year": current_year - 1, "standings": standings}
+        response = {"source": "fallback", "year": current_year - 1, "standings": standings}
+        if standings:
+            cache_set(cache_key, response, CACHE_TTL_STANDINGS)
+        return response
 
-    if standings:
-        if target_year == current_year:
-            await db.save_constructor_standings(target_year, None, standings)
-        else:
-            cache_set_historical(
-                f"constructor_standings_{target_year}",
-                {"source": "cache", "standings": standings}
-            )
-
-    return {"source": "live", "standings": standings}
+    response = {"source": "live", "year": current_year, "standings": standings}
+    cache_set(cache_key, response, CACHE_TTL_STANDINGS)
+    await db.save_constructor_standings(current_year, None, standings)
+    return response
 
 
 # ── Session Details (OpenF1) ──────────────────────────────────────────────────
@@ -470,7 +547,7 @@ async def get_fastest_laps(session_key: int):
 async def get_stints(request: Request, session_key: int):
     cache_key = f"stints_{session_key}"
     cached = cache_get(cache_key)
-    if cached:
+    if cached is not None:
         return cached
 
     stints_raw, drivers_raw = await asyncio.gather(
@@ -511,7 +588,8 @@ async def get_stints(request: Request, session_key: int):
         })
 
     result.sort(key=lambda d: d["driver_number"])
-    cache_set_historical(cache_key, result)
+    if result:
+        cache_set_historical(cache_key, result)
     return result
 
 
@@ -520,7 +598,7 @@ async def get_stints(request: Request, session_key: int):
 async def get_pit_stops(request: Request, session_key: int):
     cache_key = f"pit_stops_{session_key}"
     cached = cache_get(cache_key)
-    if cached:
+    if cached is not None:
         return cached
 
     pit_stops_raw = await openf1.get_pit_stops(session_key)
@@ -581,7 +659,7 @@ async def get_drivers(session_key: int):
 async def get_session_key(request: Request, year: int, round: int):
     cache_key = f"session_key_{year}_{round}"
     cached = cache_get(cache_key)
-    if cached:
+    if cached is not None:
         return cached
 
     schedule = await jolpica.get_schedule(year)
@@ -617,7 +695,7 @@ async def get_meetings(request: Request, year: Optional[int] = None):
     target_year = year or current_year
     cache_key = f"meetings_{target_year}"
     cached = cache_get(cache_key)
-    if cached:
+    if cached is not None:
         return cached
     meetings = await openf1.get_meetings(target_year)
     result = []
@@ -650,7 +728,7 @@ async def get_drivers_by_year(request: Request, year: int):
     current_year = datetime.now(timezone.utc).year
     cache_key = f"drivers_{year}"
     cached = cache_get(cache_key)
-    if cached:
+    if cached is not None:
         return cached
 
     if year == current_year:
@@ -698,76 +776,97 @@ def _parse_lap_time(time_str: str) -> float:
         return float("inf")
 
 
-def compute_circuit_stats(circuit_id: str, races: list) -> dict:
-    wins: dict = {}
-    poles: dict = {}
-    constructor_wins: dict = {}
-    lap_records: list = []
-    seasons: list = []
+CIRCUIT_STATS_TTL_ACTIVE = 86400  # 24h for circuits raced this season
+CIRCUIT_DATA_NOTE = "Poles counted as starts from grid 1. Lap record is the fastest race lap since 2004."
 
-    circuit_meta = races[0].get("Circuit", {}) if races else {}
-    location = circuit_meta.get("Location", {})
 
+def _unique_races(races: list) -> dict:
+    """(season, round) -> race, dropping any duplicate race entries."""
+    unique: dict = {}
     for race in races:
-        season = int(race.get("season", 0))
-        seasons.append(season)
+        unique.setdefault((int(race.get("season", 0)), int(race.get("round", 0))), race)
+    return unique
 
+
+def _tally_drivers(races: dict) -> dict:
+    """driverId -> {"name", "seasons"}: one entry per race a driver appears in."""
+    tally: dict = {}
+    for (season, _), race in races.items():
+        seen = set()
         for result in race.get("Results", []):
             driver = result.get("Driver", {})
-            constructor = result.get("Constructor", {})
             driver_id = driver.get("driverId", "")
-            driver_name = f"{driver.get('givenName', '')} {driver.get('familyName', '')}".strip()
+            if not driver_id or driver_id in seen:
+                continue
+            seen.add(driver_id)
+            entry = tally.setdefault(driver_id, {
+                "name": f"{driver.get('givenName', '')} {driver.get('familyName', '')}".strip(),
+                "seasons": [],
+            })
+            entry["seasons"].append(season)
+    return tally
+
+
+def _tally_constructors(races: dict) -> dict:
+    tally: dict = {}
+    for (season, _), race in races.items():
+        seen = set()
+        for result in race.get("Results", []):
+            constructor = result.get("Constructor", {})
             constructor_id = constructor.get("constructorId", "")
+            if not constructor_id or constructor_id in seen:
+                continue
+            seen.add(constructor_id)
+            entry = tally.setdefault(constructor_id, {"name": constructor.get("name", ""), "seasons": []})
+            entry["seasons"].append(season)
+    return tally
 
-            position = result.get("position", "")
-            grid = result.get("grid", "")
 
-            if position == "1":
-                if driver_id not in wins:
-                    wins[driver_id] = {"count": 0, "years": [], "name": driver_name}
-                wins[driver_id]["count"] += 1
-                wins[driver_id]["years"].append(season)
+def _leader(tally: dict):
+    """(id, entry) with the highest count; ties go to the most recent season."""
+    if not tally:
+        return None
+    return max(tally.items(), key=lambda kv: (len(kv[1]["seasons"]), max(kv[1]["seasons"])))
 
-                if constructor_id not in constructor_wins:
-                    constructor_wins[constructor_id] = {"count": 0, "name": constructor.get("name", "")}
-                constructor_wins[constructor_id]["count"] += 1
 
-            if grid == "1":
-                if driver_id not in poles:
-                    poles[driver_id] = {"count": 0, "name": driver_name}
-                poles[driver_id]["count"] += 1
+def compute_circuit_stats(circuit_id: str, winners: list, pole_starters: list,
+                          fastest_laps: list) -> dict:
+    winner_races = _unique_races(winners)
+    seasons = [season for season, _ in winner_races]
 
-            fastest_lap = result.get("FastestLap")
-            if fastest_lap and fastest_lap.get("rank") == "1":
-                fl_time = fastest_lap.get("Time", {}).get("time", "")
-                if fl_time:
-                    secs = _parse_lap_time(fl_time)
-                    if secs != float("inf"):
-                        lap_records.append((secs, driver_id, driver_name, season, fl_time))
+    circuit_meta = winners[0].get("Circuit", {}) if winners else {}
+    location = circuit_meta.get("Location", {})
 
     most_wins = None
-    if wins:
-        best = max(wins, key=lambda d: wins[d]["count"])
-        most_wins = {
-            "driverId": best,
-            "name": wins[best]["name"],
-            "count": wins[best]["count"],
-            "years": sorted(wins[best]["years"]),
-        }
+    leader = _leader(_tally_drivers(winner_races))
+    if leader:
+        driver_id, entry = leader
+        most_wins = {"driverId": driver_id, "name": entry["name"],
+                     "count": len(entry["seasons"]), "years": sorted(entry["seasons"])}
 
     most_poles = None
-    if poles:
-        best = max(poles, key=lambda d: poles[d]["count"])
-        most_poles = {"driverId": best, "name": poles[best]["name"], "count": poles[best]["count"]}
+    leader = _leader(_tally_drivers(_unique_races(pole_starters)))
+    if leader:
+        driver_id, entry = leader
+        most_poles = {"driverId": driver_id, "name": entry["name"], "count": len(entry["seasons"])}
 
     most_constructor_wins = None
-    if constructor_wins:
-        best = max(constructor_wins, key=lambda c: constructor_wins[c]["count"])
-        most_constructor_wins = {
-            "constructorId": best,
-            "name": constructor_wins[best]["name"],
-            "count": constructor_wins[best]["count"],
-        }
+    leader = _leader(_tally_constructors(winner_races))
+    if leader:
+        constructor_id, entry = leader
+        most_constructor_wins = {"constructorId": constructor_id, "name": entry["name"],
+                                 "count": len(entry["seasons"])}
+
+    # Pre-2004 races can appear here without a lap time; only timed laps count.
+    lap_records = []
+    for (season, _), race in _unique_races(fastest_laps).items():
+        for result in race.get("Results", []):
+            fl_time = (result.get("FastestLap") or {}).get("Time", {}).get("time", "")
+            secs = _parse_lap_time(fl_time) if fl_time else float("inf")
+            if secs != float("inf"):
+                driver = result.get("Driver", {})
+                name = f"{driver.get('givenName', '')} {driver.get('familyName', '')}".strip()
+                lap_records.append((secs, driver.get("driverId", ""), name, season, fl_time))
 
     lap_record = None
     if lap_records:
@@ -779,13 +878,15 @@ def compute_circuit_stats(circuit_id: str, races: list) -> dict:
         "circuitName": circuit_meta.get("circuitName", ""),
         "locality": location.get("locality", ""),
         "country": location.get("country", ""),
-        "totalRaces": len(races),
+        "totalRaces": len(winner_races),
         "firstGPYear": min(seasons) if seasons else 0,
         "lastGPYear": max(seasons) if seasons else 0,
         "mostWins": most_wins,
         "mostPoles": most_poles,
         "mostConstructorWins": most_constructor_wins,
         "lapRecord": lap_record,
+        "lapRecordSinceYear": min(r[3] for r in lap_records) if lap_records else None,
+        "dataNote": CIRCUIT_DATA_NOTE,
     }
 
 
@@ -794,18 +895,22 @@ def compute_circuit_stats(circuit_id: str, races: list) -> dict:
 async def get_circuit_stats(request: Request, circuit_id: str):
     cache_key = f"circuit_stats:{circuit_id}"
     cached = cache_get(cache_key)
-    if cached:
+    if cached is not None:
         return cached
 
-    try:
-        races = await jolpica.get_circuit_results(circuit_id)
-    except Exception as e:
-        logger.error(f"Jolpica error fetching circuit results for {circuit_id}: {e}")
-        raise HTTPException(status_code=502, detail="Upstream data source unavailable")
+    # UpstreamError from any of these propagates -> 502 via the global handler.
+    winners, pole_starters, fastest_laps = await asyncio.gather(
+        jolpica.get_circuit_winners(circuit_id),
+        jolpica.get_circuit_pole_starters(circuit_id),
+        jolpica.get_circuit_fastest_laps(circuit_id),
+    )
 
-    if not races:
+    if not winners:
         raise HTTPException(status_code=404, detail=f"No races found for circuit '{circuit_id}'")
 
-    stats = compute_circuit_stats(circuit_id, races)
-    cache_set_historical(cache_key, stats)
+    stats = compute_circuit_stats(circuit_id, winners, pole_starters, fastest_laps)
+    if stats["lastGPYear"] == datetime.now(timezone.utc).year:
+        cache_set(cache_key, stats, CIRCUIT_STATS_TTL_ACTIVE)
+    else:
+        cache_set_historical(cache_key, stats)
     return stats

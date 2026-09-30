@@ -7,13 +7,23 @@ No API key needed. Free for non-commercial use.
 
 import asyncio
 import logging
-from datetime import datetime, date, timezone
+import time
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
 
+from .errors import UpstreamError
+
 logger = logging.getLogger(__name__)
 BASE_URL = "https://api.jolpi.ca/ergast/f1"
+
+SCHEDULE_TTL_CURRENT = 3600        # 1 hour  — current / future seasons
+SCHEDULE_TTL_PAST    = 86400 * 7   # 7 days  — past seasons (immutable)
+
+PAGE_LIMIT   = 100   # Jolpica's maximum page size
+MAX_PAGES    = 30    # safety cap for paginated fetches
+RESULTS_KEYS = ("Results", "QualifyingResults", "SprintResults")
 
 
 class JolpicaClient:
@@ -23,30 +33,60 @@ class JolpicaClient:
             timeout=15.0
         )
         self._semaphore = asyncio.Semaphore(4)
+        # season -> (schedule, stored_at, ttl)
+        self._schedule_cache: dict[int, tuple[list[dict], float, float]] = {}
 
     async def _get(self, path: str, params: dict = None) -> dict:
+        """
+        200 -> parsed JSON. 404 -> {} ("no data").
+        429 -> exponential backoff; UpstreamError once retries are exhausted.
+        Any other HTTP error, network error or invalid JSON -> UpstreamError.
+        """
         async with self._semaphore:
             for attempt in range(4):
                 try:
                     response = await self._client.get(path, params=params)
-                    if response.status_code == 429:
-                        wait = 2 ** attempt
-                        logger.warning(f"Jolpica 429 on {path}, retrying in {wait}s")
-                        await asyncio.sleep(wait)
-                        continue
-                    response.raise_for_status()
-                    await asyncio.sleep(0.3)
-                    return response.json()
-                except httpx.HTTPStatusError as e:
-                    logger.error(f"Jolpica HTTP error {e.response.status_code} on {path}: {e}")
-                    return {}
                 except httpx.RequestError as e:
                     logger.error(f"Jolpica request error on {path}: {e}")
+                    raise UpstreamError("jolpica", path) from e
+
+                if response.status_code == 429:
+                    wait = 2 ** attempt
+                    logger.warning(f"Jolpica 429 on {path}, retrying in {wait}s")
+                    await asyncio.sleep(wait)
+                    continue
+                if response.status_code == 404:
+                    logger.info(f"Jolpica 404 on {path} (no data)")
                     return {}
+                if response.status_code != 200:
+                    logger.error(f"Jolpica HTTP error {response.status_code} on {path}")
+                    raise UpstreamError("jolpica", path, response.status_code)
+
+                try:
+                    data = response.json()
+                except ValueError as e:
+                    logger.error(f"Jolpica invalid JSON on {path}: {e}")
+                    raise UpstreamError("jolpica", path, response.status_code) from e
+                await asyncio.sleep(0.3)
+                return data
+
             logger.error(f"Jolpica: exhausted retries on {path}")
-            return {}
+            raise UpstreamError("jolpica", path, 429)
 
     # ── Race Schedule / Calendar ─────────────────────────────────────────────
+
+    @staticmethod
+    def _resolve_year(year) -> int:
+        if year is None or year == "current":
+            return datetime.now(timezone.utc).year
+        return int(year)
+
+    def invalidate_schedule(self, year: int = None):
+        """Drop one cached season schedule, or all of them when year is None."""
+        if year is None:
+            self._schedule_cache.clear()
+        else:
+            self._schedule_cache.pop(self._resolve_year(year), None)
 
     async def get_schedule(self, year: int = None) -> list[dict]:
         """
@@ -54,8 +94,16 @@ class JolpicaClient:
         Each item includes: raceName, Circuit, date, time, plus
         optional FirstPractice, SecondPractice, ThirdPractice,
         Qualifying, Sprint, SprintQualifying session datetimes.
+        Cached in-client: 1h for the current/future seasons, 7 days for past ones.
         """
-        season = str(year) if year else "current"
+        season = self._resolve_year(year)
+        entry = self._schedule_cache.get(season)
+        if entry is not None:
+            schedule, ts, ttl = entry
+            if time.time() - ts < ttl:
+                return schedule
+            del self._schedule_cache[season]
+
         data = await self._get(f"/{season}.json", {"limit": 30})
         races = data.get("MRData", {}).get("RaceTable", {}).get("Races", [])
 
@@ -71,6 +119,11 @@ class JolpicaClient:
                 "sessions": self._parse_sessions(race),
             }
             schedule.append(entry)
+
+        if schedule:
+            current_year = datetime.now(timezone.utc).year
+            ttl = SCHEDULE_TTL_PAST if season < current_year else SCHEDULE_TTL_CURRENT
+            self._schedule_cache[season] = (schedule, time.time(), ttl)
         return schedule
 
     def _parse_sessions(self, race: dict) -> list[dict]:
@@ -119,12 +172,14 @@ class JolpicaClient:
     async def get_next_race(self) -> Optional[dict]:
         """Returns the next upcoming race from the current season."""
         schedule = await self.get_schedule()
-        today = date.today()
+        now = datetime.now(timezone.utc)
         for race in schedule:
             for session in race.get("sessions", []):
                 if session["name"] == "Race":
-                    race_date = datetime.fromisoformat(session["datetime"]).date()
-                    if race_date >= today:
+                    race_dt = datetime.fromisoformat(session["datetime"])
+                    if race_dt.tzinfo is None:
+                        race_dt = race_dt.replace(tzinfo=timezone.utc)
+                    if race_dt >= now:
                         return race
         return None
 
@@ -133,7 +188,6 @@ class JolpicaClient:
         Returns all sessions happening within the next N days.
         Used by the scheduler to arm jobs.
         """
-        from datetime import timedelta
         schedule = await self.get_schedule()
         now = datetime.now(timezone.utc)
         cutoff = now + timedelta(days=days_ahead)
@@ -212,24 +266,44 @@ class JolpicaClient:
 
     # ── Circuit Results ───────────────────────────────────────────────────────
 
-    async def get_circuit_results(self, circuit_id: str) -> list[dict]:
-        """Get all race results at a circuit across all seasons, handling pagination."""
-        all_races = []
+    async def _get_all_races(self, path: str, params: dict = None) -> list[dict]:
+        """
+        Fetch every page of a RaceTable endpoint (Jolpica caps limit at 100).
+        Pagination is over result rows, so one race can straddle two pages:
+        races are merged by (season, round) and their result lists extended.
+        """
+        merged: dict[tuple, dict] = {}
         offset = 0
-        limit = 1000
-        while True:
-            data = await self._get(
-                f"/circuits/{circuit_id}/results.json",
-                {"limit": limit, "offset": offset}
-            )
+        for _ in range(MAX_PAGES):
+            data = await self._get(path, {**(params or {}), "limit": PAGE_LIMIT, "offset": offset})
             mr_data = data.get("MRData", {})
-            races = mr_data.get("RaceTable", {}).get("Races", [])
-            all_races.extend(races)
-            total = int(mr_data.get("total", 0))
-            if offset + limit >= total:
+            for race in mr_data.get("RaceTable", {}).get("Races", []):
+                key = (race.get("season"), race.get("round"))
+                existing = merged.get(key)
+                if existing is None:
+                    merged[key] = race
+                    continue
+                for results_key in RESULTS_KEYS:
+                    if results_key in race:
+                        existing.setdefault(results_key, []).extend(race[results_key])
+            offset += PAGE_LIMIT
+            if offset >= int(mr_data.get("total", 0)):
                 break
-            offset += limit
-        return all_races
+        else:
+            logger.warning(f"Jolpica: hit {MAX_PAGES}-page cap on {path}")
+        return list(merged.values())
+
+    async def get_circuit_winners(self, circuit_id: str) -> list[dict]:
+        """Every race at a circuit, each with its P1 result row(s)."""
+        return await self._get_all_races(f"/circuits/{circuit_id}/results/1.json")
+
+    async def get_circuit_pole_starters(self, circuit_id: str) -> list[dict]:
+        """Every race at a circuit, each with the driver(s) who started from grid 1."""
+        return await self._get_all_races(f"/circuits/{circuit_id}/grid/1/results.json")
+
+    async def get_circuit_fastest_laps(self, circuit_id: str) -> list[dict]:
+        """Races at a circuit with the fastest-lap holder (lap times exist from 2004 only)."""
+        return await self._get_all_races(f"/circuits/{circuit_id}/fastest/1/results.json")
 
     async def close(self):
         await self._client.aclose()
