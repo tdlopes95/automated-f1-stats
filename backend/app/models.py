@@ -183,6 +183,7 @@ class RaceSchedule(BaseModel):
     round: int
     race_name: Optional[str] = None
     circuit: Optional[str] = None
+    circuit_id: Optional[str] = None
     country: Optional[str] = None
     locality: Optional[str] = None
     sessions: list[SessionEntry] = []

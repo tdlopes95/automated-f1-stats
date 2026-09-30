@@ -388,6 +388,18 @@ async def _results_row_is_fresh(year: int, round_number: int, fetched_at: dateti
     return now - fetched_at < RESULTS_VOLATILE_MAX_AGE
 
 
+async def _race_name_for_round(year: int, round_number: int) -> Optional[str]:
+    """Race name from the (client-cached) schedule; None if it can't be resolved."""
+    try:
+        schedule = await jolpica.get_schedule(year)
+        return next(
+            (r.get("race_name") for r in schedule if int(r.get("round", 0)) == round_number), None
+        )
+    except Exception as e:
+        logger.warning(f"Race name lookup failed for {year} round {round_number}: {e}")
+        return None
+
+
 @app.get("/results/{year}/{round}", response_model=ResultsResponse)
 @limiter.limit("60/minute")
 async def get_results(
@@ -403,10 +415,15 @@ async def get_results(
         if mem_cached is not None:
             return mem_cached
 
+    race_name = await _race_name_for_round(year, round)
+
+    def response(source: str, results: list) -> dict:
+        return {"source": source, "year": year, "round": round,
+                "session_type": session_type, "race_name": race_name, "results": results}
+
     stored = await db.get_results_entry(year, round, session_type)
     if stored:
-        stored_response = {"source": "cache", "year": year, "round": round,
-                           "session_type": session_type, "results": stored["results"]}
+        stored_response = response("cache", stored["results"])
         if year < current_year or await _results_row_is_fresh(year, round, stored["fetched_at"]):
             return stored_response
 
@@ -420,19 +437,13 @@ async def get_results(
     if not results:
         if stored:
             return stored_response
-        return {"source": "live", "year": year, "round": round,
-                "session_type": session_type, "results": results}
+        return response("live", results)
 
     await db.save_results(year, round, session_type, results)
     if year < current_year:
-        cache_set_historical(
-            cache_key,
-            {"source": "cache", "year": year, "round": round,
-             "session_type": session_type, "results": results}
-        )
+        cache_set_historical(cache_key, response("cache", results))
 
-    return {"source": "live", "year": year, "round": round,
-            "session_type": session_type, "results": results}
+    return response("live", results)
 
 
 # ── Standings ─────────────────────────────────────────────────────────────────

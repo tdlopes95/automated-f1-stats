@@ -566,3 +566,121 @@ def test_last_completed_round():
     assert last_completed_round(schedule, now=now) == 2
     assert last_completed_round(schedule[2:], now=now) == 0
     assert last_completed_round([], now=now) == 0
+
+
+# ── Response models keep upstream fields ─────────────────────────────────────
+# FastAPI silently drops any key a response_model doesn't declare. Each test
+# below checks that a key present in the mocked upstream data reaches the client.
+
+@respx.mock
+def test_schedule_includes_circuit_id(client):
+    respx.get(f"{JOLPICA_BASE}/{CURRENT_YEAR}.json").mock(
+        return_value=httpx.Response(200, json=SCHEDULE_PAYLOAD)
+    )
+    resp = client.get("/schedule")
+
+    assert resp.status_code == 200
+    assert all("circuit_id" in race for race in resp.json())
+    assert resp.json()[0]["circuit_id"] == "bahrain"
+
+
+@respx.mock
+def test_results_include_race_name_from_schedule(client):
+    respx.get(f"{JOLPICA_BASE}/{PAST_YEAR}.json").mock(
+        return_value=httpx.Response(200, json=SCHEDULE_PAYLOAD)
+    )
+    respx.get(f"{JOLPICA_BASE}/{PAST_YEAR}/1/results.json").mock(
+        return_value=httpx.Response(200, json=RACE_RESULTS_PAYLOAD)
+    )
+    resp = client.get(f"/results/{PAST_YEAR}/1")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["race_name"] == "Bahrain Grand Prix"
+    assert body["session_type"] == "Race"
+    assert body["results"][0]["Constructor"]["constructorId"] == "red_bull"
+
+
+@respx.mock
+def test_results_race_name_lookup_failure_is_not_fatal(client):
+    respx.get(f"{JOLPICA_BASE}/{PAST_YEAR}.json").mock(
+        return_value=httpx.Response(500, text="upstream boom")
+    )
+    respx.get(f"{JOLPICA_BASE}/{PAST_YEAR}/1/results.json").mock(
+        return_value=httpx.Response(200, json=RACE_RESULTS_PAYLOAD)
+    )
+    resp = client.get(f"/results/{PAST_YEAR}/1")
+
+    assert resp.status_code == 200
+    assert resp.json()["race_name"] is None
+    assert resp.json()["results"]
+
+
+@respx.mock
+def test_driver_standings_keep_upstream_keys(client):
+    respx.get(f"{JOLPICA_BASE}/{PAST_YEAR}/driverStandings.json").mock(
+        return_value=httpx.Response(200, json=DRIVER_STANDINGS_PAYLOAD)
+    )
+    body = client.get(f"/standings/drivers?year={PAST_YEAR}").json()
+
+    assert body["season_started"] is True
+    assert body["standings"][0]["Driver"]["driverId"] == "max_verstappen"
+    assert body["standings"][1]["points"] == "285"
+
+
+@respx.mock
+def test_constructor_standings_keep_upstream_keys(client):
+    respx.get(f"{JOLPICA_BASE}/{PAST_YEAR}/constructorStandings.json").mock(
+        return_value=httpx.Response(200, json=CONSTRUCTOR_STANDINGS_PAYLOAD)
+    )
+    body = client.get(f"/standings/constructors?year={PAST_YEAR}").json()
+
+    assert body["standings"][1]["points"] == "409"
+
+
+@respx.mock
+def test_meetings_keep_upstream_keys(client):
+    meeting = {**MEETINGS_PAYLOAD[0],
+               "circuit_image": "https://example.com/bahrain.png",
+               "country_flag": "https://example.com/bh.png",
+               "gmt_offset": "03:00:00"}
+    respx.get(f"{OPENF1_BASE}/meetings").mock(return_value=httpx.Response(200, json=[meeting]))
+    body = client.get(f"/meetings?year={PAST_YEAR}").json()
+
+    assert body[0]["circuit_image"] == "https://example.com/bahrain.png"
+    assert body[0]["country_flag"] == "https://example.com/bh.png"
+    assert body[0]["gmt_offset"] == "03:00:00"
+    assert body[0]["meeting_key"] == 1217
+
+
+@respx.mock
+def test_drivers_by_year_keep_upstream_keys(client):
+    respx.get(f"{OPENF1_BASE}/sessions").mock(return_value=httpx.Response(200, json=SESSIONS_PAYLOAD))
+    respx.get(f"{OPENF1_BASE}/drivers").mock(return_value=httpx.Response(200, json=[{
+        "driver_number": 1, "name_acronym": "VER", "full_name": "Max VERSTAPPEN",
+        "headshot_url": "https://example.com/ver.png", "team_name": "Red Bull Racing",
+        "team_colour": "3671C6", "country_code": "NED",
+    }]))
+    resp = client.get(f"/drivers/{PAST_YEAR}")
+
+    assert resp.status_code == 200
+    driver = resp.json()[0]
+    assert driver["headshot_url"] == "https://example.com/ver.png"
+    assert driver["country_code"] == "NED"
+    assert driver["team_colour"] == "#3671C6"
+
+
+@respx.mock
+def test_circuit_stats_keep_computed_keys(client):
+    winners = _race_table([_circuit_race(2023, 14, [{"position": "1", "Driver": VER, "Constructor": RBR}])])
+    poles = _race_table([_circuit_race(2023, 14, [{"grid": "1", "Driver": VER, "Constructor": RBR}])])
+    fastest = _race_table([_circuit_race(
+        2023, 14, [{"Driver": VER, "FastestLap": {"rank": "1", "Time": {"time": "1:25.072"}}}]
+    )])
+    _mock_circuit_routes(winners, poles, fastest)
+    body = client.get("/circuit/monza/stats").json()
+
+    assert body["locality"] == "Monza"
+    assert body["mostWins"]["years"] == [2023]
+    assert body["lapRecordSinceYear"] == 2023
+    assert "dataNote" in body
