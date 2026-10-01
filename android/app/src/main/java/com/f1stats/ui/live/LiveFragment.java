@@ -20,10 +20,12 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.bumptech.glide.Glide;
+import com.f1stats.util.DebugLog;
 import com.f1stats.DateHelper;
 import com.f1stats.R;
 import com.f1stats.RoundDetailActivity;
 import com.f1stats.SeasonHelper;
+import com.f1stats.util.MeetingMatcher;
 import com.f1stats.models.QualifyingResult;
 import com.f1stats.models.RaceResult;
 import com.f1stats.viewmodels.F1ViewModel;
@@ -135,16 +137,7 @@ public class LiveFragment extends Fragment {
 
         if (latestMeetings != null) {
             for (Map<String, Object> race : latestSchedule) {
-                String raceName = str(race, "race_name", "").toLowerCase();
-                for (Map<String, Object> meeting : latestMeetings) {
-                    String meetingName = str(meeting, "meeting_name", "").toLowerCase();
-                    if (!meetingName.isEmpty() && (meetingName.equals(raceName)
-                            || meetingName.contains(raceName) || raceName.contains(meetingName))) {
-                        race.put("circuit_image", meeting.get("circuit_image"));
-                        race.put("country_flag", meeting.get("country_flag"));
-                        break;
-                    }
-                }
+                MeetingMatcher.apply(race, latestMeetings);
             }
         }
 
@@ -189,7 +182,7 @@ public class LiveFragment extends Fragment {
                     str(targetRace, "locality", ""));
             intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_COUNTRY_FLAG,
                     (String) targetRace.get("country_flag"));
-            android.util.Log.d("CIRCUIT_DEBUG", "LiveFragment passing circuitId=" + str(targetRace, "circuit_id", ""));
+            DebugLog.d("CIRCUIT_DEBUG", "LiveFragment passing circuitId=" + str(targetRace, "circuit_id", ""));
             startActivity(intent);
             requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         });

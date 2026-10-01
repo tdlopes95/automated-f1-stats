@@ -14,6 +14,7 @@ import androidx.transition.AutoTransition;
 import androidx.transition.TransitionManager;
 
 import com.bumptech.glide.Glide;
+import com.f1stats.util.DebugLog;
 import com.f1stats.DateHelper;
 import com.f1stats.R;
 import com.f1stats.TrackDetailActivity;
@@ -116,7 +117,7 @@ public class ScheduleAdapter extends RecyclerView.Adapter<ScheduleAdapter.ViewHo
 
             ivCircuitImage.setOnClickListener(v -> {
                 String circuitId = getString(race, "circuit_id", "");
-                android.util.Log.d("CIRCUIT_DEBUG", "ScheduleAdapter passing circuitId=" + circuitId);
+                DebugLog.d("CIRCUIT_DEBUG", "ScheduleAdapter passing circuitId=" + circuitId);
                 Intent intent = new Intent(itemView.getContext(), TrackDetailActivity.class);
                 intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_IMAGE, circuitImage);
                 intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_NAME, getString(race, "circuit", ""));

@@ -3,9 +3,11 @@ package com.f1stats.api;
 import android.content.Context;
 import android.util.Log;
 
+import com.f1stats.BuildConfig;
 import com.f1stats.SettingsManager;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.Interceptor;
@@ -30,6 +32,7 @@ public class F1ApiClient {
         @Override
         public Response intercept(Chain chain) throws IOException {
             int attempt = 0;
+            boolean retriedTimeout = false;
             while (true) {
                 try {
                     Response response = chain.proceed(chain.request());
@@ -47,7 +50,13 @@ public class F1ApiClient {
                     }
                 } catch (IOException e) {
                     if (attempt >= maxRetries) throw e;
-                    Log.w("RetryInterceptor", "IOException on attempt " + (attempt + 1) + ", retrying...");
+                    // A timeout usually means a Koyeb cold start: one retry gives the instance
+                    // time to wake, more would just stack long waits
+                    if (e instanceof SocketTimeoutException) {
+                        if (retriedTimeout) throw e;
+                        retriedTimeout = true;
+                    }
+                    Log.w("RetryInterceptor", e.getClass().getSimpleName() + " on attempt " + (attempt + 1) + ", retrying...");
                     try {
                         Thread.sleep(1000L << attempt);
                     } catch (InterruptedException ie) {
@@ -68,7 +77,9 @@ public class F1ApiClient {
         String baseUrl = SettingsManager.getInstance(context).getBaseUrl();
 
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+        logging.setLevel(BuildConfig.DEBUG
+                ? HttpLoggingInterceptor.Level.BODY
+                : HttpLoggingInterceptor.Level.NONE);
 
         OkHttpClient client = new OkHttpClient.Builder()
                 .addInterceptor(new RetryInterceptor(3))
@@ -78,9 +89,10 @@ public class F1ApiClient {
                                 .header("ngrok-skip-browser-warning", "true")
                                 .build()
                 ))
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(10, TimeUnit.SECONDS)
+                // Generous timeouts: the free Koyeb instance sleeps after 1h idle
+                .connectTimeout(20, TimeUnit.SECONDS)
+                .readTimeout(40, TimeUnit.SECONDS)
+                .writeTimeout(20, TimeUnit.SECONDS)
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()

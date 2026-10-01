@@ -68,4 +68,14 @@
 
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/tv_stat_caption"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textColor="@color/text_tertiary"
+        android:textSize="@dimen/text_label"
+        android:layout_marginTop="@dimen/spacing_xs"
+        android:visibility="gone"/>
+
 </LinearLayout>

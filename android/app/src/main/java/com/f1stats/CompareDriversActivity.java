@@ -18,12 +18,13 @@ import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
-import com.f1stats.api.F1ApiClient;
+import com.f1stats.util.DebugLog;
 import com.f1stats.data.F1Repository;
 import com.f1stats.db.CachedDriver;
 import com.f1stats.db.CachedResult;
 import com.f1stats.models.RaceResult;
 import com.f1stats.ui.compare.DriverPickerBottomSheet;
+import com.f1stats.util.ResultStatus;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -69,7 +70,7 @@ public class CompareDriversActivity extends AppCompatActivity
 
     private static class StatRowHolder {
         final View root;
-        final TextView tvLabel, tvD1Value, tvD2Value;
+        final TextView tvLabel, tvD1Value, tvD2Value, tvCaption;
         final View viewD1Bar, viewD2Bar;
 
         StatRowHolder(View root) {
@@ -77,6 +78,7 @@ public class CompareDriversActivity extends AppCompatActivity
             tvLabel   = root.findViewById(R.id.tv_stat_label);
             tvD1Value = root.findViewById(R.id.tv_d1_value);
             tvD2Value = root.findViewById(R.id.tv_d2_value);
+            tvCaption = root.findViewById(R.id.tv_stat_caption);
             viewD1Bar = root.findViewById(R.id.view_d1_bar);
             viewD2Bar = root.findViewById(R.id.view_d2_bar);
         }
@@ -112,6 +114,8 @@ public class CompareDriversActivity extends AppCompatActivity
         viewH2hD2Bar  = findViewById(R.id.view_h2h_d2_bar);
 
         rowPoints   = inflateStatRow("Points");
+        rowPoints.tvCaption.setText("Includes sprint points");
+        rowPoints.tvCaption.setVisibility(View.VISIBLE);
         rowWins     = inflateStatRow("Wins");
         rowPodiums  = inflateStatRow("Podiums");
         rowDnfs     = inflateStatRow("DNFs");
@@ -127,28 +131,26 @@ public class CompareDriversActivity extends AppCompatActivity
     }
 
     private void prefetchDriversForYear(int year) {
-        Log.d("H2H_DEBUG", "prefetchDriversForYear: year=" + year);
+        DebugLog.d("H2H_DEBUG", "prefetchDriversForYear: year=" + year);
         pbLoading.setVisibility(View.VISIBLE);
         setDriverSelectionsEnabled(false);
 
-        F1Repository repo = new F1Repository(
-                F1App.get().getDatabase(),
-                F1ApiClient.getInstance(F1App.get()).getService());
+        F1Repository repo = F1Repository.getInstance(F1App.get());
 
         repo.fetchDriversForSeason(year, new F1Repository.RepositoryCallback<List<CachedDriver>>() {
             @Override
             public void onSuccess(List<CachedDriver> drivers) {
-                Log.d("H2H_DEBUG", "fetchDriversForSeason onSuccess: " + drivers.size() + " drivers");
+                DebugLog.d("H2H_DEBUG", "fetchDriversForSeason onSuccess: " + drivers.size() + " drivers");
                 for (int i = 0; i < Math.min(drivers.size(), 5); i++) {
                     CachedDriver d = drivers.get(i);
-                    Log.d("H2H_DEBUG", "  sample driver[" + i + "]: driverId=" + d.driverId + " code=" + d.code + " name=" + d.firstName + " " + d.lastName);
+                    DebugLog.d("H2H_DEBUG", "  sample driver[" + i + "]: driverId=" + d.driverId + " code=" + d.code + " name=" + d.firstName + " " + d.lastName);
                 }
                 pbLoading.setVisibility(View.GONE);
                 setDriverSelectionsEnabled(true);
             }
             @Override
             public void onError(String error) {
-                Log.d("H2H_DEBUG", "fetchDriversForSeason onError: " + error);
+                DebugLog.d("H2H_DEBUG", "fetchDriversForSeason onError: " + error);
                 pbLoading.setVisibility(View.GONE);
                 setDriverSelectionsEnabled(true);
             }
@@ -224,7 +226,7 @@ public class CompareDriversActivity extends AppCompatActivity
 
     @Override
     public void onDriverSelected(CachedDriver driver) {
-        Log.d("H2H_DEBUG", "onDriverSelected: slot=" + currentPickerSlot + " driverId=" + driver.driverId + " code=" + driver.code + " name=" + driver.firstName + " " + driver.lastName);
+        DebugLog.d("H2H_DEBUG", "onDriverSelected: slot=" + currentPickerSlot + " driverId=" + driver.driverId + " code=" + driver.code + " name=" + driver.firstName + " " + driver.lastName);
         if (currentPickerSlot == 1) {
             driver1 = driver;
             updateDriverCard(ivHeadshot1, tvDriver1Name, tvDriver1Team, driver);
@@ -269,43 +271,68 @@ public class CompareDriversActivity extends AppCompatActivity
     }
 
     private void computeAndShowStats() {
-        String code1 = driver1.code != null ? driver1.code : "";
-        String code2 = driver2.code != null ? driver2.code : "";
-        Log.d("H2H_DEBUG", "computeAndShowStats: year=" + year + " code1=" + code1 + " code2=" + code2);
+        DriverKey key1 = new DriverKey(driver1);
+        DriverKey key2 = new DriverKey(driver2);
+        DebugLog.d("H2H_DEBUG", "computeAndShowStats: year=" + year + " d1=" + key1 + " d2=" + key2);
         pbLoading.setVisibility(View.VISIBLE);
         sectionStats.setVisibility(View.GONE);
         sectionH2h.setVisibility(View.GONE);
 
-        F1Repository repo = new F1Repository(
-                F1App.get().getDatabase(),
-                F1ApiClient.getInstance(F1App.get()).getService());
+        F1Repository repo = F1Repository.getInstance(F1App.get());
 
         repo.ensureSeasonResultsCached(year, new F1Repository.RepositoryCallback<Void>() {
             @Override
             public void onSuccess(Void ignored) {
-                Log.d("H2H_DEBUG", "ensureSeasonResultsCached onSuccess — calling computeStatsFromRoom");
-                computeStatsFromRoom(code1, code2);
+                DebugLog.d("H2H_DEBUG", "ensureSeasonResultsCached onSuccess — calling computeStatsFromRoom");
+                computeStatsFromRoom(key1, key2);
             }
             @Override
             public void onError(String error) {
-                Log.d("H2H_DEBUG", "ensureSeasonResultsCached onError: " + error + " — still calling computeStatsFromRoom");
-                computeStatsFromRoom(code1, code2);
+                DebugLog.d("H2H_DEBUG", "ensureSeasonResultsCached onError: " + error + " — still calling computeStatsFromRoom");
+                computeStatsFromRoom(key1, key2);
             }
         });
     }
 
-    private void computeStatsFromRoom(String code1, String code2) {
+    /** Matches results by Jolpica driverId; code only when the picked driver has no driverId. */
+    private static class DriverKey {
+        final String driverId;
+        final String code;
+
+        DriverKey(CachedDriver d) {
+            driverId = d.driverId != null ? d.driverId : "";
+            code     = d.code != null ? d.code : "";
+        }
+
+        /** Returns the key that matched ("driverId" or "code"), or null. */
+        String match(RaceResult.Driver rd) {
+            if (!driverId.isEmpty()) {
+                return driverId.equals(rd.getDriverId()) ? "driverId" : null;
+            }
+            return !code.isEmpty() && code.equalsIgnoreCase(rd.getCode()) ? "code" : null;
+        }
+
+        @Override
+        public String toString() {
+            return "driverId=" + driverId + " code=" + code;
+        }
+    }
+
+    private void computeStatsFromRoom(DriverKey key1, DriverKey key2) {
         new Thread(() -> {
             List<CachedResult> allResults = F1App.get().getDatabase().resultDao().getByYear(year);
 
-            Log.d("H2H_DEBUG", "computeStatsFromRoom: year=" + year + " totalRows=" + allResults.size() + " matching by code: code1=" + code1 + " code2=" + code2);
+            DebugLog.d("H2H_DEBUG", "computeStatsFromRoom: year=" + year + " totalRows=" + allResults.size()
+                    + " matching by driverId (code fallback): d1=" + key1 + " d2=" + key2);
 
             // Log session types breakdown
-            int raceCount = 0;
+            int raceCount = 0, sprintCount = 0;
             for (CachedResult r : allResults) {
                 if ("Race".equals(r.sessionType)) raceCount++;
+                else if ("Sprint".equals(r.sessionType)) sprintCount++;
             }
-            Log.d("H2H_DEBUG", "  raceRows=" + raceCount + " (others=" + (allResults.size() - raceCount) + ")");
+            DebugLog.d("H2H_DEBUG", "  raceRows=" + raceCount + " sprintRows=" + sprintCount
+                    + " (others=" + (allResults.size() - raceCount - sprintCount) + ")");
 
             DriverStats stats1 = new DriverStats();
             DriverStats stats2 = new DriverStats();
@@ -316,9 +343,11 @@ public class CompareDriversActivity extends AppCompatActivity
             boolean loggedFirstEntry = false;
 
             for (CachedResult cached : allResults) {
-                if (!"Race".equals(cached.sessionType)) continue;
+                boolean isRace   = "Race".equals(cached.sessionType);
+                boolean isSprint = "Sprint".equals(cached.sessionType);
+                if (!isRace && !isSprint) continue;
                 if (cached.resultsJson == null) {
-                    Log.d("H2H_DEBUG", "  round=" + cached.round + " resultsJson is NULL — skipping");
+                    DebugLog.d("H2H_DEBUG", "  round=" + cached.round + " " + cached.sessionType + " resultsJson is NULL — skipping");
                     continue;
                 }
 
@@ -326,37 +355,37 @@ public class CompareDriversActivity extends AppCompatActivity
                 try {
                     body = gson.fromJson(cached.resultsJson, mapType);
                 } catch (Exception e) {
-                    Log.d("H2H_DEBUG", "  round=" + cached.round + " JSON parse failed: " + e.getMessage());
+                    DebugLog.d("H2H_DEBUG", "  round=" + cached.round + " JSON parse failed: " + e.getMessage());
                     continue;
                 }
 
                 // Log top-level keys once so we know the JSON shape
                 if (!loggedFirstEntry) {
-                    Log.d("H2H_DEBUG", "  FIRST BODY keys: " + body.keySet());
+                    DebugLog.d("H2H_DEBUG", "  FIRST BODY keys: " + body.keySet());
                     Object resultsCheck = body.get("results");
                     if (resultsCheck instanceof List) {
                         List<?> rawList = (List<?>) resultsCheck;
-                        Log.d("H2H_DEBUG", "  'results' array size=" + rawList.size());
+                        DebugLog.d("H2H_DEBUG", "  'results' array size=" + rawList.size());
                         if (!rawList.isEmpty() && rawList.get(0) instanceof Map) {
                             Map<?, ?> firstEntry = (Map<?, ?>) rawList.get(0);
-                            Log.d("H2H_DEBUG", "  first entry keys: " + firstEntry.keySet());
+                            DebugLog.d("H2H_DEBUG", "  first entry keys: " + firstEntry.keySet());
                             Object driverField = firstEntry.get("Driver");
                             if (driverField instanceof Map) {
-                                Log.d("H2H_DEBUG", "  Driver sub-keys: " + ((Map<?, ?>) driverField).keySet());
-                                Log.d("H2H_DEBUG", "  Driver values: " + driverField);
+                                DebugLog.d("H2H_DEBUG", "  Driver sub-keys: " + ((Map<?, ?>) driverField).keySet());
+                                DebugLog.d("H2H_DEBUG", "  Driver values: " + driverField);
                             } else {
-                                Log.d("H2H_DEBUG", "  'Driver' field is: " + driverField);
+                                DebugLog.d("H2H_DEBUG", "  'Driver' field is: " + driverField);
                             }
                         }
                     } else {
-                        Log.d("H2H_DEBUG", "  'results' is not a List, it is: " + (resultsCheck == null ? "null" : resultsCheck.getClass().getSimpleName()));
+                        DebugLog.d("H2H_DEBUG", "  'results' is not a List, it is: " + (resultsCheck == null ? "null" : resultsCheck.getClass().getSimpleName()));
                     }
                     loggedFirstEntry = true;
                 }
 
                 Object resultsObj = body.get("results");
                 if (!(resultsObj instanceof List)) {
-                    Log.d("H2H_DEBUG", "  round=" + cached.round + " 'results' not a List — skipping");
+                    DebugLog.d("H2H_DEBUG", "  round=" + cached.round + " 'results' not a List — skipping");
                     continue;
                 }
 
@@ -364,69 +393,77 @@ public class CompareDriversActivity extends AppCompatActivity
                 try {
                     results = gson.fromJson(gson.toJson(resultsObj), listType);
                 } catch (Exception e) {
-                    Log.d("H2H_DEBUG", "  round=" + cached.round + " RaceResult parse failed: " + e.getMessage());
+                    DebugLog.d("H2H_DEBUG", "  round=" + cached.round + " RaceResult parse failed: " + e.getMessage());
                     continue;
                 }
                 if (results == null) {
-                    Log.d("H2H_DEBUG", "  round=" + cached.round + " results list is null after parse");
+                    DebugLog.d("H2H_DEBUG", "  round=" + cached.round + " results list is null after parse");
                     continue;
                 }
 
-                Log.d("H2H_DEBUG", "  round=" + cached.round + " parsed " + results.size() + " RaceResult entries");
+                DebugLog.d("H2H_DEBUG", "  round=" + cached.round + " " + cached.sessionType + " parsed " + results.size() + " RaceResult entries");
 
-                // Log all codes in this round so we can see if our target exists
+                // Log all driverIds in this round so we can see if our target exists
                 StringBuilder ids = new StringBuilder();
                 for (RaceResult rr : results) {
-                    if (rr.getDriver() != null) ids.append(rr.getDriver().getCode()).append(",");
+                    if (rr.getDriver() != null) ids.append(rr.getDriver().getDriverId()).append(",");
                 }
-                Log.d("H2H_DEBUG", "  round=" + cached.round + " codes=[" + ids + "]");
+                DebugLog.d("H2H_DEBUG", "  round=" + cached.round + " driverIds=[" + ids + "]");
 
-                int roundPos1 = -1, roundPos2 = -1;
+                RaceResult round1 = null, round2 = null;
 
                 for (RaceResult r : results) {
                     if (r.getDriver() == null) continue;
-                    String entryCode = r.getDriver().getCode();
-                    boolean isD1 = code1.equalsIgnoreCase(entryCode);
-                    boolean isD2 = code2.equalsIgnoreCase(entryCode);
-                    if (!isD1 && !isD2) continue;
+                    String matched1 = key1.match(r.getDriver());
+                    String matched2 = matched1 == null ? key2.match(r.getDriver()) : null;
+                    if (matched1 == null && matched2 == null) continue;
+                    boolean isD1 = matched1 != null;
 
-                    Log.d("H2H_DEBUG", "  MATCH: round=" + cached.round + " code=" + entryCode + " -> driver" + (isD1 ? "1" : "2") + " pos=" + r.getPosition() + " pts=" + r.getPoints() + " status=" + r.getStatus());
+                    DebugLog.d("H2H_DEBUG", "  MATCH: round=" + cached.round + " " + cached.sessionType
+                            + " key=" + (isD1 ? matched1 : matched2)
+                            + " driverId=" + r.getDriver().getDriverId() + " code=" + r.getDriver().getCode()
+                            + " -> driver" + (isD1 ? "1" : "2") + " pos=" + r.getPosition()
+                            + " pts=" + r.getPoints() + " status=" + r.getStatus());
 
                     DriverStats stats = isD1 ? stats1 : stats2;
+                    // Points include sprints; everything else is race-only
+                    stats.points += parseDouble(r.getPoints());
+                    if (!isRace) continue;
+
                     String status = r.getStatus();
-                    boolean dnf   = isDnf(status);
-                    double pts    = parseDouble(r.getPoints());
                     int posInt    = parseInt(r.getPosition());
                     int grid      = parseInt(r.getGridPosition());
 
-                    stats.points += pts;
-                    if (dnf) {
-                        stats.dnfs++;
-                    } else {
-                        if (posInt == 1) stats.wins++;
-                        if (posInt <= 3 && posInt > 0) stats.podiums++;
-                        if (posInt > 0) {
-                            stats.finishCount++;
-                            stats.finishPositionTotal += posInt;
-                        }
+                    if (posInt == 1) stats.wins++;
+                    if (posInt >= 1 && posInt <= 3) stats.podiums++;
+                    if (ResultStatus.isDnf(status)) stats.dnfs++;
+                    if (ResultStatus.isFinished(status) && posInt > 0) {
+                        stats.finishCount++;
+                        stats.finishPositionTotal += posInt;
                     }
                     if (grid > 0 && grid < stats.bestGrid) stats.bestGrid = grid;
                     if (grid == 1) stats.poles++;
 
-                    if (!dnf && posInt > 0) {
-                        if (isD1) roundPos1 = posInt;
-                        else       roundPos2 = posInt;
-                    }
+                    if (isD1) round1 = r;
+                    else      round2 = r;
                 }
 
-                if (roundPos1 > 0 && roundPos2 > 0) {
-                    if (roundPos1 < roundPos2) stats1.h2hWins++;
-                    else                        stats2.h2hWins++;
+                // Race H2H: every round both started; Jolpica already classifies
+                // retirements behind finishers, so position decides
+                if (isRace && round1 != null && round2 != null
+                        && !ResultStatus.didNotStart(round1.getStatus())
+                        && !ResultStatus.didNotStart(round2.getStatus())) {
+                    int pos1 = parseInt(round1.getPosition());
+                    int pos2 = parseInt(round2.getPosition());
+                    if (pos1 > 0 && pos2 > 0) {
+                        if (pos1 < pos2) stats1.h2hWins++;
+                        else              stats2.h2hWins++;
+                    }
                 }
             }
 
-            Log.d("H2H_DEBUG", "FINAL stats1: pts=" + stats1.points + " wins=" + stats1.wins + " podiums=" + stats1.podiums + " dnfs=" + stats1.dnfs + " h2h=" + stats1.h2hWins);
-            Log.d("H2H_DEBUG", "FINAL stats2: pts=" + stats2.points + " wins=" + stats2.wins + " podiums=" + stats2.podiums + " dnfs=" + stats2.dnfs + " h2h=" + stats2.h2hWins);
+            DebugLog.d("H2H_DEBUG", "FINAL stats1: pts=" + stats1.points + " wins=" + stats1.wins + " podiums=" + stats1.podiums + " dnfs=" + stats1.dnfs + " h2h=" + stats1.h2hWins);
+            DebugLog.d("H2H_DEBUG", "FINAL stats2: pts=" + stats2.points + " wins=" + stats2.wins + " podiums=" + stats2.podiums + " dnfs=" + stats2.dnfs + " h2h=" + stats2.h2hWins);
 
             final DriverStats fStats1 = stats1;
             final DriverStats fStats2 = stats2;
@@ -525,14 +562,6 @@ public class CompareDriversActivity extends AppCompatActivity
         llStatsRows.addView(divider);
 
         return holder;
-    }
-
-    private static boolean isDnf(String status) {
-        if (status == null) return false;
-        String s = status.toLowerCase();
-        return s.equals("dnf") || s.equals("dsq") || s.equals("dns")
-                || s.equals("retired") || s.equals("accident") || s.equals("collision")
-                || (!s.equals("finished") && !s.startsWith("+") && !s.matches("\\d+.*"));
     }
 
     private static double parseDouble(String s) {

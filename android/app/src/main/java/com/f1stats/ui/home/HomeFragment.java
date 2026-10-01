@@ -31,6 +31,7 @@ import com.f1stats.DriverHelper;
 import com.f1stats.HomeCacheManager;
 import com.f1stats.R;
 import com.f1stats.SeasonHelper;
+import com.f1stats.util.MeetingMatcher;
 import com.f1stats.viewmodels.F1ViewModel;
 import com.facebook.shimmer.ShimmerFrameLayout;
 import com.google.android.material.snackbar.Snackbar;
@@ -329,6 +330,7 @@ public class HomeFragment extends Fragment {
                 showNormalCountdownState();
             }
             cache.saveNextRace(race);
+            loadNextRaceCircuitImage();
             nextRaceLoaded = true;
             checkAllLoaded();
         });
@@ -432,24 +434,7 @@ public class HomeFragment extends Fragment {
             }
         });
 
-        viewModel.getMeetings().observe(getViewLifecycleOwner(), meetings -> {
-            if (meetings == null || ivNextRaceCircuit == null) return;
-            String nextRaceName = tvNextRaceName.getText() != null ?
-                    tvNextRaceName.getText().toString().toLowerCase() : "";
-            if (nextRaceName.isEmpty()) return;
-            for (Map<String, Object> meeting : meetings) {
-                String meetingName = meeting.get("meeting_name") != null ?
-                        meeting.get("meeting_name").toString().toLowerCase() : "";
-                if (!meetingName.isEmpty() && (meetingName.equals(nextRaceName)
-                        || meetingName.contains(nextRaceName) || nextRaceName.contains(meetingName))) {
-                    Object img = meeting.get("circuit_image");
-                    if (img != null && !img.toString().isEmpty()) {
-                        Glide.with(requireContext()).load(img.toString()).into(ivNextRaceCircuit);
-                    }
-                    break;
-                }
-            }
-        });
+        viewModel.getMeetings().observe(getViewLifecycleOwner(), meetings -> loadNextRaceCircuitImage());
 
         viewModel.getDriverHeadshotMap().observe(getViewLifecycleOwner(), map -> {
             if (map == null) return;
@@ -911,6 +896,18 @@ public class HomeFragment extends Fragment {
 
     private String formatDate(String isoDateStr) {
         return DateHelper.formatFull(isoDateStr);
+    }
+
+    // Next race and meetings arrive independently; whichever lands second loads the image
+    private void loadNextRaceCircuitImage() {
+        if (ivNextRaceCircuit == null) return;
+        Map<String, Object> meeting = MeetingMatcher.match(
+                viewModel.getNextRace().getValue(), viewModel.getMeetings().getValue());
+        if (meeting == null) return;   // keep the placeholder
+        Object img = meeting.get("circuit_image");
+        if (img != null && !img.toString().isEmpty()) {
+            Glide.with(requireContext()).load(img.toString()).into(ivNextRaceCircuit);
+        }
     }
 
     private String getStr(Map<String, Object> map, String key, String fallback) {

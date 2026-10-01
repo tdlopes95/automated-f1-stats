@@ -27,8 +27,12 @@ import retrofit2.Response;
 
 public class F1ViewModel extends ViewModel {
 
-    private final F1ApiService api = F1ApiClient.getInstance(F1App.get()).getService();
-    private final F1Repository repo = new F1Repository(F1App.get().getDatabase(), api);
+    private final F1Repository repo = F1Repository.getInstance(F1App.get());
+
+    // Resolved per call so a base-URL change in Settings (F1ApiClient.reset) applies immediately
+    private F1ApiService api() {
+        return F1ApiClient.getInstance(F1App.get()).getService();
+    }
 
     // ── Live Session ──────────────────────────────────────────────────────────
     private final MutableLiveData<LiveSession> liveSession = new MutableLiveData<>();
@@ -94,7 +98,7 @@ public class F1ViewModel extends ViewModel {
 
     public void fetchLiveSession() {
         liveLoading.setValue(true);
-        api.getLiveSession().enqueue(new Callback<LiveSession>() {
+        api().getLiveSession().enqueue(new Callback<LiveSession>() {
             @Override
             public void onResponse(Call<LiveSession> call, Response<LiveSession> response) {
                 liveLoading.setValue(false);
@@ -117,7 +121,7 @@ public class F1ViewModel extends ViewModel {
 
     public void fetchLatestResults(String sessionType, int year) {
         resultsLoading.setValue(true);
-        api.getLatestResults(sessionType, year).enqueue(new Callback<Map<String, Object>>() {
+        api().getLatestResults(sessionType, year).enqueue(new Callback<Map<String, Object>>() {
             @Override
             public void onResponse(Call<Map<String, Object>> call,
                                    Response<Map<String, Object>> response) {
@@ -235,7 +239,7 @@ public class F1ViewModel extends ViewModel {
 
     public void fetchPitStops(int sessionKey) {
         pitStopsLoading.setValue(true);
-        api.getPitStops(sessionKey).enqueue(new Callback<List<PitStop>>() {
+        api().getPitStops(sessionKey).enqueue(new Callback<List<PitStop>>() {
             @Override
             public void onResponse(Call<List<PitStop>> call, Response<List<PitStop>> response) {
                 pitStopsLoading.setValue(false);
@@ -276,7 +280,7 @@ public class F1ViewModel extends ViewModel {
         repo.getSessionKey(year, round, new F1Repository.RepositoryCallback<Integer>() {
             @Override
             public void onSuccess(Integer sessionKey) {
-                api.getWeather(sessionKey).enqueue(new Callback<Map<String, Object>>() {
+                api().getWeather(sessionKey).enqueue(new Callback<Map<String, Object>>() {
                     @Override
                     public void onResponse(Call<Map<String, Object>> call,
                                            Response<Map<String, Object>> response) {
@@ -313,7 +317,7 @@ public class F1ViewModel extends ViewModel {
     }
 
     public void fetchNextRace() {
-        api.getNextRace().enqueue(new Callback<Map<String, Object>>() {
+        api().getNextRace().enqueue(new Callback<Map<String, Object>>() {
             @Override
             public void onResponse(Call<Map<String, Object>> call,
                                    Response<Map<String, Object>> response) {
@@ -397,7 +401,7 @@ public class F1ViewModel extends ViewModel {
         repo.getSessionKey(year, round, new F1Repository.RepositoryCallback<Integer>() {
             @Override
             public void onSuccess(Integer sessionKey) {
-                api.getStints(sessionKey).enqueue(new Callback<List<Map<String, Object>>>() {
+                api().getStints(sessionKey).enqueue(new Callback<List<Map<String, Object>>>() {
                     @Override
                     public void onResponse(Call<List<Map<String, Object>>> call,
                                            Response<List<Map<String, Object>>> response) {

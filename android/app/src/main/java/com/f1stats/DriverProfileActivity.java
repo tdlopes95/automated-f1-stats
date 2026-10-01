@@ -16,11 +16,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
-import com.f1stats.api.F1ApiClient;
 import com.f1stats.data.F1Repository;
 import com.f1stats.db.CachedDriver;
 import com.f1stats.models.RaceResult;
 import com.f1stats.ui.driver.DriverResultAdapter;
+import com.f1stats.util.ResultStatus;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -175,10 +175,7 @@ public class DriverProfileActivity extends AppCompatActivity {
 
         pbLoading.setVisibility(View.VISIBLE);
 
-        F1Repository repo = new F1Repository(
-                F1App.get().getDatabase(),
-                F1ApiClient.getInstance(F1App.get()).getService()
-        );
+        F1Repository repo = F1Repository.getInstance(F1App.get());
 
         repo.getSchedule(year, new F1Repository.RepositoryCallback<List<Map<String, Object>>>() {
             @Override
@@ -281,21 +278,22 @@ public class DriverProfileActivity extends AppCompatActivity {
 
                     String pos = r.getPosition();
                     String status = r.getStatus();
-                    boolean dnf = isDnf(status);
-                    double pts = parseDouble(r.getPoints());
+                    boolean dnf = ResultStatus.isDnf(status);
+                    boolean isRace = "Race".equals(rs.sessionType);
 
-                    totalPoints += pts;
+                    // Points include sprints; everything else is race-only
+                    totalPoints += parseDouble(r.getPoints());
 
-                    int posInt = parseInt(pos);
-                    if (!dnf && "Race".equals(rs.sessionType)) {
+                    if (isRace) {
+                        int posInt = parseInt(pos);
                         if (posInt == 1) wins++;
-                        if (posInt <= 3) podiums++;
-                    }
-                    if (dnf) dnfs++;
+                        if (posInt >= 1 && posInt <= 3) podiums++;
+                        if (dnf) dnfs++;
 
-                    int grid = parseInt(r.getGridPosition());
-                    if (grid > 0 && grid < bestGrid) bestGrid = grid;
-                    if (grid == 1) poles++;
+                        int grid = parseInt(r.getGridPosition());
+                        if (grid > 0 && grid < bestGrid) bestGrid = grid;
+                        if (grid == 1) poles++;
+                    }
 
                     raceResults.add(new DriverResultAdapter.DriverRaceResult(
                             rs.round, rs.raceName, rs.sessionType, pos, r.getPoints(),
@@ -346,10 +344,7 @@ public class DriverProfileActivity extends AppCompatActivity {
                 }
 
                 if (needsHeadshotFetch) {
-                    F1Repository fetchRepo = new F1Repository(
-                            F1App.get().getDatabase(),
-                            F1ApiClient.getInstance(F1App.get()).getService()
-                    );
+                    F1Repository fetchRepo = F1Repository.getInstance(F1App.get());
                     fetchRepo.fetchDrivers(year, new F1Repository.RepositoryCallback<java.util.List<CachedDriver>>() {
                         @Override
                         public void onSuccess(java.util.List<CachedDriver> drivers) {
@@ -375,14 +370,6 @@ public class DriverProfileActivity extends AppCompatActivity {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private boolean isDnf(String status) {
-        if (status == null) return false;
-        String s = status.toLowerCase();
-        return s.equals("dnf") || s.equals("dsq") || s.equals("dns")
-                || s.equals("retired") || s.equals("accident") || s.equals("collision")
-                || (!s.equals("finished") && !s.startsWith("+") && !s.matches("\\d+.*"));
-    }
 
     private double parseDouble(String s) {
         try { return Double.parseDouble(s); } catch (Exception e) { return 0; }

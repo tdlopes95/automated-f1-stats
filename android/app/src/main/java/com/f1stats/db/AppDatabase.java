@@ -19,7 +19,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
         CachedMeeting.class,
         CachedCircuitStats.class
     },
-    version = 2,
+    version = 4,
     exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -52,7 +52,11 @@ public abstract class AppDatabase extends RoomDatabase {
                         context.getApplicationContext(),
                         AppDatabase.class,
                         "f1stats.db"
-                    ).addMigrations(MIGRATION_1_2).build();
+                    ).addMigrations(MIGRATION_1_2)
+                     // Every table is a cache; v3 wiped rows poisoned by empty/future results,
+                     // v4 adds cached_meetings.dateStart
+                     .fallbackToDestructiveMigration()
+                     .build();
                 }
             }
         }

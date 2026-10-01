@@ -14,7 +14,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.f1stats.F1App;
 import com.f1stats.R;
-import com.f1stats.api.F1ApiClient;
 import com.f1stats.data.F1Repository;
 import com.f1stats.db.CachedDriver;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -75,9 +74,7 @@ public class DriverPickerBottomSheet extends BottomSheetDialogFragment {
         rv.setVisibility(View.GONE);
         pbLoading.setVisibility(View.VISIBLE);
 
-        F1Repository repo = new F1Repository(
-                F1App.get().getDatabase(),
-                F1ApiClient.getInstance(F1App.get()).getService());
+        F1Repository repo = F1Repository.getInstance(F1App.get());
 
         repo.fetchDriversForSeason(year, new F1Repository.RepositoryCallback<List<CachedDriver>>() {
             @Override

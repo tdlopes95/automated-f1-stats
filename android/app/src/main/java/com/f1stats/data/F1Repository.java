@@ -1,8 +1,15 @@
 package com.f1stats.data;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
+import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
+
+import com.f1stats.util.DebugLog;
+import com.f1stats.DateHelper;
+import com.f1stats.api.F1ApiClient;
 import com.f1stats.api.F1ApiService;
 import com.f1stats.db.AppDatabase;
 import com.f1stats.db.CachedCircuitStats;
@@ -14,6 +21,7 @@ import com.f1stats.db.CachedSessionKey;
 import com.f1stats.db.CachedStandings;
 import com.f1stats.models.CircuitStatsResponse;
 import com.f1stats.models.RaceResult;
+import com.f1stats.util.ResultStatus;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -21,6 +29,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -45,16 +54,40 @@ public class F1Repository {
     private static final long ONE_HOUR_MS  = 60 * 60 * 1000L;
     private static final long ONE_DAY_MS   = 24 * ONE_HOUR_MS;
 
+    private static final long THREE_HOURS_MS = 3 * ONE_HOUR_MS;
+    // Results can still change (post-race penalties) for this long after a session ends
+    private static final long RESULTS_SETTLE_MS = 72 * ONE_HOUR_MS;
+
+    private static F1Repository instance;
+
+    private final Context appContext;
     private final AppDatabase db;
-    private final F1ApiService api;
     private final Executor executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Gson gson = new Gson();
-    private final int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+    // In-flight getResults requests keyed by year/round/sessionType; guarded by itself
+    private final Map<String, List<RepositoryCallback<Map<String, Object>>>> inFlightResults = new HashMap<>();
 
-    public F1Repository(AppDatabase db, F1ApiService api) {
-        this.db = db;
-        this.api = api;
+    public static synchronized F1Repository getInstance(Context ctx) {
+        if (instance == null) {
+            instance = new F1Repository(ctx.getApplicationContext());
+        }
+        return instance;
+    }
+
+    private F1Repository(Context appContext) {
+        this.appContext = appContext;
+        this.db = AppDatabase.getInstance(appContext);
+    }
+
+    // Resolved per call so a base-URL change in Settings (F1ApiClient.reset) applies immediately
+    private F1ApiService api() {
+        return F1ApiClient.getInstance(appContext).getService();
+    }
+
+    // Not cached in a field: the singleton can outlive a year boundary
+    private int currentYear() {
+        return Calendar.getInstance().get(Calendar.YEAR);
     }
 
     // ── Schedule ──────────────────────────────────────────────────────────────
@@ -63,7 +96,7 @@ public class F1Repository {
         executor.execute(() -> {
             List<CachedSchedule> cached = db.scheduleDao().getByYear(year);
             long now = System.currentTimeMillis();
-            boolean isPast  = year < currentYear;
+            boolean isPast  = year < currentYear();
             boolean isFresh = !cached.isEmpty() &&
                     (isPast || (now - cached.get(0).fetchedAt) < ONE_DAY_MS);
 
@@ -74,7 +107,7 @@ public class F1Repository {
             }
 
             mainHandler.post(() ->
-                api.getScheduleByYear(year).enqueue(new Callback<List<Map<String, Object>>>() {
+                api().getScheduleByYear(year).enqueue(new Callback<List<Map<String, Object>>>() {
                     @Override
                     public void onResponse(Call<List<Map<String, Object>>> call,
                                            Response<List<Map<String, Object>>> response) {
@@ -142,52 +175,203 @@ public class F1Repository {
     public void getResults(int year, int round, String sessionType,
                            RepositoryCallback<Map<String, Object>> callback) {
         executor.execute(() -> {
+            long now = System.currentTimeMillis();
+            Long sessionTime = getSessionTimeUtcMillis(year, round, sessionType);
             CachedResult cached = db.resultDao().get(year, round, sessionType);
-            if (cached != null) {
-                Type type = new TypeToken<Map<String, Object>>(){}.getType();
-                Map<String, Object> data = gson.fromJson(cached.resultsJson, type);
+            if (cached != null && isResultRowFresh(cached, year, sessionTime, now)) {
+                Map<String, Object> data = parseResultRow(cached);
                 mainHandler.post(() -> callback.onSuccess(data));
                 return;
             }
-
-            mainHandler.post(() ->
-                api.getResults(year, round, sessionType).enqueue(new Callback<Map<String, Object>>() {
-                    @Override
-                    public void onResponse(Call<Map<String, Object>> call,
-                                           Response<Map<String, Object>> response) {
-                        if (response.isSuccessful() && response.body() != null) {
-                            Map<String, Object> body = response.body();
-                            executor.execute(() -> {
-                                CachedResult row = new CachedResult();
-                                row.year        = year;
-                                row.round       = round;
-                                row.sessionType = sessionType;
-                                row.resultsJson = gson.toJson(body);
-                                row.fetchedAt   = System.currentTimeMillis();
-                                db.resultDao().upsert(row);
-                            });
-                            callback.onSuccess(body);
-                        } else {
-                            callback.onError("Could not load results");
-                        }
-                    }
-                    @Override
-                    public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                        callback.onError("Connection error: " + t.getMessage());
-                    }
-                })
-            );
+            requestResults(year, round, sessionType, sessionTime, callback);
         });
+    }
+
+    /**
+     * Fetches results from the network, deduplicating concurrent requests for the same
+     * year/round/session. Stores the response only when the caching rules allow it, and
+     * falls back to any stored row on failure. All callbacks fire on the main thread after
+     * the Room write, so callers reading Room afterwards see the new row.
+     */
+    @WorkerThread
+    private void requestResults(int year, int round, String sessionType, @Nullable Long sessionTime,
+                                RepositoryCallback<Map<String, Object>> callback) {
+        String key = year + "/" + round + "/" + sessionType;
+        synchronized (inFlightResults) {
+            List<RepositoryCallback<Map<String, Object>>> waiting = inFlightResults.get(key);
+            if (waiting != null) {
+                waiting.add(callback);
+                return;
+            }
+            List<RepositoryCallback<Map<String, Object>>> first = new ArrayList<>();
+            first.add(callback);
+            inFlightResults.put(key, first);
+        }
+
+        mainHandler.post(() ->
+            api().getResults(year, round, sessionType).enqueue(new Callback<Map<String, Object>>() {
+                @Override
+                public void onResponse(Call<Map<String, Object>> call,
+                                       Response<Map<String, Object>> response) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        Map<String, Object> body = response.body();
+                        // Snapshot on the main thread — Gson's LinkedTreeMap is not thread-safe
+                        String json = gson.toJson(body);
+                        int count = countResults(body);
+                        executor.execute(() -> {
+                            boolean stored = maybeStoreResult(year, round, sessionType, json, count,
+                                    sessionTime, System.currentTimeMillis());
+                            if (!stored && count <= 0) {
+                                // Empty refetch (e.g. API hiccup) — prefer a stored non-empty row
+                                CachedResult existing = db.resultDao().get(year, round, sessionType);
+                                if (existing != null && hasResults(existing.resultsJson)) {
+                                    completeResults(key, parseResultRow(existing), null);
+                                    return;
+                                }
+                            }
+                            mainHandler.post(() -> deliverResults(key, body, null));
+                        });
+                    } else {
+                        failResults(key, year, round, sessionType,
+                                "Could not load results (HTTP " + response.code() + ")");
+                    }
+                }
+                @Override
+                public void onFailure(Call<Map<String, Object>> call, Throwable t) {
+                    failResults(key, year, round, sessionType, "Connection error: " + t.getMessage());
+                }
+            })
+        );
+    }
+
+    private void failResults(String key, int year, int round, String sessionType, String error) {
+        executor.execute(() -> {
+            CachedResult existing = db.resultDao().get(year, round, sessionType);
+            completeResults(key, existing != null ? parseResultRow(existing) : null, error);
+        });
+    }
+
+    private void completeResults(String key, @Nullable Map<String, Object> data, @Nullable String error) {
+        mainHandler.post(() -> deliverResults(key, data, error));
+    }
+
+    // Main thread only. Delivers data if present, otherwise the error.
+    private void deliverResults(String key, @Nullable Map<String, Object> data, @Nullable String error) {
+        List<RepositoryCallback<Map<String, Object>>> waiting;
+        synchronized (inFlightResults) {
+            waiting = inFlightResults.remove(key);
+        }
+        if (waiting == null) return;
+        for (RepositoryCallback<Map<String, Object>> cb : waiting) {
+            if (data != null) cb.onSuccess(data);
+            else cb.onError(error != null ? error : "Could not load results");
+        }
+    }
+
+    /** Inserts a results row only if it is non-empty and the session has ended. */
+    @WorkerThread
+    private boolean maybeStoreResult(int year, int round, String sessionType, String json, int count,
+                                     @Nullable Long sessionTime, long now) {
+        if (count <= 0 || !sessionEnded(year, sessionTime, now)) return false;
+        CachedResult row = new CachedResult();
+        row.year        = year;
+        row.round       = round;
+        row.sessionType = sessionType;
+        row.resultsJson = json;
+        row.fetchedAt   = now;
+        db.resultDao().upsert(row);
+        return true;
+    }
+
+    private boolean sessionEnded(int year, @Nullable Long sessionTime, long now) {
+        if (year < currentYear()) return true;
+        return sessionTime != null && sessionTime + THREE_HOURS_MS < now;
+    }
+
+    /**
+     * A stored row is permanent unless the session ended less than 72h ago, in which case it
+     * expires after 1h so post-race penalties are picked up. Unknown session time in the
+     * current season is treated as recent.
+     */
+    private boolean isResultRowFresh(CachedResult row, int year, @Nullable Long sessionTime, long now) {
+        if (!hasResults(row.resultsJson)) return false;
+        if (year < currentYear()) return true;
+        boolean recent = sessionTime == null || now - (sessionTime + THREE_HOURS_MS) < RESULTS_SETTLE_MS;
+        return !recent || now - row.fetchedAt < ONE_HOUR_MS;
+    }
+
+    private Map<String, Object> parseResultRow(CachedResult row) {
+        Type type = new TypeToken<Map<String, Object>>(){}.getType();
+        Map<String, Object> data = gson.fromJson(row.resultsJson, type);
+        return data != null ? data : new HashMap<>();
+    }
+
+    private int countResults(Map<String, Object> body) {
+        Object resultsObj = body.get("results");
+        return resultsObj instanceof List ? ((List<?>) resultsObj).size() : 0;
+    }
+
+    private boolean hasResults(@Nullable String resultsJson) {
+        if (resultsJson == null) return false;
+        try {
+            Type type = new TypeToken<Map<String, Object>>(){}.getType();
+            Map<String, Object> data = gson.fromJson(resultsJson, type);
+            return data != null && countResults(data) > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * UTC start time of a session from the Room schedule, or null if unknown.
+     * Session names: "Race", "Qualifying", "Sprint", "Sprint Qualifying".
+     */
+    @WorkerThread
+    @Nullable
+    Long getSessionTimeUtcMillis(int year, int round, String sessionType) {
+        CachedSchedule row = db.scheduleDao().get(year, round);
+        if (row == null || row.sessionsJson == null) return null;
+        try {
+            Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
+            Map<String, Object> race = gson.fromJson(row.sessionsJson, mapType);
+            return race != null ? sessionTimeFromRace(race, sessionType) : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Nullable
+    private Long sessionTimeFromRace(Map<String, Object> race, String sessionType) {
+        Object sessObj = race.get("sessions");
+        if (!(sessObj instanceof List)) return null;
+        for (Object s : (List<?>) sessObj) {
+            if (!(s instanceof Map)) continue;
+            Map<?, ?> session = (Map<?, ?>) s;
+            if (sessionType.equals(session.get("name"))) {
+                long t = DateHelper.toMillis(toStr(session.get("datetime")));
+                return t > 0 ? t : null;
+            }
+        }
+        return null;
+    }
+
+    private boolean hasSession(Map<String, Object> race, String sessionType) {
+        Object sessObj = race.get("sessions");
+        if (!(sessObj instanceof List)) return false;
+        for (Object s : (List<?>) sessObj) {
+            if (s instanceof Map && sessionType.equals(((Map<?, ?>) s).get("name"))) return true;
+        }
+        return false;
     }
 
     // ── Standings ─────────────────────────────────────────────────────────────
 
     public void getDriverStandings(int year, RepositoryCallback<Map<String, Object>> callback) {
-        getStandings(year, "driver", api.getDriverStandings(year), callback);
+        getStandings(year, "driver", api().getDriverStandings(year), callback);
     }
 
     public void getConstructorStandings(int year, RepositoryCallback<Map<String, Object>> callback) {
-        getStandings(year, "constructor", api.getConstructorStandings(year), callback);
+        getStandings(year, "constructor", api().getConstructorStandings(year), callback);
     }
 
     private void getStandings(int year, String type, Call<Map<String, Object>> apiCall,
@@ -195,7 +379,7 @@ public class F1Repository {
         executor.execute(() -> {
             CachedStandings cached = db.standingsDao().get(year, type);
             long now = System.currentTimeMillis();
-            boolean isPast  = year < currentYear;
+            boolean isPast  = year < currentYear();
             boolean isFresh = cached != null &&
                     (isPast || (now - cached.fetchedAt) < ONE_HOUR_MS);
 
@@ -251,7 +435,7 @@ public class F1Repository {
             }
 
             mainHandler.post(() ->
-                api.getSessionKey(year, round).enqueue(new Callback<Map<String, Object>>() {
+                api().getSessionKey(year, round).enqueue(new Callback<Map<String, Object>>() {
                     @Override
                     public void onResponse(Call<Map<String, Object>> call,
                                            Response<Map<String, Object>> response) {
@@ -289,76 +473,105 @@ public class F1Repository {
         getSchedule(year, new RepositoryCallback<List<Map<String, Object>>>() {
             @Override
             public void onSuccess(List<Map<String, Object>> races) {
-                executor.execute(() -> {
-                    // Partition rounds into cached vs missing
-                    List<Integer> missingRounds = new ArrayList<>();
-                    List<Map<String, Object>> cachedBodies = new ArrayList<>();
-
-                    Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
-                    for (Map<String, Object> race : races) {
-                        int round = toInt(race.get("round"));
-                        if (round == 0) continue;
-                        CachedResult hit = db.resultDao().get(year, round, "Race");
-                        if (hit != null) {
-                            cachedBodies.add(gson.fromJson(hit.resultsJson, mapType));
-                        } else {
-                            missingRounds.add(round);
+                executor.execute(() -> cacheMissingSeasonResults(year, races, () ->
+                    executor.execute(() -> {
+                        List<Map<String, Object>> bodies = new ArrayList<>();
+                        for (Map<String, Object> race : races) {
+                            int round = toInt(race.get("round"));
+                            if (round == 0) continue;
+                            CachedResult hit = db.resultDao().get(year, round, "Race");
+                            if (hit != null && hasResults(hit.resultsJson)) {
+                                bodies.add(parseResultRow(hit));
+                            }
                         }
-                    }
-
-                    Map<String, Integer> dnfs    = new HashMap<>();
-                    Map<String, Integer> podiums = new HashMap<>();
-                    computeStats(cachedBodies, dnfs, podiums);
-
-                    if (missingRounds.isEmpty()) {
+                        Map<String, Integer> dnfs    = new HashMap<>();
+                        Map<String, Integer> podiums = new HashMap<>();
+                        computeStats(bodies, dnfs, podiums);
                         mainHandler.post(() -> callback.onSuccess(dnfs, podiums));
-                        return;
-                    }
-
-                    // Fetch missing rounds in parallel; write to cache as they arrive
-                    AtomicInteger pending = new AtomicInteger(missingRounds.size());
-                    mainHandler.post(() -> {
-                        for (int round : missingRounds) {
-                            api.getResults(year, round, "Race").enqueue(
-                                new Callback<Map<String, Object>>() {
-                                    @Override
-                                    public void onResponse(Call<Map<String, Object>> call,
-                                                           Response<Map<String, Object>> response) {
-                                        if (response.isSuccessful() && response.body() != null) {
-                                            Map<String, Object> body = response.body();
-                                            executor.execute(() -> {
-                                                CachedResult row = new CachedResult();
-                                                row.year        = year;
-                                                row.round       = round;
-                                                row.sessionType = "Race";
-                                                row.resultsJson = gson.toJson(body);
-                                                row.fetchedAt   = System.currentTimeMillis();
-                                                db.resultDao().upsert(row);
-                                            });
-                                            // Callbacks are on main thread — no sync needed
-                                            computeStatsFromBody(body, dnfs, podiums);
-                                        }
-                                        if (pending.decrementAndGet() == 0) {
-                                            callback.onSuccess(dnfs, podiums);
-                                        }
-                                    }
-                                    @Override
-                                    public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                                        if (pending.decrementAndGet() == 0) {
-                                            callback.onSuccess(dnfs, podiums);
-                                        }
-                                    }
-                                }
-                            );
-                        }
-                    });
-                });
+                    })
+                ));
             }
             @Override
             public void onError(String error) {
                 callback.onSuccess(new HashMap<>(), new HashMap<>());
             }
         });
+    }
+
+    /**
+     * Fetches and stores results for every session of the season that has ended but has no
+     * non-empty Room row: the Race of each round, plus the Sprint for sprint weekends.
+     * Sessions that haven't happened yet are never requested. onDone runs on the main thread
+     * once every request has completed and been written.
+     */
+    @WorkerThread
+    private void cacheMissingSeasonResults(int year, List<Map<String, Object>> races, Runnable onDone) {
+        long now = System.currentTimeMillis();
+        List<Integer> missingRounds  = new ArrayList<>();
+        List<Integer> missingSprints = new ArrayList<>();
+        List<Integer> futureRounds   = new ArrayList<>();
+        Map<String, Long> targets = new LinkedHashMap<>();   // "round/sessionType" -> session time
+
+        for (Map<String, Object> race : races) {
+            int round = toInt(race.get("round"));
+            if (round == 0) continue;
+
+            Long raceTime = sessionTimeFromRace(race, "Race");
+            if (sessionEnded(year, raceTime, now)) {
+                CachedResult hit = db.resultDao().get(year, round, "Race");
+                if (hit == null || !hasResults(hit.resultsJson)) {
+                    missingRounds.add(round);
+                    targets.put(round + "/Race", raceTime);
+                }
+            } else {
+                futureRounds.add(round);
+            }
+
+            if (hasSession(race, "Sprint")) {
+                Long sprintTime = sessionTimeFromRace(race, "Sprint");
+                if (sessionEnded(year, sprintTime, now)) {
+                    CachedResult hit = db.resultDao().get(year, round, "Sprint");
+                    if (hit == null || !hasResults(hit.resultsJson)) {
+                        missingSprints.add(round);
+                        targets.put(round + "/Sprint", sprintTime);
+                    }
+                }
+            }
+        }
+
+        DebugLog.d("H2H_DEBUG", "  missingRounds=" + missingRounds.size() + " " + missingRounds
+                + " missingSprints=" + missingSprints);
+        DebugLog.d("H2H_DEBUG", "  skipped future rounds=" + futureRounds.size() + " " + futureRounds);
+
+        if (targets.isEmpty()) {
+            DebugLog.d("H2H_DEBUG", "  all rounds already cached — firing callback immediately");
+            mainHandler.post(onDone);
+            return;
+        }
+
+        AtomicInteger pending = new AtomicInteger(targets.size());
+        for (Map.Entry<String, Long> target : targets.entrySet()) {
+            String[] parts = target.getKey().split("/");
+            int round = Integer.parseInt(parts[0]);
+            String sessionType = parts[1];
+            requestResults(year, round, sessionType, target.getValue(),
+                new RepositoryCallback<Map<String, Object>>() {
+                    @Override
+                    public void onSuccess(Map<String, Object> body) {
+                        int remaining = pending.decrementAndGet();
+                        DebugLog.d("H2H_DEBUG", "  fetched round=" + round + " session=" + sessionType
+                                + " resultCount=" + countResults(body) + " remaining=" + remaining);
+                        if (remaining == 0) onDone.run();
+                    }
+                    @Override
+                    public void onError(String error) {
+                        int remaining = pending.decrementAndGet();
+                        DebugLog.d("H2H_DEBUG", "  round=" + round + " session=" + sessionType
+                                + " fetch FAILED: " + error + " remaining=" + remaining);
+                        if (remaining == 0) onDone.run();
+                    }
+                });
+        }
     }
 
     // ── Stat helpers ──────────────────────────────────────────────────────────
@@ -379,7 +592,7 @@ public class F1Repository {
             for (RaceResult r : parsed) {
                 if (r.getDriver() == null) continue;
                 String id = r.getDriver().getDriverId();
-                if (!r.isFinished() && r.getStatus() != null && !r.getStatus().contains("Lap")) {
+                if (ResultStatus.isDnf(r.getStatus())) {
                     dnfs.put(id, dnfs.getOrDefault(id, 0) + 1);
                 }
                 try {
@@ -395,6 +608,7 @@ public class F1Repository {
 
     // ── Drivers (headshots) ───────────────────────────────────────────────────
 
+    /** OpenF1 drivers for a season (2023+): headshots and team colours. Ids are synthetic. */
     public void fetchDrivers(int year, RepositoryCallback<List<CachedDriver>> callback) {
         executor.execute(() -> {
             List<CachedDriver> cached = db.driverDao().getBySeason(year);
@@ -404,37 +618,14 @@ public class F1Repository {
             }
 
             mainHandler.post(() ->
-                api.getDriversByYear(year).enqueue(new Callback<List<Map<String, Object>>>() {
+                api().getDriversByYear(year).enqueue(new Callback<List<Map<String, Object>>>() {
                     @Override
                     public void onResponse(Call<List<Map<String, Object>>> call,
                                            Response<List<Map<String, Object>>> response) {
                         if (response.isSuccessful() && response.body() != null) {
                             List<Map<String, Object>> raw = response.body();
-                            long now = System.currentTimeMillis();
                             executor.execute(() -> {
-                                List<CachedDriver> drivers = new ArrayList<>();
-                                for (Map<String, Object> d : raw) {
-                                    CachedDriver driver = new CachedDriver();
-                                    String acronym = toStr(d.get("name_acronym"));
-                                    driver.driverId = acronym != null ? acronym.toLowerCase() : "";
-                                    driver.code = acronym;
-                                    driver.headshotUrl = toStr(d.get("headshot_url"));
-                                    driver.teamName = toStr(d.get("team_name"));
-                                    driver.teamColour = toStr(d.get("team_colour"));
-                                    driver.seasonYear = year;
-                                    driver.fetchedAt = now;
-                                    String fullName = toStr(d.get("full_name"));
-                                    if (fullName != null) {
-                                        int sp = fullName.indexOf(' ');
-                                        if (sp >= 0) {
-                                            driver.firstName = fullName.substring(0, sp);
-                                            driver.lastName  = fullName.substring(sp + 1);
-                                        } else {
-                                            driver.lastName = fullName;
-                                        }
-                                    }
-                                    drivers.add(driver);
-                                }
+                                List<CachedDriver> drivers = parseOpenF1Drivers(raw, year);
                                 db.driverDao().upsertAll(drivers);
                                 mainHandler.post(() -> callback.onSuccess(drivers));
                             });
@@ -451,85 +642,82 @@ public class F1Repository {
         });
     }
 
-    // ── Drivers with standings fallback (for old seasons) ────────────────────
+    // ── Drivers for a season (Jolpica identity, OpenF1 enrichment) ────────────
 
+    /**
+     * Drivers for the picker / H2H, built from Jolpica data for every season so each item
+     * carries the Jolpica driverId (e.g. "russell"), code, permanentNumber and names.
+     * Source: driver standings, falling back to the season's race results. For 2023+ the
+     * OpenF1 headshot and team colour are attached by code, then by driver number.
+     */
     public void fetchDriversForSeason(int year, RepositoryCallback<List<CachedDriver>> callback) {
-        executor.execute(() -> {
-            List<CachedDriver> cached = db.driverDao().getBySeason(year);
-            if (!cached.isEmpty()) {
-                mainHandler.post(() -> callback.onSuccess(cached));
-                return;
+        getDriverStandings(year, new RepositoryCallback<Map<String, Object>>() {
+            @Override
+            public void onSuccess(Map<String, Object> body) {
+                String json = gson.toJson(body);
+                executor.execute(() -> {
+                    List<CachedDriver> drivers = parseDriversFromStandingsJson(json, year);
+                    if (!drivers.isEmpty()) {
+                        attachOpenF1Details(year, drivers, callback);
+                    } else {
+                        driversFromSeasonResults(year, callback);
+                    }
+                });
             }
-
-            mainHandler.post(() ->
-                api.getDriversByYear(year).enqueue(new Callback<List<Map<String, Object>>>() {
-                    @Override
-                    public void onResponse(Call<List<Map<String, Object>>> call,
-                                           Response<List<Map<String, Object>>> response) {
-                        if (response.isSuccessful() && response.body() != null
-                                && !response.body().isEmpty()) {
-                            List<Map<String, Object>> raw = response.body();
-                            executor.execute(() -> {
-                                List<CachedDriver> drivers = parseOpenF1Drivers(raw, year);
-                                db.driverDao().upsertAll(drivers);
-                                mainHandler.post(() -> callback.onSuccess(drivers));
-                            });
-                        } else {
-                            fallbackToStandingsDrivers(year, callback);
-                        }
-                    }
-                    @Override
-                    public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {
-                        fallbackToStandingsDrivers(year, callback);
-                    }
-                })
-            );
+            @Override
+            public void onError(String error) {
+                driversFromSeasonResults(year, callback);
+            }
         });
     }
 
-    private void fallbackToStandingsDrivers(int year, RepositoryCallback<List<CachedDriver>> callback) {
-        executor.execute(() -> {
-            CachedStandings cachedStandings = db.standingsDao().get(year, "driver");
-            if (cachedStandings != null && cachedStandings.standingsJson != null) {
-                List<CachedDriver> drivers = parseDriversFromStandingsJson(cachedStandings.standingsJson, year);
-                if (!drivers.isEmpty()) {
-                    mainHandler.post(() -> callback.onSuccess(drivers));
-                    return;
-                }
+    private void driversFromSeasonResults(int year, RepositoryCallback<List<CachedDriver>> callback) {
+        ensureSeasonResultsCached(year, new RepositoryCallback<Void>() {
+            @Override
+            public void onSuccess(Void ignored) {
+                executor.execute(() -> attachOpenF1Details(year,
+                        parseDriversFromResultRows(db.resultDao().getByYear(year), year), callback));
             }
+            @Override
+            public void onError(String error) {
+                onSuccess(null);
+            }
+        });
+    }
 
-            mainHandler.post(() ->
-                api.getDriverStandings(year).enqueue(new Callback<Map<String, Object>>() {
-                    @Override
-                    public void onResponse(Call<Map<String, Object>> call,
-                                           Response<Map<String, Object>> response) {
-                        if (response.isSuccessful() && response.body() != null) {
-                            Map<String, Object> body = response.body();
-                            executor.execute(() -> {
-                                CachedStandings row = new CachedStandings();
-                                row.year          = year;
-                                row.type          = "driver";
-                                row.standingsJson = gson.toJson(body);
-                                Object started    = body.get("season_started");
-                                row.seasonStarted = started instanceof Boolean && (Boolean) started;
-                                row.leaderGap     = 0;
-                                row.fetchedAt     = System.currentTimeMillis();
-                                db.standingsDao().upsert(row);
-
-                                List<CachedDriver> drivers = parseDriversFromStandingsJson(
-                                        row.standingsJson, year);
-                                mainHandler.post(() -> callback.onSuccess(drivers));
-                            });
-                        } else {
-                            mainHandler.post(() -> callback.onSuccess(new ArrayList<>()));
+    @WorkerThread
+    private void attachOpenF1Details(int year, List<CachedDriver> drivers,
+                                     RepositoryCallback<List<CachedDriver>> callback) {
+        if (year < 2023 || drivers.isEmpty()) {
+            mainHandler.post(() -> callback.onSuccess(drivers));
+            return;
+        }
+        fetchDrivers(year, new RepositoryCallback<List<CachedDriver>>() {
+            @Override
+            public void onSuccess(List<CachedDriver> openF1) {
+                for (CachedDriver d : drivers) {
+                    CachedDriver match = null;
+                    for (CachedDriver o : openF1) {
+                        if (d.code != null && d.code.equalsIgnoreCase(o.code)) { match = o; break; }
+                    }
+                    if (match == null && d.permanentNumber != null) {
+                        for (CachedDriver o : openF1) {
+                            if (d.permanentNumber.equals(o.permanentNumber)) { match = o; break; }
                         }
                     }
-                    @Override
-                    public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                        mainHandler.post(() -> callback.onSuccess(new ArrayList<>()));
+                    if (match != null) {
+                        d.headshotUrl = match.headshotUrl;
+                        d.teamColour  = match.teamColour != null && !match.teamColour.startsWith("#")
+                                ? "#" + match.teamColour : match.teamColour;
+                        if (d.teamName == null) d.teamName = match.teamName;
                     }
-                })
-            );
+                }
+                callback.onSuccess(drivers);
+            }
+            @Override
+            public void onError(String error) {
+                callback.onSuccess(drivers);
+            }
         });
     }
 
@@ -541,6 +729,8 @@ public class F1Repository {
             String acronym = toStr(d.get("name_acronym"));
             driver.driverId    = acronym != null ? acronym.toLowerCase() : "";
             driver.code        = acronym;
+            int number         = toInt(d.get("driver_number"));
+            driver.permanentNumber = number > 0 ? String.valueOf(number) : null;
             driver.headshotUrl = toStr(d.get("headshot_url"));
             driver.teamName    = toStr(d.get("team_name"));
             driver.teamColour  = toStr(d.get("team_colour"));
@@ -593,6 +783,7 @@ public class F1Repository {
                 driver.firstName       = toStr(d.get("givenName"));
                 driver.lastName        = toStr(d.get("familyName"));
                 driver.nationality     = toStr(d.get("nationality"));
+                driver.dateOfBirth     = toStr(d.get("dateOfBirth"));
                 driver.permanentNumber = toStr(d.get("permanentNumber"));
                 driver.teamName        = teamName;
                 driver.seasonYear      = year;
@@ -604,13 +795,49 @@ public class F1Repository {
         return result;
     }
 
+    /** Unique drivers across a season's stored results; team comes from the latest round. */
+    private List<CachedDriver> parseDriversFromResultRows(List<CachedResult> rows, int year) {
+        rows = new ArrayList<>(rows);
+        rows.sort((a, b) -> Integer.compare(a.round, b.round));
+        Map<String, CachedDriver> byId = new LinkedHashMap<>();
+        for (CachedResult row : rows) {
+            Object resultsObj = parseResultRow(row).get("results");
+            if (!(resultsObj instanceof List)) continue;
+            RaceResult[] parsed;
+            try {
+                parsed = gson.fromJson(gson.toJson(resultsObj), RaceResult[].class);
+            } catch (Exception e) {
+                continue;
+            }
+            if (parsed == null) continue;
+            for (RaceResult r : parsed) {
+                RaceResult.Driver rd = r.getDriver();
+                if (rd == null || rd.getDriverId() == null) continue;
+                CachedDriver driver = byId.get(rd.getDriverId());
+                if (driver == null) {
+                    driver = new CachedDriver();
+                    driver.driverId        = rd.getDriverId();
+                    driver.code            = rd.getCode();
+                    driver.firstName       = rd.getFirstName();
+                    driver.lastName        = rd.getLastName();
+                    driver.nationality     = rd.getNationality();
+                    driver.permanentNumber = rd.getNumber();
+                    driver.seasonYear      = year;
+                    byId.put(driver.driverId, driver);
+                }
+                if (r.getConstructor() != null) driver.teamName = r.getConstructor().getName();
+            }
+        }
+        return new ArrayList<>(byId.values());
+    }
+
     // ── Meetings (cache-first) ────────────────────────────────────────────────
 
     public void getMeetings(int year, RepositoryCallback<List<Map<String, Object>>> callback) {
         executor.execute(() -> {
             List<CachedMeeting> cached = db.meetingDao().getByYear(year);
             long now = System.currentTimeMillis();
-            boolean isPast  = year < currentYear;
+            boolean isPast  = year < currentYear();
             boolean isFresh = !cached.isEmpty() &&
                     (isPast || (now - cached.get(0).fetchedAt) < 7 * ONE_DAY_MS);
 
@@ -620,7 +847,7 @@ public class F1Repository {
             }
 
             mainHandler.post(() ->
-                api.getMeetings(year).enqueue(new Callback<List<Map<String, Object>>>() {
+                api().getMeetings(year).enqueue(new Callback<List<Map<String, Object>>>() {
                     @Override
                     public void onResponse(Call<List<Map<String, Object>>> call,
                                            Response<List<Map<String, Object>>> response) {
@@ -661,6 +888,7 @@ public class F1Repository {
             row.countryName    = toStr(m.get("country_name"));
             row.countryFlagUrl = toStr(m.get("country_flag"));
             row.circuitImageUrl = toStr(m.get("circuit_image"));
+            row.dateStart      = toStr(m.get("date_start"));
             row.fetchedAt      = System.currentTimeMillis();
             rows.add(row);
         }
@@ -676,6 +904,7 @@ public class F1Repository {
             map.put("country_flag",  m.countryFlagUrl);
             map.put("location",      m.location);
             map.put("country_name",  m.countryName);
+            map.put("date_start",    m.dateStart);
             out.add(map);
         }
         return out;
@@ -755,83 +984,21 @@ public class F1Repository {
         });
     }
 
-    // ── Ensure all Race results cached for season ─────────────────────────────
+    // ── Ensure all Race (and Sprint) results cached for season ────────────────
 
     public void ensureSeasonResultsCached(int year, RepositoryCallback<Void> callback) {
-        android.util.Log.d("H2H_DEBUG", "ensureSeasonResultsCached: year=" + year);
+        DebugLog.d("H2H_DEBUG", "ensureSeasonResultsCached: year=" + year);
         getSchedule(year, new RepositoryCallback<List<Map<String, Object>>>() {
             @Override
             public void onSuccess(List<Map<String, Object>> races) {
                 executor.execute(() -> {
-                    android.util.Log.d("H2H_DEBUG", "  schedule returned " + races.size() + " races");
-                    List<Integer> missingRounds = new ArrayList<>();
-                    for (Map<String, Object> race : races) {
-                        int round = toInt(race.get("round"));
-                        if (round == 0) continue;
-                        CachedResult hit = db.resultDao().get(year, round, "Race");
-                        if (hit == null) missingRounds.add(round);
-                    }
-
-                    android.util.Log.d("H2H_DEBUG", "  missingRounds=" + missingRounds.size() + " " + missingRounds);
-
-                    if (missingRounds.isEmpty()) {
-                        android.util.Log.d("H2H_DEBUG", "  all rounds already cached — firing callback immediately");
-                        mainHandler.post(() -> callback.onSuccess(null));
-                        return;
-                    }
-
-                    AtomicInteger pending = new AtomicInteger(missingRounds.size());
-                    mainHandler.post(() -> {
-                        for (int round : missingRounds) {
-                            api.getResults(year, round, "Race").enqueue(
-                                new Callback<Map<String, Object>>() {
-                                    @Override
-                                    public void onResponse(Call<Map<String, Object>> call,
-                                                           Response<Map<String, Object>> response) {
-                                        if (response.isSuccessful() && response.body() != null) {
-                                            Map<String, Object> body = response.body();
-                                            Object resultsObj = body.get("results");
-                                            int resultCount = (resultsObj instanceof List) ? ((List<?>) resultsObj).size() : -1;
-                                            android.util.Log.d("H2H_DEBUG", "  fetched round=" + round + " resultCount=" + resultCount + " httpCode=" + response.code());
-                                            // decrement AFTER the DB write so computeStatsFromRoom
-                                            // sees the row when the callback fires
-                                            executor.execute(() -> {
-                                                CachedResult row = new CachedResult();
-                                                row.year        = year;
-                                                row.round       = round;
-                                                row.sessionType = "Race";
-                                                row.resultsJson = gson.toJson(body);
-                                                row.fetchedAt   = System.currentTimeMillis();
-                                                db.resultDao().upsert(row);
-                                                int remaining = pending.decrementAndGet();
-                                                android.util.Log.d("H2H_DEBUG", "  saved round=" + round + " remaining=" + remaining);
-                                                if (remaining == 0) {
-                                                    mainHandler.post(() -> callback.onSuccess(null));
-                                                }
-                                            });
-                                        } else {
-                                            android.util.Log.d("H2H_DEBUG", "  round=" + round + " fetch FAILED httpCode=" + response.code());
-                                            if (pending.decrementAndGet() == 0) {
-                                                mainHandler.post(() -> callback.onSuccess(null));
-                                            }
-                                        }
-                                    }
-                                    @Override
-                                    public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                                        android.util.Log.d("H2H_DEBUG", "  round=" + round + " fetch FAILURE: " + t.getMessage());
-                                        if (pending.decrementAndGet() == 0) {
-                                            mainHandler.post(() -> callback.onSuccess(null));
-                                        }
-                                    }
-                                }
-                            );
-                        }
-                    });
+                    DebugLog.d("H2H_DEBUG", "  schedule returned " + races.size() + " races");
+                    cacheMissingSeasonResults(year, races, () -> callback.onSuccess(null));
                 });
             }
             @Override
             public void onError(String error) {
-                android.util.Log.d("H2H_DEBUG", "ensureSeasonResultsCached schedule error: " + error);
+                DebugLog.d("H2H_DEBUG", "ensureSeasonResultsCached schedule error: " + error);
                 callback.onSuccess(null);
             }
         });
@@ -843,29 +1010,32 @@ public class F1Repository {
 
     public void getCircuitStats(String circuitId, RepositoryCallback<CircuitStatsResponse> callback) {
         executor.execute(() -> {
-            android.util.Log.d("TRACK_STATS", "Loading circuit stats for: " + circuitId);
+            DebugLog.d("TRACK_STATS", "Loading circuit stats for: " + circuitId);
             CachedCircuitStats cached = db.circuitStatsDao().get(circuitId);
             if (cached != null) {
                 long age = System.currentTimeMillis() - cached.cachedAt;
-                android.util.Log.d("TRACK_STATS", "Cache hit: true, age=" + (age / 1000) + "s");
-                if (age < SEVEN_DAYS_MS) {
-                    CircuitStatsResponse response = gson.fromJson(cached.jsonData, CircuitStatsResponse.class);
+                CircuitStatsResponse response = gson.fromJson(cached.jsonData, CircuitStatsResponse.class);
+                // A circuit that hosted a GP this season can gain a race any weekend
+                long ttl = response != null && response.lastGPYear == currentYear() ? ONE_DAY_MS : SEVEN_DAYS_MS;
+                DebugLog.d("TRACK_STATS", "Cache hit: true, age=" + (age / 1000) + "s, ttl=" + (ttl / 1000) + "s");
+                // totalRaces == 0 means the backend had no data — treat as a miss
+                if (response != null && response.totalRaces > 0 && age < ttl) {
                     mainHandler.post(() -> callback.onSuccess(response));
                     return;
                 }
             }
-            android.util.Log.d("TRACK_STATS", "Cache hit: false — fetching from backend");
+            DebugLog.d("TRACK_STATS", "Cache hit: false — fetching from backend");
 
             mainHandler.post(() ->
-                api.getCircuitStats(circuitId).enqueue(new retrofit2.Callback<CircuitStatsResponse>() {
+                api().getCircuitStats(circuitId).enqueue(new retrofit2.Callback<CircuitStatsResponse>() {
                     @Override
                     public void onResponse(retrofit2.Call<CircuitStatsResponse> call,
                                            retrofit2.Response<CircuitStatsResponse> response) {
                         if (response.isSuccessful() && response.body() != null) {
                             CircuitStatsResponse stats = response.body();
-                            android.util.Log.d("TRACK_STATS", "Stats received: totalRaces=" + stats.totalRaces
+                            DebugLog.d("TRACK_STATS", "Stats received: totalRaces=" + stats.totalRaces
                                     + " mostWins=" + (stats.mostWins != null ? stats.mostWins.name + "(" + stats.mostWins.count + ")" : "null"));
-                            executor.execute(() -> {
+                            if (stats.totalRaces > 0) executor.execute(() -> {
                                 CachedCircuitStats entity = new CachedCircuitStats();
                                 entity.circuitId = circuitId;
                                 entity.jsonData  = gson.toJson(stats);

@@ -20,11 +20,13 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.f1stats.R;
 import com.f1stats.RoundDetailActivity;
 import com.f1stats.SeasonHelper;
+import com.f1stats.util.MeetingMatcher;
 import com.f1stats.SeasonPickerHelper;
 import com.f1stats.models.RoundSchedule;
 import com.f1stats.viewmodels.F1ViewModel;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -167,20 +169,21 @@ public class ResultsFragment extends Fragment {
         if (latestSchedule == null) return;
         List<RoundSchedule> rounds = buildRoundList(latestSchedule);
         if (latestMeetings != null) {
+            // Match on the raw schedule maps (they carry sessions + country), keyed by round
+            Map<Integer, Map<String, Object>> meetingByRound = new HashMap<>();
+            for (Map<String, Object> race : latestSchedule) {
+                Object roundObj = race.get("round");
+                if (!(roundObj instanceof Number)) continue;
+                Map<String, Object> meeting = MeetingMatcher.match(race, latestMeetings);
+                if (meeting != null) meetingByRound.put(((Number) roundObj).intValue(), meeting);
+            }
             for (RoundSchedule round : rounds) {
-                String raceName = round.getRaceName().toLowerCase();
-                for (Map<String, Object> meeting : latestMeetings) {
-                    String meetingName = meeting.get("meeting_name") != null ?
-                            meeting.get("meeting_name").toString().toLowerCase() : "";
-                    if (!meetingName.isEmpty() && (meetingName.equals(raceName)
-                            || meetingName.contains(raceName) || raceName.contains(meetingName))) {
-                        Object img = meeting.get("circuit_image");
-                        if (img != null) round.setCircuitImage(img.toString());
-                        Object flag = meeting.get("country_flag");
-                        if (flag != null) round.setCountryFlag(flag.toString());
-                        break;
-                    }
-                }
+                Map<String, Object> meeting = meetingByRound.get(round.getRound());
+                if (meeting == null) continue;
+                Object img = meeting.get("circuit_image");
+                if (img != null) round.setCircuitImage(img.toString());
+                Object flag = meeting.get("country_flag");
+                if (flag != null) round.setCountryFlag(flag.toString());
             }
         }
         roundAdapter.setRounds(rounds);

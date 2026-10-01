@@ -1,5 +1,6 @@
 package com.f1stats.models;
 
+import com.f1stats.util.ResultStatus;
 import com.google.gson.annotations.SerializedName;
 
 public class RaceResult {
@@ -140,7 +141,7 @@ public class RaceResult {
     }
 
     public boolean isFinished() {
-        return status != null && status.equals("Finished");
+        return ResultStatus.isFinished(status);
     }
 
     public String getDisplayTime() {

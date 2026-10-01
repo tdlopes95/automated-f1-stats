@@ -19,6 +19,7 @@ import android.widget.TextView;
 
 import com.f1stats.R;
 import com.f1stats.SeasonHelper;
+import com.f1stats.util.MeetingMatcher;
 import com.f1stats.SeasonPickerHelper;
 import com.f1stats.viewmodels.F1ViewModel;
 
@@ -139,18 +140,7 @@ public class ScheduleFragment extends Fragment {
         if (latestSchedule == null) return;
         if (latestMeetings != null) {
             for (Map<String, Object> race : latestSchedule) {
-                String raceName = race.get("race_name") != null ?
-                        race.get("race_name").toString().toLowerCase() : "";
-                for (Map<String, Object> meeting : latestMeetings) {
-                    String meetingName = meeting.get("meeting_name") != null ?
-                            meeting.get("meeting_name").toString().toLowerCase() : "";
-                    if (!meetingName.isEmpty() && (meetingName.equals(raceName)
-                            || meetingName.contains(raceName) || raceName.contains(meetingName))) {
-                        race.put("circuit_image", meeting.get("circuit_image"));
-                        race.put("country_flag", meeting.get("country_flag"));
-                        break;
-                    }
-                }
+                MeetingMatcher.apply(race, latestMeetings);
             }
         }
         adapter.setSchedule(latestSchedule);

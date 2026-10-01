@@ -14,10 +14,21 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val backendUrl = (project.findProperty("F1_BACKEND_URL") as String?)
+            ?: error("F1_BACKEND_URL missing from gradle.properties")
+        require(backendUrl.endsWith("/")) { "F1_BACKEND_URL must end with \"/\"" }
+        buildConfigField("String", "DEFAULT_BASE_URL", "\"$backendUrl\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
         release {
+            // TODO: enable R8 (isMinifyEnabled = true) once keep rules for Gson models,
+            //  Retrofit interfaces and Room entities are in proguard-rules.pro
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

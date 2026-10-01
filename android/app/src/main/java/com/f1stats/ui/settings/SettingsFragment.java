@@ -44,13 +44,16 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(requireContext(), "URL cannot be empty", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (!newUrl.startsWith("http")) {
-                Toast.makeText(requireContext(), "URL must start with http:// or https://", Toast.LENGTH_SHORT).show();
+            String url = SettingsManager.normaliseUrl(newUrl);
+            if (url == null) {
+                Toast.makeText(requireContext(), "Enter a valid http:// or https:// URL", Toast.LENGTH_SHORT).show();
                 return;
             }
-            SettingsManager.getInstance(requireContext()).setBaseUrl(newUrl);
+            etUrl.setText(url);
+            SettingsManager.getInstance(requireContext()).setBaseUrl(url);
+            // Repository and ViewModel fetch the service per call, so this applies immediately
             F1ApiClient.reset(requireContext());
-            Toast.makeText(requireContext(), "URL saved! Restart the app to apply.", Toast.LENGTH_LONG).show();
+            Toast.makeText(requireContext(), "URL saved", Toast.LENGTH_SHORT).show();
         });
     }
 }

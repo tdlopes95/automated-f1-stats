@@ -16,5 +16,6 @@ public class CachedMeeting {
     public String circuitType;
     public String circuitImageUrl;
     public String gmtOffset;
+    public String dateStart;
     public long fetchedAt;
 }

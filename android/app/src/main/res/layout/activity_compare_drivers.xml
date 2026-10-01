@@ -225,7 +225,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Head-to-Head"
+                    android:text="Race H2H"
                     android:textColor="@color/text_primary"
                     android:textSize="@dimen/text_body"
                     android:textStyle="bold"
@@ -245,7 +245,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="When both finished a race"
+                        android:text="Rounds where both drivers started"
                         android:textColor="@color/text_secondary"
                         android:textSize="@dimen/text_metadata"
                         android:gravity="center"

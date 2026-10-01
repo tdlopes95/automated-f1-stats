@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.f1stats.util.DebugLog;
 import com.f1stats.models.QualifyingResult;
 import com.f1stats.models.RaceResult;
 import com.f1stats.ui.results.PitStopAdapter;
@@ -85,7 +86,7 @@ public class RoundDetailActivity extends AppCompatActivity {
         String circuitImage = getIntent().getStringExtra(EXTRA_CIRCUIT_IMAGE);
         String circuitId    = getIntent().getStringExtra(EXTRA_CIRCUIT_ID);
         String countryFlag  = getIntent().getStringExtra(EXTRA_COUNTRY_FLAG);
-        android.util.Log.d("CIRCUIT_DEBUG", "RoundDetailActivity received circuitId=" + circuitId);
+        DebugLog.d("CIRCUIT_DEBUG", "RoundDetailActivity received circuitId=" + circuitId);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -116,7 +117,7 @@ public class RoundDetailActivity extends AppCompatActivity {
                 intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_NAME, finalCircuit);
                 intent.putExtra(TrackDetailActivity.EXTRA_CIRCUIT_ID, finalCircuitId);
                 intent.putExtra(TrackDetailActivity.EXTRA_COUNTRY_FLAG, finalCountryFlag);
-                android.util.Log.d("CIRCUIT_DEBUG", "RoundDetailActivity passing circuitId=" + finalCircuitId);
+                DebugLog.d("CIRCUIT_DEBUG", "RoundDetailActivity passing circuitId=" + finalCircuitId);
                 startActivity(intent);
                 overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
             });

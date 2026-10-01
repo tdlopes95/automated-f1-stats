@@ -20,6 +20,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import com.bumptech.glide.Glide;
+import com.f1stats.util.DebugLog;
 import com.f1stats.data.F1Repository;
 import com.f1stats.models.CircuitStatsResponse;
 import com.google.gson.JsonObject;
@@ -60,10 +61,7 @@ public class TrackDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_track_detail);
 
-        repository = new F1Repository(
-                F1App.get().getDatabase(),
-                com.f1stats.api.F1ApiClient.getInstance(this).getService()
-        );
+        repository = F1Repository.getInstance(this);
 
         String circuitImage = getIntent().getStringExtra(EXTRA_CIRCUIT_IMAGE);
         String circuitName  = getIntent().getStringExtra(EXTRA_CIRCUIT_NAME);
@@ -71,7 +69,7 @@ public class TrackDetailActivity extends AppCompatActivity {
         String country      = getIntent().getStringExtra(EXTRA_COUNTRY);
         String locality     = getIntent().getStringExtra(EXTRA_LOCALITY);
         String countryFlag  = getIntent().getStringExtra(EXTRA_COUNTRY_FLAG);
-        Log.d("CIRCUIT_DEBUG", "TrackDetailActivity received circuitId=" + circuitId);
+        DebugLog.d("CIRCUIT_DEBUG", "TrackDetailActivity received circuitId=" + circuitId);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
