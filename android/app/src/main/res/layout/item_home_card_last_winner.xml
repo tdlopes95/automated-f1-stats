@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home card: LAST_WINNER -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <View
+        android:id="@+id/divider_top"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/bg_elevated" />
+
+    <LinearLayout
+        android:id="@+id/card_last_race"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/bg_surface">
+
+        <include layout="@layout/view_home_card_status" />
+
+        <LinearLayout
+            android:id="@+id/card_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="@color/bg_surface">
+
+            <View
+                android:id="@+id/view_last_winner_colour"
+                android:layout_width="@dimen/team_strip_width"
+                android:layout_height="match_parent"
+                android:background="@color/team_default" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:padding="@dimen/spacing_md">
+
+                <TextView
+                    android:text="@string/home_last_winner"
+                    android:textColor="@color/text_primary"
+                    android:textSize="@dimen/text_label"
+                    android:letterSpacing="0.12"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp"
+                    android:background="@drawable/bg_badge_red"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="@dimen/spacing_sm">
+
+                    <ImageView
+                        android:id="@+id/iv_last_winner_headshot"
+                        android:layout_width="@dimen/headshot_size_md"
+                        android:layout_height="@dimen/headshot_size_md"
+                        android:scaleType="centerCrop"
+                        android:background="@color/bg_elevated" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="@dimen/spacing_md">
+
+                        <TextView
+                            android:id="@+id/tv_last_winner"
+                            android:textColor="@color/text_primary"
+                            android:textSize="@dimen/text_card_header"
+                            android:textStyle="bold"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+
+                        <TextView
+                            android:id="@+id/tv_last_race_team"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="@dimen/text_metadata"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp" />
+
+                        <TextView
+                            android:id="@+id/tv_last_race_name"
+                            android:textColor="@color/text_tertiary"
+                            android:textSize="@dimen/text_metadata"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Shown when the next card isn't a flat section (or this is the last card) -->
+    <View
+        android:id="@+id/divider_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/bg_elevated"
+        android:visibility="gone" />
+
+</LinearLayout>

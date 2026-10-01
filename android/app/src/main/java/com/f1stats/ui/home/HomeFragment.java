@@ -1,92 +1,85 @@
 package com.f1stats.ui.home;
 
-import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
+import android.content.Intent;
 import android.os.Bundle;
-import android.os.CountDownTimer;
-import android.text.Spannable;
-import android.text.SpannableStringBuilder;
-import android.text.style.RelativeSizeSpan;
-import android.view.Gravity;
-import android.widget.FrameLayout;
-import java.util.Locale;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-
-import com.bumptech.glide.Glide;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.f1stats.DateHelper;
-import com.f1stats.DriverHelper;
+import com.f1stats.CompareDriversActivity;
+import com.f1stats.CustomizeHomeActivity;
+import com.f1stats.DriverProfileActivity;
 import com.f1stats.HomeCacheManager;
 import com.f1stats.R;
 import com.f1stats.SeasonHelper;
+import com.f1stats.home.HomeCardConfig;
+import com.f1stats.home.HomeCardParams;
+import com.f1stats.home.HomeCardType;
+import com.f1stats.home.HomeLayoutStore;
+import com.f1stats.models.DriverStanding;
+import com.f1stats.models.RaceResult;
+import com.f1stats.util.DebugLog;
 import com.f1stats.util.MeetingMatcher;
-import com.f1stats.util.TeamColors;
 import com.f1stats.viewmodels.F1ViewModel;
 import com.facebook.shimmer.ShimmerFrameLayout;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.snackbar.Snackbar;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+/**
+ * Home: an ordered list of cards from {@link HomeLayoutStore}. Cards draw on shared data
+ * sources (one F1ViewModel LiveData each, current season); a source is fetched once however many
+ * cards use it, and each card's loading/error state is derived from the sources it needs, so
+ * one failing source never breaks unrelated cards.
+ */
 public class HomeFragment extends Fragment {
+
+    private static final String TAG = "HomeFragment";
+
+    /** Data Home fetches. Every card needs some subset of these. */
+    private enum Source { NEXT_RACE, LATEST_RESULTS, DRIVER_STANDINGS, CONSTRUCTOR_STANDINGS, SEASON_RESULTS }
 
     private F1ViewModel viewModel;
     private HomeCacheManager cache;
-    private CountDownTimer countDownTimer;
+    private HomeLayoutStore layoutStore;
+    private HomeCardBuilder builder;
+    private int year;
 
-    // ── Hero section ──────────────────────────────────────────────────────────
-    private TextView tvNextRaceName, tvNextRaceCircuit, tvNextRaceDate, tvNextRaceFlag;
-    private TextView tvCountdown;
-    private TextView tvNextSession;
-    private TextView tvHeroStateTitle, tvHeroStateSubtitle;
-    private LinearLayout layoutHeroState;
-    private ImageView ivNextRaceCircuit;
-    private LinearLayout llSessionTimes;
-    private LinearLayout llWeekendTimeline;
+    private final Map<HomeCardType, HomeCardState> states = new EnumMap<>(HomeCardType.class);
+    private final Map<Source, HomeCardState.Status> sourceStatus = new EnumMap<>(Source.class);
+    private final Map<Source, String> sourceErrors = new EnumMap<>(Source.class);
+    /** ensureSeasonResultsCached runs at most once per Home load (plus explicit refreshes). */
+    private boolean seasonResultsRequested;
 
-    // ── Championship Battle section ────────────────────────────────────────────
-    private TextView tvLeaderName, tvLeaderTeam, tvLeaderPoints;
-    private TextView tvLeaderTitle;
-    private View viewLeaderColour;
-    private ImageView ivLeaderHeadshot;
-    private TextView tvChampGap, tvChampInsight;
-    private View layoutChampGap;
+    private List<HomeCardConfig> layout = new ArrayList<>();
+    private List<HomeCardConfig> enabledCards = new ArrayList<>();
+    private HomeCardAdapter adapter;
 
-    private TextView tvP2Name, tvP2Team, tvP2Points;
-    private View viewP2Colour;
-    private ImageView ivP2Headshot;
-    private View layoutP2;
-
-    // ── Last winner section ───────────────────────────────────────────────────
-    private TextView tvLastWinner, tvLastRaceName, tvLastRaceTeam;
-    private ImageView ivLastWinnerHeadshot;
-    private View viewLastWinnerColour;
-
-    // ── State ─────────────────────────────────────────────────────────────────
     private ShimmerFrameLayout shimmerLayout;
     private SwipeRefreshLayout swipeRefresh;
-    private LinearLayout layoutError;
+    private RecyclerView rvCards;
+    private View layoutError;
+    private View layoutEmpty;
+    private boolean skeletonShowing;
 
-    private String leaderCode = null;
-    private String winnerCode = null;
-    private String p2Code = null;
-
-    private boolean nextRaceLoaded   = false;
-    private boolean standingsLoaded  = false;
-    private boolean lastWinnerLoaded = false;
-    private int failCount = 0;
+    private final HomeLayoutStore.Listener layoutListener = newLayout -> applyLayout();
 
     @Nullable
     @Override
@@ -100,208 +93,363 @@ public class HomeFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Hero
-        tvNextRaceName    = view.findViewById(R.id.tv_next_race_name);
-        tvNextRaceCircuit = view.findViewById(R.id.tv_next_race_circuit);
-        tvNextRaceDate    = view.findViewById(R.id.tv_next_race_date);
-        tvNextRaceFlag    = view.findViewById(R.id.tv_next_race_flag);
-        tvCountdown       = view.findViewById(R.id.tv_countdown);
-        tvNextSession     = view.findViewById(R.id.tv_next_session);
-        tvHeroStateTitle  = view.findViewById(R.id.tv_hero_state_title);
-        tvHeroStateSubtitle = view.findViewById(R.id.tv_hero_state_subtitle);
-        layoutHeroState   = view.findViewById(R.id.layout_hero_state);
-        ivNextRaceCircuit = view.findViewById(R.id.iv_next_race_circuit);
-        llSessionTimes    = view.findViewById(R.id.ll_session_times);
-        llWeekendTimeline = view.findViewById(R.id.ll_weekend_timeline);
-
-        // Championship Battle
-        tvLeaderName      = view.findViewById(R.id.tv_leader_name);
-        tvLeaderTeam      = view.findViewById(R.id.tv_leader_team);
-        tvLeaderPoints    = view.findViewById(R.id.tv_leader_points);
-        tvLeaderTitle     = view.findViewById(R.id.tv_leader_title);
-        viewLeaderColour  = view.findViewById(R.id.view_leader_colour);
-        ivLeaderHeadshot  = view.findViewById(R.id.iv_leader_headshot);
-        tvChampGap        = view.findViewById(R.id.tv_champ_gap);
-        tvChampInsight    = view.findViewById(R.id.tv_champ_insight);
-        layoutChampGap    = view.findViewById(R.id.layout_champ_gap);
-        tvP2Name          = view.findViewById(R.id.tv_p2_name);
-        tvP2Team          = view.findViewById(R.id.tv_p2_team);
-        tvP2Points        = view.findViewById(R.id.tv_p2_points);
-        viewP2Colour      = view.findViewById(R.id.view_p2_colour);
-        ivP2Headshot      = view.findViewById(R.id.iv_p2_headshot);
-        layoutP2          = view.findViewById(R.id.layout_p2);
-
-        // Last winner
-        tvLastWinner         = view.findViewById(R.id.tv_last_winner);
-        tvLastRaceName       = view.findViewById(R.id.tv_last_race_name);
-        tvLastRaceTeam       = view.findViewById(R.id.tv_last_race_team);
-        ivLastWinnerHeadshot = view.findViewById(R.id.iv_last_winner_headshot);
-        viewLastWinnerColour = view.findViewById(R.id.view_last_winner_colour);
-
-        // Shell
         shimmerLayout = view.findViewById(R.id.shimmer_layout);
         swipeRefresh  = view.findViewById(R.id.swipe_refresh_home);
+        rvCards       = view.findViewById(R.id.rv_home_cards);
         layoutError   = view.findViewById(R.id.layout_error);
+        layoutEmpty   = view.findViewById(R.id.layout_empty);
 
-        cache = HomeCacheManager.getInstance(requireContext());
+        year        = SeasonHelper.getCurrentYear();
+        cache       = HomeCacheManager.getInstance(requireContext());
+        layoutStore = HomeLayoutStore.getInstance(requireContext());
+        viewModel   = new ViewModelProvider(requireActivity()).get(F1ViewModel.class);
+        builder     = new HomeCardBuilder(requireContext(), year);
+
+        resetStates();
+        adapter = new HomeCardAdapter(states, cardCallbacks);
+        rvCards.setLayoutManager(new LinearLayoutManager(requireContext()));
+        rvCards.setAdapter(adapter);
+        // Cards rebind often (countdown state, late headshots); a crossfade on each would flicker
+        RecyclerView.ItemAnimator animator = rvCards.getItemAnimator();
+        if (animator instanceof SimpleItemAnimator) {
+            ((SimpleItemAnimator) animator).setSupportsChangeAnimations(false);
+        }
 
         view.findViewById(R.id.btn_retry).setOnClickListener(v -> {
             layoutError.setVisibility(View.GONE);
-            failCount        = 0;
-            nextRaceLoaded   = false;
-            standingsLoaded  = false;
-            lastWinnerLoaded = false;
             showSkeleton();
-            fetchData();
+            fetch(neededSources(), true);
         });
+        view.findViewById(R.id.btn_customize_home).setOnClickListener(v -> openCustomize(null));
 
         swipeRefresh.setColorSchemeColors(ContextCompat.getColor(requireContext(), R.color.f1_red));
         swipeRefresh.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.bg_dark));
         swipeRefresh.setOnRefreshListener(this::refreshData);
 
-        viewModel = new ViewModelProvider(requireActivity()).get(F1ViewModel.class);
-        observeViewModel();
+        readLayout();
+        layoutStore.addListener(layoutListener);
 
         if (cache.hasCache()) {
             loadFromCache();
             showContent();
-            fetchData();
         } else {
             showSkeleton();
-            fetchData();
         }
+        // Fetch before observing: starting a fetch clears the ViewModel's stale errors
+        fetch(neededSources(), false);
+        observeViewModel();
+        refreshCards();
+        updateEmptyState();
     }
 
-    // ── Cache ─────────────────────────────────────────────────────────────────
+    private void resetStates() {
+        states.clear();
+        states.put(HomeCardType.NEXT_RACE, new HomeCardState.NextRace());
+        states.put(HomeCardType.CHAMPIONSHIP_BATTLE, new HomeCardState.Championship());
+        states.put(HomeCardType.LAST_WINNER, new HomeCardState.LastWinner());
+        states.put(HomeCardType.FAVOURITE_DRIVER, new HomeCardState.FavouriteDriver());
+        states.put(HomeCardType.FAVOURITE_TEAM, new HomeCardState.FavouriteTeam());
+        states.put(HomeCardType.PINNED_H2H, new HomeCardState.PinnedH2h());
+        states.put(HomeCardType.CHAMPIONSHIP_SNAPSHOT, new HomeCardState.Snapshot());
+        sourceStatus.clear();
+        sourceErrors.clear();
+        for (Source source : Source.values()) sourceStatus.put(source, HomeCardState.Status.IDLE);
+        seasonResultsRequested = false;
+    }
 
-    private void loadFromCache() {
-        // Leader (P1)
-        String leaderName = cache.loadLeaderName();
-        String leaderTeam = cache.loadLeaderTeam();
-        String leaderPoints = cache.loadLeaderPoints();
+    @SuppressWarnings("unchecked")
+    private <S extends HomeCardState> S state(HomeCardType type) {
+        return (S) states.get(type);
+    }
 
-        if (leaderName != null) {
-            tvLeaderName.setText(leaderName);
-        }
-        if (leaderTeam != null) {
-            tvLeaderTeam.setText(leaderTeam);
-            applyTeamColour(viewLeaderColour, null, leaderTeam);
-        }
-        if (leaderPoints != null) {
-            tvLeaderPoints.setText(stripPtsSuffix(leaderPoints));
-        }
-        tvLeaderTitle.setText(cache.loadSeasonStarted() ?
-                "CHAMPIONSHIP BATTLE" : "LAST SEASON CHAMPION");
+    // ── Layout ────────────────────────────────────────────────────────────────
 
-        // Gap and insight — Task 3: all championship data complete from cache
-        float gap = cache.loadLeaderGap();
-        if (gap > 0) {
-            tvChampGap.setText(String.valueOf((int) gap));
-            layoutChampGap.setVisibility(View.VISIBLE);
-            String insight = cache.loadLeaderInsight();
-            if (insight == null || insight.isEmpty()) {
-                insight = generateChampInsight(gap);
-            }
-            if (!insight.isEmpty()) {
-                tvChampInsight.setText(insight);
-                tvChampInsight.setVisibility(View.VISIBLE);
-            }
+    private void readLayout() {
+        layout = layoutStore.getLayout();
+        enabledCards = new ArrayList<>();
+        for (HomeCardConfig config : layout) {
+            if (config.isEnabled() && config.getType().isAvailable()) enabledCards.add(config);
+        }
+        adapter.setContent(enabledTypes(), shouldShowWelcome());
+    }
+
+    private List<HomeCardType> enabledTypes() {
+        List<HomeCardType> types = new ArrayList<>();
+        for (HomeCardConfig config : enabledCards) types.add(config.getType());
+        return types;
+    }
+
+    private boolean shouldShowWelcome() {
+        return !layoutStore.isWelcomeDismissed()
+                && configFor(HomeCardType.FAVOURITE_DRIVER).getParam(HomeCardParams.DRIVER_ID) == null
+                && configFor(HomeCardType.FAVOURITE_TEAM).getParam(HomeCardParams.CONSTRUCTOR_ID) == null;
+    }
+
+    private HomeCardConfig configFor(HomeCardType type) {
+        for (HomeCardConfig config : layout) {
+            if (config.getType() == type) return config;
+        }
+        return new HomeCardConfig(type, false);
+    }
+
+    /** The layout or a card's options changed in Customize. */
+    private void applyLayout() {
+        if (getView() == null) return;
+        readLayout();
+        // Only sources never fetched in this Home load; anything loaded is reused
+        Set<Source> toFetch = EnumSet.noneOf(Source.class);
+        for (Source source : neededSources()) {
+            if (sourceStatus.get(source) == HomeCardState.Status.IDLE) toFetch.add(source);
+        }
+        fetch(toFetch, false);
+        refreshCards();
+        updateEmptyState();
+        checkSettled();
+    }
+
+    private void updateEmptyState() {
+        if (enabledCards.isEmpty() && !shouldShowWelcome()) {
+            shimmerLayout.stopShimmer();
+            shimmerLayout.setVisibility(View.GONE);
+            skeletonShowing = false;
+            swipeRefresh.setRefreshing(false);
+            swipeRefresh.setVisibility(View.GONE);
+            layoutError.setVisibility(View.GONE);
+            layoutEmpty.setVisibility(View.VISIBLE);
         } else {
-            layoutChampGap.setVisibility(View.GONE);
-            tvChampInsight.setVisibility(View.GONE);
-        }
-
-        // P2 — Task 3: P2 data fully cached so it appears instantly
-        String p2Name = cache.loadP2Name();
-        String p2Team = cache.loadP2Team();
-        String p2Points = cache.loadP2Points();
-        if (p2Name != null) {
-            tvP2Name.setText(p2Name);
-            tvP2Team.setText(p2Team != null ? p2Team : "");
-            tvP2Points.setText(stripPtsSuffix(p2Points != null ? p2Points : ""));
-            if (p2Team != null) applyTeamColour(viewP2Colour, null, p2Team);
-            layoutP2.setVisibility(View.VISIBLE);
-        }
-
-        // Last winner
-        String lastWinner = cache.loadLastWinner();
-        if (lastWinner != null) {
-            tvLastWinner.setText(lastWinner);
-        }
-        String lastTeam = cache.loadLastTeam();
-        if (lastTeam != null) {
-            tvLastRaceTeam.setText(lastTeam);
-            applyTeamColour(viewLastWinnerColour, null, lastTeam);
-        }
-        String lastRaceName = cache.loadLastRaceName();
-        if (lastRaceName != null) {
-            tvLastRaceName.setText(lastRaceName);
-        }
-
-        // Next race
-        Map<String, Object> race = cache.loadNextRace();
-        if (race != null) {
-            tvNextRaceName.setText(getStr(race, "race_name", ""));
-            tvNextRaceCircuit.setText(getStr(race, "circuit", ""));
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> sessions =
-                    (List<Map<String, Object>>) race.get("sessions");
-            if (sessions != null) {
-                buildSessionTimes(sessions);
-            } else {
-                // No sessions data — show race date if available as fallback
-                tvNextRaceDate.setText("");
-                showNormalCountdownState();
+            layoutEmpty.setVisibility(View.GONE);
+            if (!skeletonShowing && layoutError.getVisibility() != View.VISIBLE) {
+                swipeRefresh.setVisibility(View.VISIBLE);
             }
         }
     }
 
-    private void showContent() {
-        shimmerLayout.stopShimmer();
-        shimmerLayout.setVisibility(View.GONE);
-        swipeRefresh.setVisibility(View.VISIBLE);
-        nextRaceLoaded   = true;
-        standingsLoaded  = true;
-        lastWinnerLoaded = true;
+    // ── Sources ───────────────────────────────────────────────────────────────
+
+    /** What a card needs; empty when it can only show a "choose" prompt. */
+    private Set<Source> sourcesFor(HomeCardConfig config) {
+        if (HomeCardParams.needsChoice(config)) return EnumSet.noneOf(Source.class);
+        switch (config.getType()) {
+            case NEXT_RACE:
+                return EnumSet.of(Source.NEXT_RACE);
+            case CHAMPIONSHIP_BATTLE:
+                return EnumSet.of(Source.DRIVER_STANDINGS);
+            case LAST_WINNER:
+                return EnumSet.of(Source.LATEST_RESULTS);
+            case FAVOURITE_DRIVER:
+                return EnumSet.of(Source.DRIVER_STANDINGS, Source.SEASON_RESULTS);
+            case FAVOURITE_TEAM:
+                return EnumSet.of(Source.CONSTRUCTOR_STANDINGS, Source.DRIVER_STANDINGS,
+                        Source.SEASON_RESULTS);
+            case PINNED_H2H:
+                if (config.getBooleanParam(HomeCardParams.TEAMMATES_OF_FAVOURITE)
+                        && layoutStore.getFavouriteDriverId() == null) {
+                    return EnumSet.noneOf(Source.class);
+                }
+                return EnumSet.of(Source.DRIVER_STANDINGS, Source.SEASON_RESULTS);
+            case CHAMPIONSHIP_SNAPSHOT:
+                return HomeCardParams.isConstructorsMode(config)
+                        ? EnumSet.of(Source.CONSTRUCTOR_STANDINGS)
+                        : EnumSet.of(Source.DRIVER_STANDINGS);
+            default:
+                return EnumSet.noneOf(Source.class);
+        }
     }
 
-    // ── Data ──────────────────────────────────────────────────────────────────
+    private Set<Source> neededSources() {
+        Set<Source> sources = EnumSet.noneOf(Source.class);
+        for (HomeCardConfig config : enabledCards) sources.addAll(sourcesFor(config));
+        return sources;
+    }
 
-    private void fetchData() {
-        viewModel.fetchNextRace();
-        viewModel.fetchDriverStandings(SeasonHelper.getCurrentYear());
-        viewModel.fetchLatestResults("Race", SeasonHelper.getCurrentYear());
-        viewModel.fetchMeetings(SeasonHelper.getCurrentYear());
-        viewModel.prefetchDrivers(SeasonHelper.getCurrentYear());
+    /**
+     * Starts each source not already loading. Season results are requested at most once per
+     * Home load unless {@code userInitiated} (pull-to-refresh, retry).
+     */
+    private void fetch(Collection<Source> sources, boolean userInitiated) {
+        boolean needsHeadshots = false;
+        for (Source source : sources) {
+            if (sourceStatus.get(source) == HomeCardState.Status.LOADING) continue;
+            if (source == Source.SEASON_RESULTS && seasonResultsRequested && !userInitiated) continue;
+            sourceStatus.put(source, HomeCardState.Status.LOADING);
+            sourceErrors.remove(source);
+            switch (source) {
+                case NEXT_RACE:
+                    viewModel.fetchNextRace();
+                    viewModel.fetchMeetings(year);
+                    break;
+                case LATEST_RESULTS:
+                    viewModel.fetchLatestResults("Race", year);
+                    needsHeadshots = true;
+                    break;
+                case DRIVER_STANDINGS:
+                    viewModel.fetchHomeDriverStandings(year);
+                    needsHeadshots = true;
+                    break;
+                case CONSTRUCTOR_STANDINGS:
+                    viewModel.fetchHomeConstructorStandings(year);
+                    break;
+                case SEASON_RESULTS:
+                    seasonResultsRequested = true;
+                    viewModel.fetchHomeSeasonResults(year);
+                    break;
+            }
+        }
+        if (needsHeadshots) viewModel.prefetchDrivers(year);
+    }
+
+    private void sourceLoaded(Source source) {
+        sourceStatus.put(source, HomeCardState.Status.LOADED);
+        sourceErrors.remove(source);
+        refreshCards();
+        checkSettled();
+    }
+
+    private void sourceFailed(Source source, String error) {
+        DebugLog.d(TAG, source + " failed: " + error);
+        sourceStatus.put(source, HomeCardState.Status.ERROR);
+        sourceErrors.put(source, error);
+        refreshCards();
+        checkSettled();
     }
 
     private void refreshData() {
-        failCount        = 0;
-        nextRaceLoaded   = false;
-        standingsLoaded  = false;
-        lastWinnerLoaded = false;
         layoutError.setVisibility(View.GONE);
-        fetchData();
+        fetch(neededSources(), true);
+        refreshCards();
+        checkSettled();
+    }
+
+    // ── Card state ────────────────────────────────────────────────────────────
+
+    /** Rebuilds the derived cards from the shared data, then every card's status. */
+    private void refreshCards() {
+        List<DriverStanding> drivers = viewModel.getHomeDriverStandings().getValue();
+        String favouriteDriverId = layoutStore.getFavouriteDriverId();
+        HomeCardConfig favouriteDriver = configFor(HomeCardType.FAVOURITE_DRIVER);
+
+        builder.favouriteDriver(state(HomeCardType.FAVOURITE_DRIVER), favouriteDriver,
+                drivers, viewModel.getHomeSeasonResults().getValue());
+        builder.favouriteTeam(state(HomeCardType.FAVOURITE_TEAM), configFor(HomeCardType.FAVOURITE_TEAM),
+                viewModel.getHomeConstructorStandings().getValue(), drivers,
+                viewModel.getHomeSeasonResults().getValue());
+        builder.pinnedH2h(state(HomeCardType.PINNED_H2H), configFor(HomeCardType.PINNED_H2H),
+                favouriteDriverId, favouriteDriver.getParam(HomeCardParams.DRIVER_NAME),
+                drivers, viewModel.getHomeSeasonResults().getValue());
+        builder.snapshot(state(HomeCardType.CHAMPIONSHIP_SNAPSHOT),
+                configFor(HomeCardType.CHAMPIONSHIP_SNAPSHOT), favouriteDriverId,
+                layoutStore.getFavouriteConstructorId(),
+                drivers, viewModel.getHomeConstructorStandings().getValue());
+
+        for (HomeCardConfig config : layout) updateStatus(config);
+        adapter.notifyAllCardsChanged();
+    }
+
+    private void updateStatus(HomeCardConfig config) {
+        HomeCardState state = states.get(config.getType());
+        if (state == null) return;
+        Set<Source> sources = sourcesFor(config);
+        String error = null;
+        boolean loading = false;
+        boolean allLoaded = true;
+        for (Source source : sources) {
+            HomeCardState.Status status = sourceStatus.get(source);
+            if (status == HomeCardState.Status.ERROR && error == null) error = sourceErrors.get(source);
+            if (status == HomeCardState.Status.LOADING) loading = true;
+            if (status != HomeCardState.Status.LOADED) allLoaded = false;
+        }
+        state.error = error;
+        if (error != null)   state.status = HomeCardState.Status.ERROR;
+        else if (loading)    state.status = HomeCardState.Status.LOADING;
+        else if (allLoaded)  state.status = HomeCardState.Status.LOADED;
+        else                 state.status = HomeCardState.Status.IDLE;
+    }
+
+    /** Once no enabled card is loading: drop the skeleton, end pull-to-refresh. */
+    private void checkSettled() {
+        if (getView() == null) return;
+        if (enabledCards.isEmpty()) {
+            swipeRefresh.setRefreshing(false);
+            if (skeletonShowing) showContent();
+            return;
+        }
+        boolean anyError = false;
+        boolean allFailed = true;
+        for (HomeCardConfig config : enabledCards) {
+            HomeCardState state = states.get(config.getType());
+            if (state == null) continue;
+            boolean showsContent = state.hasData || state.promptMessage != null;
+            // Includes cached cards being refreshed, so pull-to-refresh ends with the data
+            if (state.status == HomeCardState.Status.LOADING) return;
+            if (state.status == HomeCardState.Status.ERROR) anyError = true;
+            if (showsContent || state.status != HomeCardState.Status.ERROR) allFailed = false;
+        }
+
+        boolean wasRefreshing = swipeRefresh.isRefreshing();
+        swipeRefresh.setRefreshing(false);
+        if (allFailed) {
+            // Nothing to show at all
+            shimmerLayout.stopShimmer();
+            shimmerLayout.setVisibility(View.GONE);
+            skeletonShowing = false;
+            swipeRefresh.setVisibility(View.GONE);
+            layoutError.setVisibility(View.VISIBLE);
+            return;
+        }
+        showContent();
+        if (wasRefreshing && !anyError) {
+            Snackbar.make(requireView(), R.string.home_refresh_ok, Snackbar.LENGTH_SHORT)
+                    .setAnchorView(requireActivity().findViewById(R.id.bottom_navigation))
+                    .show();
+        }
     }
 
     private void showSkeleton() {
+        skeletonShowing = true;
         shimmerLayout.startShimmer();
         shimmerLayout.setVisibility(View.VISIBLE);
         swipeRefresh.setVisibility(View.GONE);
     }
 
-    private void checkAllLoaded() {
-        if (nextRaceLoaded && standingsLoaded && lastWinnerLoaded) {
-            shimmerLayout.stopShimmer();
-            shimmerLayout.setVisibility(View.GONE);
-            swipeRefresh.setVisibility(View.VISIBLE);
-            boolean wasRefreshing = swipeRefresh.isRefreshing();
-            swipeRefresh.setRefreshing(false);
-            if (wasRefreshing) {
-                Snackbar.make(requireView(), "Refresh OK", Snackbar.LENGTH_SHORT)
-                        .setAnchorView(requireActivity().findViewById(R.id.bottom_navigation))
-                        .show();
+    private void showContent() {
+        skeletonShowing = false;
+        shimmerLayout.stopShimmer();
+        shimmerLayout.setVisibility(View.GONE);
+        layoutError.setVisibility(View.GONE);
+        swipeRefresh.setVisibility(View.VISIBLE);
+    }
+
+    // ── Cache (original three cards) ──────────────────────────────────────────
+
+    private void loadFromCache() {
+        HomeCardState.Championship champ = state(HomeCardType.CHAMPIONSHIP_BATTLE);
+        String leaderName = cache.loadLeaderName();
+        if (leaderName != null) {
+            champ.leader = row(leaderName, cache.loadLeaderTeam(), cache.loadLeaderPoints(), null, null);
+            champ.seasonStarted = cache.loadSeasonStarted();
+            champ.gap = cache.loadLeaderGap();
+            String insight = cache.loadLeaderInsight();
+            champ.insight = insight != null && !insight.isEmpty() ? insight : insightFor(champ.gap);
+            String p2Name = cache.loadP2Name();
+            if (p2Name != null) {
+                champ.p2 = row(p2Name, cache.loadP2Team(), cache.loadP2Points(), null, null);
             }
+            champ.hasData = true;
+        }
+
+        String lastWinner = cache.loadLastWinner();
+        if (lastWinner != null) {
+            HomeCardState.LastWinner winner = state(HomeCardType.LAST_WINNER);
+            winner.winner = row(lastWinner, cache.loadLastTeam(), null, null, null);
+            winner.raceName = cache.loadLastRaceName();
+            winner.hasData = true;
+        }
+
+        Map<String, Object> race = cache.loadNextRace();
+        if (race != null) {
+            HomeCardState.NextRace next = state(HomeCardType.NEXT_RACE);
+            next.race = race;
+            next.hasData = true;
         }
     }
 
@@ -310,599 +458,261 @@ public class HomeFragment extends Fragment {
     private void observeViewModel() {
 
         viewModel.getNextRace().observe(getViewLifecycleOwner(), race -> {
-            if (race == null) {
-                // Task 6: guard null race — show offseason if no upcoming race
-                showOffseasonState();
-                nextRaceLoaded = true;
-                checkAllLoaded();
-                return;
-            }
-            tvNextRaceName.setText(getStr(race, "race_name", "Unknown Race"));
-            tvNextRaceCircuit.setText(getStr(race, "circuit", ""));
-            tvNextRaceFlag.setText(DriverHelper.getFlagForCountry(getStr(race, "country", "")));
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> sessions =
-                    (List<Map<String, Object>>) race.get("sessions");
-            if (sessions != null) {
-                buildSessionTimes(sessions);
-            } else {
-                // Task 6: no session data — show race name without sessions
-                tvNextRaceDate.setText("");
-                showNormalCountdownState();
-            }
-            cache.saveNextRace(race);
-            loadNextRaceCircuitImage();
-            nextRaceLoaded = true;
-            checkAllLoaded();
+            HomeCardState.NextRace state = state(HomeCardType.NEXT_RACE);
+            state.race = race;
+            // No upcoming race: offseason
+            state.offseason = race == null;
+            state.hasData = true;
+            if (race != null) cache.saveNextRace(race);
+            updateCircuitImage();
+            sourceLoaded(Source.NEXT_RACE);
         });
 
-        viewModel.getDriverStandings().observe(getViewLifecycleOwner(), standings -> {
-            if (standings == null || standings.isEmpty()) return;
+        // Next race and meetings arrive independently; whichever lands second sets the image
+        viewModel.getMeetings().observe(getViewLifecycleOwner(), meetings -> {
+            updateCircuitImage();
+            adapter.notifyCardChanged(HomeCardType.NEXT_RACE);
+        });
 
-            // P1 — championship leader
-            var leader = standings.get(0);
-            String name   = leader.getDriver() != null ? leader.getDriver().getFullName() : "";
-            String team   = leader.getTeamName();
-            double gap    = leader.getGapToSecond();
-
-            tvLeaderName.setText(name);
-            tvLeaderTeam.setText(team);
-            tvLeaderPoints.setText(leader.getPoints());
-            applyTeamColour(viewLeaderColour, leader.getConstructorId(), team);
-            leaderCode = leader.getDriver() != null ? leader.getDriver().getCode() : null;
-            loadHeadshot(ivLeaderHeadshot, leaderCode, viewModel.getDriverHeadshotMap().getValue());
-
-            // Gap and insight display
-            String insight = "";
-            if (gap > 0) {
-                tvChampGap.setText(String.valueOf((int) gap));
-                layoutChampGap.setVisibility(View.VISIBLE);
-                insight = generateChampInsight(gap);
-                if (!insight.isEmpty()) {
-                    tvChampInsight.setText(insight);
-                    tvChampInsight.setVisibility(View.VISIBLE);
-                } else {
-                    tvChampInsight.setVisibility(View.GONE);
-                }
-            } else {
-                layoutChampGap.setVisibility(View.GONE);
-                tvChampInsight.setVisibility(View.GONE);
-            }
-
-            // P2
-            if (standings.size() >= 2) {
-                var p2 = standings.get(1);
-                String p2Name = p2.getDriver() != null ? p2.getDriver().getFullName() : "";
-                String p2Team = p2.getTeamName();
-                tvP2Name.setText(p2Name);
-                tvP2Team.setText(p2Team);
-                tvP2Points.setText(p2.getPoints());
-                applyTeamColour(viewP2Colour, p2.getConstructorId(), p2Team);
-                p2Code = p2.getDriver() != null ? p2.getDriver().getCode() : null;
-                loadHeadshot(ivP2Headshot, p2Code, viewModel.getDriverHeadshotMap().getValue());
-                layoutP2.setVisibility(View.VISIBLE);
-                // Task 3: persist P2 so cold-start shows complete championship section
-                cache.saveP2(p2Name, p2Team, p2.getPoints());
-            } else {
-                layoutP2.setVisibility(View.GONE);
-            }
-
-            // Task 3: persist insight alongside gap so cache is complete
-            cache.saveLeaderInsight(insight);
-            standingsLoaded = true;
-            checkAllLoaded();
+        viewModel.getHomeDriverStandings().observe(getViewLifecycleOwner(), standings -> {
+            if (standings == null) return;
+            if (!standings.isEmpty()) updateChampionship(standings);
+            // Empty (no standings yet): the card shows its blank layout rather than a shimmer
+            state(HomeCardType.CHAMPIONSHIP_BATTLE).hasData = true;
+            sourceLoaded(Source.DRIVER_STANDINGS);
         });
 
         viewModel.getSeasonStarted().observe(getViewLifecycleOwner(), started -> {
-            if (tvLeaderTitle != null) {
-                tvLeaderTitle.setText(started != null && started ?
-                        "CHAMPIONSHIP BATTLE" : "LAST SEASON CHAMPION");
+            HomeCardState.Championship state = state(HomeCardType.CHAMPIONSHIP_BATTLE);
+            state.seasonStarted = started != null && started;
+            if (state.leader != null && state.leader.name != null && !state.leader.name.isEmpty()) {
+                cache.saveLeader(state.leader.name, state.leader.team, state.leader.points,
+                        state.gap, state.seasonStarted);
             }
-            String name   = tvLeaderName.getText() != null ? tvLeaderName.getText().toString() : "";
-            String team   = tvLeaderTeam.getText() != null ? tvLeaderTeam.getText().toString() : "";
-            String points = tvLeaderPoints.getText() != null ? tvLeaderPoints.getText().toString() : "";
-            if (!name.isEmpty()) {
-                cache.saveLeader(name, team, points, cache.loadLeaderGap(),
-                        started != null && started);
-            }
+            adapter.notifyCardChanged(HomeCardType.CHAMPIONSHIP_BATTLE);
+        });
+
+        viewModel.getHomeConstructorStandings().observe(getViewLifecycleOwner(), standings -> {
+            if (standings != null) sourceLoaded(Source.CONSTRUCTOR_STANDINGS);
+        });
+
+        viewModel.getHomeSeasonResults().observe(getViewLifecycleOwner(), season -> {
+            if (season != null) sourceLoaded(Source.SEASON_RESULTS);
         });
 
         viewModel.getRaceResults().observe(getViewLifecycleOwner(), results -> {
-            if (results == null || results.isEmpty()) return;
-            var winner = results.get(0);
-            String winnerName = winner.getDriver() != null ?
-                    winner.getDriver().getFullName() : "";
-            String team = winner.getConstructor() != null ?
-                    winner.getConstructor().getName() : "";
-            tvLastWinner.setText(winnerName);
-            tvLastRaceTeam.setText(team);
-            applyTeamColour(viewLastWinnerColour,
+            if (results == null) return;
+            HomeCardState.LastWinner state = state(HomeCardType.LAST_WINNER);
+            state.hasData = true;
+            if (results.isEmpty()) {
+                // No race yet this season: blank card, as before
+                sourceLoaded(Source.LATEST_RESULTS);
+                return;
+            }
+            RaceResult winner = results.get(0);
+            state.winner = row(
+                    winner.getDriver() != null ? winner.getDriver().getFullName() : "",
+                    winner.getConstructor() != null ? winner.getConstructor().getName() : "",
+                    null,
                     winner.getConstructor() != null ? winner.getConstructor().getConstructorId() : null,
-                    team);
-            winnerCode = winner.getDriver() != null ? winner.getDriver().getCode() : null;
-            loadHeadshot(ivLastWinnerHeadshot, winnerCode,
-                    viewModel.getDriverHeadshotMap().getValue());
-            lastWinnerLoaded = true;
-            checkAllLoaded();
+                    winner.getDriver() != null ? winner.getDriver().getCode() : null);
+            state.hasData = true;
+            saveLastWinner(state);
+            sourceLoaded(Source.LATEST_RESULTS);
         });
 
         viewModel.getLastRaceName().observe(getViewLifecycleOwner(), raceName -> {
-            if (raceName != null && !raceName.isEmpty()) {
-                tvLastRaceName.setText(raceName);
-                String winnerName = tvLastWinner.getText() != null ?
-                        tvLastWinner.getText().toString() : "";
-                String team = tvLastRaceTeam.getText() != null ?
-                        tvLastRaceTeam.getText().toString() : "";
-                cache.saveLastWinner(winnerName, team, raceName);
-            }
+            if (raceName == null || raceName.isEmpty()) return;
+            HomeCardState.LastWinner state = state(HomeCardType.LAST_WINNER);
+            state.raceName = raceName;
+            saveLastWinner(state);
+            adapter.notifyCardChanged(HomeCardType.LAST_WINNER);
         });
-
-        viewModel.getMeetings().observe(getViewLifecycleOwner(), meetings -> loadNextRaceCircuitImage());
 
         viewModel.getDriverHeadshotMap().observe(getViewLifecycleOwner(), map -> {
-            if (map == null) return;
-            loadHeadshot(ivLeaderHeadshot, leaderCode, map);
-            loadHeadshot(ivLastWinnerHeadshot, winnerCode, map);
-            loadHeadshot(ivP2Headshot, p2Code, map);
+            if (map != null) adapter.setHeadshots(map);
         });
 
-        viewModel.getHomeError().observe(getViewLifecycleOwner(), error -> {
-            if (error != null) {
-                failCount++;
-                swipeRefresh.setRefreshing(false);
-                if (failCount >= 3) {
-                    if (!cache.hasCache()) {
-                        shimmerLayout.stopShimmer();
-                        shimmerLayout.setVisibility(View.GONE);
-                        swipeRefresh.setVisibility(View.GONE);
-                        layoutError.setVisibility(View.VISIBLE);
-                    }
-                    failCount = 0;
-                }
-                viewModel.clearHomeError();
-            }
+        viewModel.getNextRaceError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null) sourceFailed(Source.NEXT_RACE, error);
+        });
+        viewModel.getHomeStandingsError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null) sourceFailed(Source.DRIVER_STANDINGS, error);
+        });
+        viewModel.getLatestResultsError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null) sourceFailed(Source.LATEST_RESULTS, error);
+        });
+        viewModel.getHomeConstructorStandingsError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null) sourceFailed(Source.CONSTRUCTOR_STANDINGS, error);
         });
     }
 
-    // ── Weekend Timeline ──────────────────────────────────────────────────────
+    private void updateChampionship(List<DriverStanding> standings) {
+        HomeCardState.Championship state = state(HomeCardType.CHAMPIONSHIP_BATTLE);
+        DriverStanding leader = standings.get(0);
+        state.leader = row(leader);
+        state.gap = leader.getGapToSecond();
+        state.insight = insightFor(state.gap);
+        Boolean started = viewModel.getSeasonStarted().getValue();
+        state.seasonStarted = started != null && started;
+        state.p2 = standings.size() >= 2 ? row(standings.get(1)) : null;
+        state.hasData = true;
 
-    private void buildSessionTimes(List<Map<String, Object>> sessions) {
-        if (sessions == null || getContext() == null) return;
-        buildWeekendTimeline(sessions);
-        updateNextSessionLabel(sessions);
-        buildSessionList(sessions);
+        cache.saveLeader(state.leader.name, state.leader.team, state.leader.points,
+                state.gap, state.seasonStarted);
+        cache.saveLeaderInsight(state.insight);
+        if (state.p2 != null) cache.saveP2(state.p2.name, state.p2.team, state.p2.points);
+    }
 
-        // Task 1: countdown targets next relevant session, not always the race
-        Map<String, Object> nextSession = findNextUpcomingSession(sessions);
-        if (nextSession != null) {
-            String dateStr = (String) nextSession.get("datetime");
-            if (dateStr != null) {
-                // Show race date as context when next session is the race itself
-                String sessionName = (String) nextSession.get("name");
-                if ("Race".equals(sessionName)) {
-                    tvNextRaceDate.setText(formatDate(dateStr));
-                } else {
-                    tvNextRaceDate.setText("");
-                }
-                startCountdown(dateStr);
+    // ── Actions ───────────────────────────────────────────────────────────────
+
+    private final HomeCardAdapter.Callbacks cardCallbacks = new HomeCardAdapter.Callbacks() {
+        @Override
+        public void onRetry(@NonNull HomeCardType type) {
+            Set<Source> failed = EnumSet.noneOf(Source.class);
+            for (Source source : sourcesFor(configFor(type))) {
+                if (sourceStatus.get(source) != HomeCardState.Status.LOADED) failed.add(source);
             }
-            showNormalCountdownState();
-        } else {
-            // Task 2: all sessions complete → show Weekend Complete state
-            showWeekendCompleteState();
+            fetch(failed, true);
+            refreshCards();
         }
 
-        // Always show full race date for context if we have it
-        if (tvNextRaceDate.getText().toString().isEmpty()) {
-            for (Map<String, Object> session : sessions) {
-                if ("Race".equals(session.get("name"))) {
-                    String raceDate = (String) session.get("datetime");
-                    if (raceDate != null) {
-                        tvNextRaceDate.setText(formatDate(raceDate));
-                    }
-                    break;
-                }
+        @Override
+        public void onPromptAction(@NonNull HomeCardType target) {
+            openCustomize(target);
+        }
+
+        @Override
+        public void onCardClick(@NonNull HomeCardType type) {
+            openCard(type);
+        }
+
+        @Override
+        public void onWelcomeAction() {
+            openCustomize(null);
+        }
+
+        @Override
+        public void onWelcomeDismiss() {
+            layoutStore.setWelcomeDismissed(true);
+        }
+    };
+
+    private void openCustomize(@Nullable HomeCardType optionsFor) {
+        Intent intent = new Intent(requireContext(), CustomizeHomeActivity.class);
+        if (optionsFor != null) intent.putExtra(CustomizeHomeActivity.EXTRA_OPEN_OPTIONS, optionsFor.name());
+        startActivity(intent);
+    }
+
+    private void openCard(HomeCardType type) {
+        switch (type) {
+            case FAVOURITE_DRIVER:
+                openDriverProfile(state(HomeCardType.FAVOURITE_DRIVER));
+                break;
+            case FAVOURITE_TEAM: {
+                HomeCardState.FavouriteTeam team = state(HomeCardType.FAVOURITE_TEAM);
+                openCompare(team.driverA != null ? team.driverA.driverId : null,
+                        team.driverB != null ? team.driverB.driverId : null);
+                break;
             }
-        }
-    }
-
-    /** Returns the first session that has not yet ended (current or upcoming). */
-    private Map<String, Object> findNextUpcomingSession(List<Map<String, Object>> sessions) {
-        if (sessions == null) return null;
-        long now = System.currentTimeMillis();
-        long sessionDurationMs = 3 * 60 * 60 * 1000L;
-        for (Map<String, Object> session : sessions) {
-            String dateStr = (String) session.get("datetime");
-            if (dateStr == null) continue;
-            long millis = DateHelper.toMillis(dateStr);
-            if (millis == -1) continue;
-            if (millis + sessionDurationMs > now) {
-                return session;
-            }
-        }
-        return null;
-    }
-
-    /** True if the first session is more than 60 days away (likely offseason). */
-    private boolean isOffseason(List<Map<String, Object>> sessions) {
-        if (sessions == null || sessions.isEmpty()) return false;
-        Map<String, Object> firstSession = sessions.get(0);
-        String dateStr = (String) firstSession.get("datetime");
-        if (dateStr == null) return false;
-        long millis = DateHelper.toMillis(dateStr);
-        if (millis == -1) return false;
-        long sixtyDaysMs = 60L * 24 * 60 * 60 * 1000;
-        return millis > System.currentTimeMillis() + sixtyDaysMs;
-    }
-
-    /** Show normal countdown + session label, hide state panel. */
-    private void showNormalCountdownState() {
-        tvCountdown.setVisibility(View.VISIBLE);
-        layoutHeroState.setVisibility(View.GONE);
-    }
-
-    /**
-     * Task 2: Weekend Complete — all sessions done, awaiting next race.
-     * Hides countdown, shows a clear completion message.
-     */
-    private void showWeekendCompleteState() {
-        if (countDownTimer != null) countDownTimer.cancel();
-        tvCountdown.setVisibility(View.GONE);
-        tvNextSession.setText("WEEKEND COMPLETE");
-        tvNextSession.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
-        tvNextSession.setVisibility(View.VISIBLE);
-        tvHeroStateTitle.setText("WEEKEND COMPLETE");
-        tvHeroStateSubtitle.setText("Updating schedule...");
-        layoutHeroState.setVisibility(View.VISIBLE);
-        llWeekendTimeline.setVisibility(View.VISIBLE);
-    }
-
-    /**
-     * Task 2: Offseason — no upcoming race in the near future.
-     * Shows a winter break or preseason message.
-     */
-    private void showOffseasonState() {
-        if (countDownTimer != null) countDownTimer.cancel();
-        tvCountdown.setVisibility(View.GONE);
-        tvNextSession.setText("OFFSEASON");
-        tvNextSession.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_tertiary));
-        tvNextSession.setVisibility(View.VISIBLE);
-        tvHeroStateTitle.setText("WINTER BREAK");
-        tvHeroStateSubtitle.setText("The season will resume soon.");
-        layoutHeroState.setVisibility(View.VISIBLE);
-    }
-
-    private void buildWeekendTimeline(List<Map<String, Object>> sessions) {
-        if (llWeekendTimeline == null || sessions == null || getContext() == null) return;
-        llWeekendTimeline.removeAllViews();
-
-        float d = requireContext().getResources().getDisplayMetrics().density;
-        int dotSizePx   = Math.round(10 * d);
-        int dotTopPx    = Math.round(8 * d);
-        int lineTopPx   = dotTopPx + (dotSizePx / 2);
-        int labelTopPx  = Math.round(4 * d);
-        int totalHeight = Math.round(44 * d);
-
-        int colorDone    = ContextCompat.getColor(requireContext(), R.color.status_green);
-        int colorActive  = Color.WHITE;
-        int colorPending = ContextCompat.getColor(requireContext(), R.color.bg_elevated);
-        int colorLine    = ContextCompat.getColor(requireContext(), R.color.bg_elevated);
-        int labelDone    = ContextCompat.getColor(requireContext(), R.color.text_tertiary);
-        int labelActive  = Color.WHITE;
-        int labelPending = ContextCompat.getColor(requireContext(), R.color.text_hint);
-
-        FrameLayout frame = new FrameLayout(requireContext());
-        LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, totalHeight);
-        frame.setLayoutParams(frameParams);
-
-        View line = new View(requireContext());
-        FrameLayout.LayoutParams lineParams = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, Math.max(1, Math.round(1 * d)));
-        lineParams.topMargin = lineTopPx;
-        line.setBackgroundColor(colorLine);
-        frame.addView(line, lineParams);
-
-        LinearLayout nodesRow = new LinearLayout(requireContext());
-        nodesRow.setOrientation(LinearLayout.HORIZONTAL);
-        frame.addView(nodesRow, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-
-        for (Map<String, Object> session : sessions) {
-            String name    = (String) session.get("name");
-            String dateStr = (String) session.get("datetime");
-            if (name == null) continue;
-
-            String abbr   = getSessionAbbr(name);
-            int    status = dateStr != null ? getSessionStatus(dateStr) : 1;
-
-            int dotColor   = status < 0 ? colorDone  : (status == 0 ? colorActive  : colorPending);
-            int labelColor = status < 0 ? labelDone  : (status == 0 ? labelActive  : labelPending);
-            boolean filled = status <= 0;
-
-            LinearLayout node = new LinearLayout(requireContext());
-            node.setOrientation(LinearLayout.VERTICAL);
-            node.setGravity(Gravity.CENTER_HORIZONTAL);
-            LinearLayout.LayoutParams nodeParams = new LinearLayout.LayoutParams(
-                    0, LinearLayout.LayoutParams.MATCH_PARENT);
-            nodeParams.weight = 1;
-            node.setLayoutParams(nodeParams);
-
-            GradientDrawable dotBg = new GradientDrawable();
-            dotBg.setShape(GradientDrawable.OVAL);
-            if (filled) {
-                dotBg.setColor(dotColor);
-            } else {
-                dotBg.setColor(ContextCompat.getColor(requireContext(), R.color.bg_dark));
-                dotBg.setStroke(Math.round(1.5f * d), colorPending);
-            }
-            View dot = new View(requireContext());
-            LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dotSizePx, dotSizePx);
-            dotParams.topMargin = dotTopPx;
-            dot.setBackground(dotBg);
-            node.addView(dot, dotParams);
-
-            TextView label = new TextView(requireContext());
-            label.setText(abbr);
-            // Task 7: use text_label size (10sp) for consistency with design system
-            label.setTextSize(10f);
-            label.setTextColor(labelColor);
-            label.setGravity(Gravity.CENTER_HORIZONTAL);
-            LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            labelParams.topMargin = labelTopPx;
-            node.addView(label, labelParams);
-
-            nodesRow.addView(node);
-        }
-
-        llWeekendTimeline.addView(frame);
-        llWeekendTimeline.setVisibility(View.VISIBLE);
-    }
-
-    /**
-     * Task 1: Updates the session label eyebrow above the countdown.
-     * Shows which session is next, or live status.
-     */
-    private void updateNextSessionLabel(List<Map<String, Object>> sessions) {
-        if (tvNextSession == null || sessions == null) return;
-        long now = System.currentTimeMillis();
-        long sessionDurationMs = 3 * 60 * 60 * 1000L;
-
-        for (Map<String, Object> session : sessions) {
-            String dateStr = (String) session.get("datetime");
-            if (dateStr == null) continue;
-            long millis = DateHelper.toMillis(dateStr);
-            if (millis == -1) continue;
-            if (millis + sessionDurationMs > now) {
-                String name = (String) session.get("name");
-                String abbr = getSessionAbbr(name != null ? name : "");
-                boolean isLive = millis <= now;
-                if (isLive) {
-                    tvNextSession.setText("LIVE  ·  " + abbr);
-                    tvNextSession.setTextColor(
-                            ContextCompat.getColor(requireContext(), R.color.color_race_live));
-                } else {
-                    String time = DateHelper.formatForDisplay(dateStr, "EEE, HH:mm");
-                    tvNextSession.setText("NEXT  ·  " + abbr + "  ·  " + time);
-                    tvNextSession.setTextColor(
-                            ContextCompat.getColor(requireContext(), R.color.text_secondary));
+            case PINNED_H2H: {
+                HomeCardState.PinnedH2h h2h = state(HomeCardType.PINNED_H2H);
+                if (h2h.driver1 != null && h2h.driver2 != null) {
+                    openCompare(h2h.driver1.driverId, h2h.driver2.driverId);
                 }
-                tvNextSession.setVisibility(View.VISIBLE);
-                return;
+                break;
             }
-        }
-        // All sessions finished — weekend complete handled in buildSessionTimes
-        tvNextSession.setVisibility(View.GONE);
-    }
-
-    private void buildSessionList(List<Map<String, Object>> sessions) {
-        if (llSessionTimes == null || sessions == null || getContext() == null) return;
-        llSessionTimes.removeAllViews();
-        float density = requireContext().getResources().getDisplayMetrics().density;
-        int topMarginPx = Math.round(4 * density);
-        // Task 7: status-aware colors for session rows
-        long now = System.currentTimeMillis();
-        long sessionDurationMs = 3 * 60 * 60 * 1000L;
-
-        for (Map<String, Object> session : sessions) {
-            String name    = (String) session.get("name");
-            String dateStr = (String) session.get("datetime");
-            if (name == null || dateStr == null) continue;
-
-            long millis = DateHelper.toMillis(dateStr);
-            boolean isDone = millis != -1 && (millis + sessionDurationMs) < now;
-            boolean isLive = millis != -1 && millis <= now && (millis + sessionDurationMs) > now;
-
-            int nameColor = isDone
-                    ? ContextCompat.getColor(requireContext(), R.color.text_hint)
-                    : (isLive
-                        ? ContextCompat.getColor(requireContext(), R.color.color_race_live)
-                        : ContextCompat.getColor(requireContext(), R.color.text_secondary));
-            int timeColor = isDone
-                    ? ContextCompat.getColor(requireContext(), R.color.text_hint)
-                    : ContextCompat.getColor(requireContext(), R.color.text_secondary);
-
-            LinearLayout row = new LinearLayout(requireContext());
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT);
-            rowParams.topMargin = topMarginPx;
-            row.setLayoutParams(rowParams);
-
-            // Task 7: use text_caption (13sp) consistently
-            TextView tvName = new TextView(requireContext());
-            tvName.setLayoutParams(new LinearLayout.LayoutParams(
-                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-            tvName.setText(name);
-            tvName.setTextSize(13f);
-            tvName.setTextColor(nameColor);
-
-            TextView tvTime = new TextView(requireContext());
-            tvTime.setLayoutParams(new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT));
-            tvTime.setText(isLive ? "LIVE" : DateHelper.formatForDisplay(dateStr, "EEE, HH:mm"));
-            tvTime.setTextSize(13f);
-            tvTime.setTextColor(isLive
-                    ? ContextCompat.getColor(requireContext(), R.color.color_race_live)
-                    : timeColor);
-
-            row.addView(tvName);
-            row.addView(tvTime);
-            llSessionTimes.addView(row);
-        }
-    }
-
-    // ── Countdown ─────────────────────────────────────────────────────────────
-
-    /**
-     * Task 1: Countdown targets the provided session datetime (any session, not just Race).
-     * Handles live, upcoming, and finished states cleanly.
-     */
-    private void startCountdown(String isoDateStr) {
-        try {
-            long millis = DateHelper.toMillis(isoDateStr);
-            if (millis == -1) return;
-
-            long diff = millis - System.currentTimeMillis();
-            long sessionDurationMs = 3 * 60 * 60 * 1000L;
-
-            if (diff <= 0) {
-                // Session is currently live
-                if (millis + sessionDurationMs > System.currentTimeMillis()) {
-                    tvCountdown.setText("LIVE NOW");
-                    tvCountdown.setTextColor(
-                            ContextCompat.getColor(requireContext(), R.color.color_race_live));
-                }
-                return;
+            case CHAMPIONSHIP_SNAPSHOT: {
+                BottomNavigationView nav = requireActivity().findViewById(R.id.bottom_navigation);
+                if (nav != null) nav.setSelectedItemId(R.id.nav_standings);
+                break;
             }
-
-            // Reset to normal countdown color
-            tvCountdown.setTextColor(
-                    ContextCompat.getColor(requireContext(), R.color.text_primary));
-
-            if (countDownTimer != null) countDownTimer.cancel();
-            countDownTimer = new CountDownTimer(diff, 1000) {
-                @Override
-                public void onTick(long millisUntilFinished) {
-                    long days    = millisUntilFinished / (1000 * 60 * 60 * 24);
-                    long hours   = (millisUntilFinished % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60);
-                    long minutes = (millisUntilFinished % (1000 * 60 * 60)) / (1000 * 60);
-                    SpannableStringBuilder sb = new SpannableStringBuilder();
-                    if (days > 0) {
-                        appendCountdownUnit(sb, String.valueOf(days), "d  ");
-                        appendCountdownUnit(sb, String.format(Locale.getDefault(), "%02d", hours), "h");
-                    } else {
-                        appendCountdownUnit(sb, String.format(Locale.getDefault(), "%02d", hours), "h  ");
-                        appendCountdownUnit(sb, String.format(Locale.getDefault(), "%02d", minutes), "m");
-                    }
-                    tvCountdown.setText(sb, TextView.BufferType.SPANNABLE);
-                }
-                @Override
-                public void onFinish() {
-                    tvCountdown.setText("LIVE NOW");
-                    tvCountdown.setTextColor(
-                            ContextCompat.getColor(requireContext(), R.color.color_race_live));
-                }
-            }.start();
-        } catch (Exception e) {
-            e.printStackTrace();
+            default:
+                break;
         }
     }
 
-    private void appendCountdownUnit(SpannableStringBuilder sb, String number, String unit) {
-        sb.append(number);
-        int start = sb.length();
-        sb.append(unit);
-        sb.setSpan(new RelativeSizeSpan(0.45f), start, sb.length(),
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+    private void openDriverProfile(HomeCardState.FavouriteDriver driver) {
+        if (driver.driverId == null) return;
+        Intent intent = new Intent(requireContext(), DriverProfileActivity.class);
+        intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_ID, driver.driverId);
+        intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_CODE, driver.code);
+        intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_NAME, driver.name);
+        intent.putExtra(DriverProfileActivity.EXTRA_YEAR, year);
+        intent.putExtra(DriverProfileActivity.EXTRA_TEAM_NAME, driver.team);
+        intent.putExtra(DriverProfileActivity.EXTRA_CONSTRUCTOR_ID, driver.constructorId);
+        intent.putExtra(DriverProfileActivity.EXTRA_NATIONALITY, driver.nationality);
+        intent.putExtra(DriverProfileActivity.EXTRA_NUMBER, driver.number);
+        Map<String, String> headshots = viewModel.getDriverHeadshotMap().getValue();
+        if (headshots != null && driver.code != null && headshots.get(driver.code) != null) {
+            intent.putExtra(DriverProfileActivity.EXTRA_HEADSHOT_URL, headshots.get(driver.code));
+        }
+        startActivity(intent);
+        requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+    }
+
+    private void openCompare(@Nullable String driverId1, @Nullable String driverId2) {
+        Intent intent = new Intent(requireContext(), CompareDriversActivity.class);
+        intent.putExtra(CompareDriversActivity.EXTRA_YEAR, year);
+        if (driverId1 != null) intent.putExtra(CompareDriversActivity.EXTRA_DRIVER_ID_1, driverId1);
+        if (driverId2 != null) intent.putExtra(CompareDriversActivity.EXTRA_DRIVER_ID_2, driverId2);
+        startActivity(intent);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private void applyTeamColour(View strip, String constructorId, String teamName) {
-        if (strip == null || teamName == null) return;
-        strip.setBackgroundColor(TeamColors.get(requireContext(), constructorId, teamName, null));
+    private void saveLastWinner(HomeCardState.LastWinner state) {
+        if (state.winner == null || state.raceName == null) return;
+        cache.saveLastWinner(state.winner.name, state.winner.team, state.raceName);
     }
 
-    private void loadHeadshot(ImageView iv, String code, Map<String, String> headshotMap) {
-        if (iv == null || code == null || headshotMap == null) return;
-        String url = headshotMap.get(code);
-        if (url != null && !url.isEmpty()) {
-            Glide.with(requireContext())
-                    .load(url)
-                    .circleCrop()
-                    .into(iv);
-        }
-    }
-
-    /** Returns -1 = done, 0 = live/active, 1 = upcoming. */
-    private int getSessionStatus(String dateStr) {
-        long millis = DateHelper.toMillis(dateStr);
-        if (millis == -1) return 1;
-        long now = System.currentTimeMillis();
-        long sessionDurationMs = 3 * 60 * 60 * 1000L;
-        if (millis + sessionDurationMs < now) return -1;
-        if (millis < now) return 0;
-        return 1;
-    }
-
-    private String getSessionAbbr(String name) {
-        if (name == null) return "";
-        switch (name) {
-            case "Practice 1":       return "FP1";
-            case "Practice 2":       return "FP2";
-            case "Practice 3":       return "FP3";
-            case "Sprint Shootout":  return "SQ";
-            case "Sprint":           return "SPR";
-            case "Qualifying":       return "QUALI";
-            case "Race":             return "RACE";
-            default:
-                String upper = name.toUpperCase(Locale.getDefault());
-                return upper.substring(0, Math.min(4, upper.length()));
-        }
-    }
-
-    private String generateChampInsight(double gap) {
-        int g = (int) gap;
-        if (g <= 0) return "";
-        if (g < 26)  return "Less than one race win separates the title contenders.";
-        if (g < 52)  return "Within two race wins — championship fully alive.";
-        if (g < 100) return "Championship within reach. Every point matters.";
-        return "Significant gap at the top.";
-    }
-
-    private String formatDate(String isoDateStr) {
-        return DateHelper.formatFull(isoDateStr);
-    }
-
-    // Next race and meetings arrive independently; whichever lands second loads the image
-    private void loadNextRaceCircuitImage() {
-        if (ivNextRaceCircuit == null) return;
+    private void updateCircuitImage() {
         Map<String, Object> meeting = MeetingMatcher.match(
                 viewModel.getNextRace().getValue(), viewModel.getMeetings().getValue());
         if (meeting == null) return;   // keep the placeholder
         Object img = meeting.get("circuit_image");
         if (img != null && !img.toString().isEmpty()) {
-            Glide.with(requireContext()).load(img.toString()).into(ivNextRaceCircuit);
+            HomeCardState.NextRace state = state(HomeCardType.NEXT_RACE);
+            state.circuitImageUrl = img.toString();
         }
     }
 
-    private String getStr(Map<String, Object> map, String key, String fallback) {
-        Object val = map.get(key);
-        return val != null ? val.toString() : fallback;
+    private static HomeCardState.DriverRow row(DriverStanding standing) {
+        HomeCardState.DriverRow row = row(
+                standing.getDriver() != null ? standing.getDriver().getFullName() : "",
+                standing.getTeamName(),
+                standing.getPoints(),
+                standing.getConstructorId(),
+                standing.getDriver() != null ? standing.getDriver().getCode() : null);
+        row.driverId = standing.getDriver() != null ? standing.getDriver().getDriverId() : null;
+        return row;
     }
 
-    private String stripPtsSuffix(String pts) {
-        if (pts == null) return "";
-        return pts.replace(" pts", "").trim();
+    private static HomeCardState.DriverRow row(String name, String team, String points,
+                                               String constructorId, String code) {
+        HomeCardState.DriverRow row = new HomeCardState.DriverRow();
+        row.name = name;
+        row.team = team;
+        row.points = points;
+        row.constructorId = constructorId;
+        row.code = code;
+        return row;
+    }
+
+    private String insightFor(double gap) {
+        int g = (int) gap;
+        if (g <= 0) return "";
+        if (g < 26)  return getString(R.string.home_insight_one_win);
+        if (g < 52)  return getString(R.string.home_insight_two_wins);
+        if (g < 100) return getString(R.string.home_insight_within_reach);
+        return getString(R.string.home_insight_big_gap);
     }
 
     @Override
     public void onDestroyView() {
+        layoutStore.removeListener(layoutListener);
+        adapter.releaseAll();
+        rvCards.setAdapter(null);
         super.onDestroyView();
-        if (countDownTimer != null) countDownTimer.cancel();
     }
 }

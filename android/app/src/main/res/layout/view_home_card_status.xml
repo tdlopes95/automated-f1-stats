@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    State shown inside a Home card instead of its content: a shimmer placeholder while the
+    card loads, or a message with an action (error + retry, or a prompt such as "Choose a driver").
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layout_card_status"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:visibility="gone">
+
+    <com.facebook.shimmer.ShimmerFrameLayout
+        android:id="@+id/shimmer_card_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/spacing_md">
+
+            <View
+                android:layout_width="80dp"
+                android:layout_height="10dp"
+                android:background="@color/bg_shimmer" />
+
+            <View
+                android:layout_width="200dp"
+                android:layout_height="18dp"
+                android:layout_marginTop="@dimen/spacing_row"
+                android:background="@color/bg_shimmer" />
+
+            <View
+                android:layout_width="140dp"
+                android:layout_height="12dp"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:background="@color/bg_shimmer" />
+
+        </LinearLayout>
+
+    </com.facebook.shimmer.ShimmerFrameLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_card_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:minHeight="@dimen/spacing_xxl"
+        android:paddingStart="@dimen/spacing_md"
+        android:paddingEnd="@dimen/spacing_sm"
+        android:paddingTop="@dimen/spacing_sm"
+        android:paddingBottom="@dimen/spacing_sm"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_card_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_metadata" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_card_retry"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/home_retry"
+            android:textColor="@color/f1_red" />
+
+    </LinearLayout>
+
+</FrameLayout>

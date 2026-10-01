@@ -24,4 +24,129 @@
 
     <string name="about_disclaimer">This app is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1 and related marks are trade marks of Formula One Licensing B.V.</string>
     <string name="about_no_browser">No browser available to open the link</string>
+    <!-- ── Home ──────────────────────────────────────────── -->
+    <string name="home_error_icon" translatable="false">⚠️</string>
+    <string name="home_error_message">Could not load data.\nCheck your connection.</string>
+    <string name="home_retry">Retry</string>
+    <string name="home_refresh_ok">Refresh OK</string>
+    <string name="home_card_error">%1$s couldn\'t load</string>
+    <string name="home_card_loading">Loading…</string>
+    <string name="home_empty_message">All Home cards are hidden.</string>
+    <string name="home_pts">PTS</string>
+
+    <!-- Next race card -->
+    <string name="home_next_race_label">NEXT RACE</string>
+    <string name="home_unknown_race">Unknown Race</string>
+    <string name="home_session_live">LIVE  ·  %1$s</string>
+    <string name="home_session_next">NEXT  ·  %1$s  ·  %2$s</string>
+    <string name="home_session_live_short">LIVE</string>
+    <string name="home_countdown_live">LIVE NOW</string>
+    <string name="home_countdown_days">"d  "</string>
+    <string name="home_countdown_hours_short">h</string>
+    <string name="home_countdown_hours">"h  "</string>
+    <string name="home_countdown_minutes">m</string>
+    <string name="home_weekend_complete">WEEKEND COMPLETE</string>
+    <string name="home_weekend_complete_subtitle">Updating schedule...</string>
+    <string name="home_offseason">OFFSEASON</string>
+    <string name="home_winter_break">WINTER BREAK</string>
+    <string name="home_winter_break_subtitle">The season will resume soon.</string>
+    <string name="session_abbr_fp1">FP1</string>
+    <string name="session_abbr_fp2">FP2</string>
+    <string name="session_abbr_fp3">FP3</string>
+    <string name="session_abbr_sprint_shootout">SQ</string>
+    <string name="session_abbr_sprint">SPR</string>
+    <string name="session_abbr_qualifying">QUALI</string>
+    <string name="session_abbr_race">RACE</string>
+
+    <!-- Championship card -->
+    <string name="home_championship_battle">CHAMPIONSHIP BATTLE</string>
+    <string name="home_last_season_champion">LAST SEASON CHAMPION</string>
+    <string name="home_p1">P1</string>
+    <string name="home_p2">P2</string>
+    <string name="home_pt_gap">PT GAP</string>
+    <string name="home_insight_one_win">Less than one race win separates the title contenders.</string>
+    <string name="home_insight_two_wins">Within two race wins — championship fully alive.</string>
+    <string name="home_insight_within_reach">Championship within reach. Every point matters.</string>
+    <string name="home_insight_big_gap">Significant gap at the top.</string>
+
+    <!-- Last winner card -->
+    <string name="home_last_winner">LAST WINNER</string>
+
+    <!-- ── Customize home ────────────────────────────────── -->
+    <string name="customize_home_title">Customize home</string>
+    <string name="customize_home_description">Show, hide and reorder Home cards</string>
+    <string name="customize_home_reset">Reset to default</string>
+    <string name="customize_home_reset_message">Restore the original cards and order? Your favourites are kept.</string>
+    <string name="customize_home_reset_confirm">Reset</string>
+    <string name="customize_home_cancel">Cancel</string>
+    <string name="customize_home_drag">Drag to reorder</string>
+    <string name="customize_home_options">Card options</string>
+
+    <string name="home_card_next_race_name">Next race</string>
+    <string name="home_card_next_race_desc">Countdown, circuit and session times for the next race weekend</string>
+    <string name="home_card_championship_name">Championship battle</string>
+    <string name="home_card_championship_desc">The top two in the drivers\' championship and the gap between them</string>
+    <string name="home_card_last_winner_name">Last winner</string>
+    <string name="home_card_last_winner_desc">Winner of the most recent Grand Prix</string>
+    <!-- ── Home: D2 cards ────────────────────────────────── -->
+    <string name="home_card_favourite_driver_name">Favourite driver</string>
+    <string name="home_card_favourite_driver_desc">Your driver\'s position, points, wins and recent form</string>
+    <string name="home_card_favourite_team_name">Favourite team</string>
+    <string name="home_card_favourite_team_desc">Your team\'s position, points and teammate battle</string>
+    <string name="home_card_pinned_h2h_name">Pinned head-to-head</string>
+    <string name="home_card_pinned_h2h_desc">Two drivers compared across this season</string>
+    <string name="home_card_snapshot_name">Championship snapshot</string>
+    <string name="home_card_snapshot_desc">The top five in the championship</string>
+
+    <string name="home_favourite_driver_label">FAVOURITE DRIVER</string>
+    <string name="home_favourite_team_label">FAVOURITE TEAM</string>
+    <string name="home_pinned_h2h_label">HEAD-TO-HEAD · %1$d</string>
+    <string name="home_snapshot_drivers_label">DRIVERS\' CHAMPIONSHIP · %1$d</string>
+    <string name="home_snapshot_constructors_label">CONSTRUCTORS\' CHAMPIONSHIP · %1$d</string>
+    <string name="home_position">P%1$d</string>
+    <string name="home_position_unknown">P–</string>
+    <string name="home_leader">Leader</string>
+    <string name="home_gap_to_ahead">−%1$s to P%2$d</string>
+    <string name="home_position_and_gap">%1$s  ·  %2$s</string>
+    <string name="home_gap_to_leader">−%1$s</string>
+    <string name="home_wins">WINS</string>
+    <string name="home_podiums">PODIUMS</string>
+    <string name="home_points_value">%1$s pts</string>
+    <string name="home_form_label">FORM</string>
+    <string name="home_form_dnf">DNF</string>
+    <string name="home_form_dns">DNS</string>
+    <string name="home_form_none">No races yet</string>
+    <string name="home_race_h2h">RACE H2H</string>
+    <string name="home_teammate_h2h">TEAMMATE H2H</string>
+    <string name="home_h2h_score">%1$d – %2$d</string>
+    <string name="home_snapshot_more" translatable="false">···</string>
+
+    <string name="home_choose_driver">Choose a driver</string>
+    <string name="home_choose_team">Choose a team</string>
+    <string name="home_choose_drivers">Choose two drivers</string>
+    <string name="home_choose_favourite_first">Choose a favourite driver</string>
+    <string name="home_choose">Choose</string>
+    <string name="home_not_racing">%1$s · Not racing in %2$d</string>
+    <string name="home_no_teammate">No teammate found for %1$s in %2$d</string>
+    <string name="home_change_driver">Change driver</string>
+    <string name="home_change_team">Change team</string>
+    <string name="home_change">Change</string>
+
+    <string name="home_welcome_title">Make Home yours</string>
+    <string name="home_welcome_body">Pick a favourite driver or team, then choose which cards Home shows.</string>
+    <string name="home_welcome_action">Customize</string>
+    <string name="home_welcome_dismiss">Dismiss</string>
+
+    <!-- ── Customize: card options ───────────────────────── -->
+    <string name="options_h2h_driver1">Driver 1</string>
+    <string name="options_h2h_driver2">Driver 2</string>
+    <string name="options_h2h_teammates">Teammates of my favourite driver</string>
+    <string name="options_h2h_teammates_desc">Your favourite driver against their current teammate</string>
+    <string name="options_not_set">Not set</string>
+    <string name="options_done">Done</string>
+    <string name="options_snapshot_drivers">Drivers</string>
+    <string name="options_snapshot_constructors">Constructors</string>
+    <string name="options_teams_error">Couldn\'t load teams. Check your connection.</string>
+    <string name="customize_choice_vs">%1$s vs %2$s</string>
+    <string name="customize_choice_teammates">Favourite driver vs teammate</string>
 </resources>

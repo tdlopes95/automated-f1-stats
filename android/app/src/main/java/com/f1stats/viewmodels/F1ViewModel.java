@@ -8,6 +8,7 @@ import com.f1stats.F1App;
 import com.f1stats.api.F1ApiClient;
 import com.f1stats.api.F1ApiService;
 import com.f1stats.data.F1Repository;
+import com.f1stats.util.HeadToHead;
 import com.f1stats.db.CachedDriver;
 import com.f1stats.models.ConstructorStanding;
 import com.f1stats.models.DriverStanding;
@@ -85,11 +86,28 @@ public class F1ViewModel extends ViewModel {
     // ── Driver Headshots ──────────────────────────────────────────────────────
     private final MutableLiveData<Map<String, String>> driverHeadshotMap = new MutableLiveData<>();
 
-    // ── Home Error ────────────────────────────────────────────────────────────
-    private final MutableLiveData<String> homeError = new MutableLiveData<>(null);
+    // ── Home card errors (null = last fetch didn't fail) ──────────────────────
+    // One per Home data source, so a failing card never affects the others
+    private final MutableLiveData<String> nextRaceError = new MutableLiveData<>(null);
+    private final MutableLiveData<String> homeStandingsError = new MutableLiveData<>(null);
+    private final MutableLiveData<String> latestResultsError = new MutableLiveData<>(null);
+    private final MutableLiveData<String> homeConstructorStandingsError = new MutableLiveData<>(null);
 
-    public LiveData<String> getHomeError() { return homeError; }
-    public void clearHomeError() { homeError.setValue(null); }
+    public LiveData<String> getNextRaceError() { return nextRaceError; }
+    public LiveData<String> getHomeStandingsError() { return homeStandingsError; }
+    public LiveData<String> getLatestResultsError() { return latestResultsError; }
+    public LiveData<String> getHomeConstructorStandingsError() { return homeConstructorStandingsError; }
+
+    // ── Home data: current season, shared by every Home card ──────────────────
+    // Separate from the Standings tab's LiveData, which can hold another season
+    private final MutableLiveData<List<DriverStanding>> homeDriverStandings = new MutableLiveData<>();
+    private final MutableLiveData<List<ConstructorStanding>> homeConstructorStandings = new MutableLiveData<>();
+    private final MutableLiveData<HeadToHead.Season> homeSeasonResults = new MutableLiveData<>();
+    private boolean homeSeasonResultsInFlight;
+
+    public LiveData<List<DriverStanding>> getHomeDriverStandings() { return homeDriverStandings; }
+    public LiveData<List<ConstructorStanding>> getHomeConstructorStandings() { return homeConstructorStandings; }
+    public LiveData<HeadToHead.Season> getHomeSeasonResults() { return homeSeasonResults; }
     public LiveData<Boolean> getSeasonStarted() { return seasonStarted; }
     public LiveData<Map<String, String>> getDriverHeadshotMap() { return driverHeadshotMap; }
 
@@ -121,6 +139,7 @@ public class F1ViewModel extends ViewModel {
 
     public void fetchLatestResults(String sessionType, int year) {
         resultsLoading.setValue(true);
+        latestResultsError.setValue(null);
         api().getLatestResults(sessionType, year).enqueue(new Callback<Map<String, Object>>() {
             @Override
             public void onResponse(Call<Map<String, Object>> call,
@@ -133,13 +152,13 @@ public class F1ViewModel extends ViewModel {
                     raceResults.setValue(parseRaceResults(body));
                 } else {
                     resultsError.setValue(httpError(response.code()));
-                    homeError.setValue(httpError(response.code()));
+                    latestResultsError.setValue(httpError(response.code()));
                 }
             }
             @Override
             public void onFailure(Call<Map<String, Object>> call, Throwable t) {
                 resultsLoading.setValue(false);
-                homeError.setValue(networkError(t));
+                latestResultsError.setValue(networkError(t));
             }
         });
     }
@@ -207,7 +226,6 @@ public class F1ViewModel extends ViewModel {
             public void onError(String error) {
                 standingsLoading.setValue(false);
                 standingsError.setValue(error);
-                homeError.setValue(error);
             }
         });
     }
@@ -225,6 +243,61 @@ public class F1ViewModel extends ViewModel {
             public void onError(String error) {
                 standingsLoading.setValue(false);
                 standingsError.setValue(error);
+            }
+        });
+    }
+
+    // ── Home standings and season results ─────────────────────────────────────
+
+    public void fetchHomeDriverStandings(int year) {
+        homeStandingsError.setValue(null);
+        repo.getDriverStandings(year, new F1Repository.RepositoryCallback<Map<String, Object>>() {
+            @Override
+            public void onSuccess(Map<String, Object> data) {
+                Object started = data.get("season_started");
+                if (started instanceof Boolean) {
+                    seasonStarted.setValue((Boolean) started);
+                }
+                homeDriverStandings.setValue(parseDriverStandings(data));
+            }
+            @Override
+            public void onError(String error) {
+                homeStandingsError.setValue(error);
+            }
+        });
+    }
+
+    public void fetchHomeConstructorStandings(int year) {
+        homeConstructorStandingsError.setValue(null);
+        repo.getConstructorStandings(year, new F1Repository.RepositoryCallback<Map<String, Object>>() {
+            @Override
+            public void onSuccess(Map<String, Object> data) {
+                homeConstructorStandings.setValue(parseConstructorStandings(data));
+            }
+            @Override
+            public void onError(String error) {
+                homeConstructorStandingsError.setValue(error);
+            }
+        });
+    }
+
+    /**
+     * Fetches any missing rounds of the season, then publishes them parsed. A call while one
+     * is in flight is ignored. Never fails: what's cached is what's published.
+     */
+    public void fetchHomeSeasonResults(int year) {
+        if (homeSeasonResultsInFlight) return;
+        homeSeasonResultsInFlight = true;
+        repo.getSeasonResults(year, new F1Repository.RepositoryCallback<HeadToHead.Season>() {
+            @Override
+            public void onSuccess(HeadToHead.Season season) {
+                homeSeasonResultsInFlight = false;
+                homeSeasonResults.setValue(season);
+            }
+            @Override
+            public void onError(String error) {
+                homeSeasonResultsInFlight = false;
+                homeSeasonResults.setValue(new HeadToHead.Season(year));
             }
         });
     }
@@ -317,6 +390,7 @@ public class F1ViewModel extends ViewModel {
     }
 
     public void fetchNextRace() {
+        nextRaceError.setValue(null);
         api().getNextRace().enqueue(new Callback<Map<String, Object>>() {
             @Override
             public void onResponse(Call<Map<String, Object>> call,
@@ -324,12 +398,12 @@ public class F1ViewModel extends ViewModel {
                 if (response.isSuccessful() && response.body() != null) {
                     nextRace.setValue(response.body());
                 } else {
-                    homeError.setValue(httpError(response.code()));
+                    nextRaceError.setValue(httpError(response.code()));
                 }
             }
             @Override
             public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                homeError.setValue(networkError(t));
+                nextRaceError.setValue(networkError(t));
             }
         });
     }

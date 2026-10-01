@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One standings row on the championship snapshot card -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp"
+    android:paddingStart="@dimen/spacing_xs"
+    android:paddingEnd="@dimen/spacing_xs">
+
+    <TextView
+        android:id="@+id/tv_row_position"
+        android:layout_width="28dp"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_secondary"
+        android:textSize="@dimen/text_metadata"
+        android:textStyle="bold" />
+
+    <View
+        android:id="@+id/view_row_colour"
+        android:layout_width="@dimen/team_strip_width"
+        android:layout_height="20dp"
+        android:background="@color/team_default"
+        android:layout_marginEnd="@dimen/spacing_sm" />
+
+    <TextView
+        android:id="@+id/tv_row_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_body_sm"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <TextView
+        android:id="@+id/tv_row_gap"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/spacing_row"
+        android:textColor="@color/text_tertiary"
+        android:textSize="@dimen/text_metadata" />
+
+    <TextView
+        android:id="@+id/tv_row_points"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="40dp"
+        android:gravity="end"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_body_sm"
+        android:textStyle="bold" />
+
+</LinearLayout>

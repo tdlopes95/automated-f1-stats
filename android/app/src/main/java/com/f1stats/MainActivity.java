@@ -1,5 +1,6 @@
 package com.f1stats;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -64,6 +65,8 @@ public class MainActivity extends AppCompatActivity {
             if (dest.getId() == R.id.nav_weekend) {
                 bottomNav.removeBadge(R.id.nav_weekend);
             }
+            // The Customize home action only shows on Home
+            invalidateOptionsMenu();
         });
 
         // Observe live session and show badge when session is active/recent
@@ -143,7 +146,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem customize = menu.findItem(R.id.action_customize_home);
+        if (customize != null) {
+            customize.setVisible(navController.getCurrentDestination() != null
+                    && navController.getCurrentDestination().getId() == R.id.nav_home);
+        }
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_customize_home) {
+            startActivity(new Intent(this, CustomizeHomeActivity.class));
+            return true;
+        }
         if (item.getItemId() == R.id.action_settings) {
             navController.navigate(R.id.nav_settings);
             return true;

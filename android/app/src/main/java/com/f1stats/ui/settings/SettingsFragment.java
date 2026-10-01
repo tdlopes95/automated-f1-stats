@@ -16,6 +16,7 @@ import androidx.annotation.StringRes;
 import androidx.fragment.app.Fragment;
 
 import com.f1stats.BuildConfig;
+import com.f1stats.CustomizeHomeActivity;
 import com.f1stats.F1App;
 import com.f1stats.R;
 import com.f1stats.SettingsManager;
@@ -61,6 +62,9 @@ public class SettingsFragment extends Fragment {
             F1ApiClient.reset(requireContext());
             Toast.makeText(requireContext(), "URL saved", Toast.LENGTH_SHORT).show();
         });
+
+        view.findViewById(R.id.row_customize_home).setOnClickListener(v ->
+                startActivity(new Intent(requireContext(), CustomizeHomeActivity.class)));
 
         bindAbout(view);
     }

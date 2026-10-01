@@ -2,6 +2,14 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <!-- Only visible while the Home tab is selected -->
+    <item
+        android:id="@+id/action_customize_home"
+        android:icon="@drawable/ic_tune"
+        android:title="@string/customize_home_title"
+        android:visible="false"
+        app:showAsAction="always" />
+
     <item
         android:id="@+id/action_settings"
         android:icon="@drawable/ic_settings"

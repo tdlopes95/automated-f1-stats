@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
 
 import com.f1stats.util.DebugLog;
+import com.f1stats.util.HeadToHead;
 import com.f1stats.DateHelper;
 import com.f1stats.api.F1ApiClient;
 import com.f1stats.api.F1ApiService;
@@ -1000,6 +1001,30 @@ public class F1Repository {
             public void onError(String error) {
                 DebugLog.d("H2H_DEBUG", "ensureSeasonResultsCached schedule error: " + error);
                 callback.onSuccess(null);
+            }
+        });
+    }
+
+    /**
+     * The season's Race and Sprint results, parsed for {@link HeadToHead}. Fetches any missing
+     * rounds first (see {@link #ensureSeasonResultsCached}); never fails, so a season with
+     * nothing cached comes back empty.
+     */
+    public void getSeasonResults(int year, RepositoryCallback<HeadToHead.Season> callback) {
+        ensureSeasonResultsCached(year, new RepositoryCallback<Void>() {
+            @Override
+            public void onSuccess(Void ignored) {
+                executor.execute(() -> {
+                    HeadToHead.Season season = new HeadToHead.Season(year);
+                    for (CachedResult row : db.resultDao().getByYear(year)) {
+                        season.addResultsJson(row.round, row.sessionType, row.resultsJson, gson);
+                    }
+                    mainHandler.post(() -> callback.onSuccess(season));
+                });
+            }
+            @Override
+            public void onError(String error) {
+                onSuccess(null);
             }
         });
     }

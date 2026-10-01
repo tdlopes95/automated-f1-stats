@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:visibility="visible" />
 
-    <!-- Error state -->
+    <!-- Error state: every enabled card failed and nothing is cached -->
     <LinearLayout
         android:id="@+id/layout_error"
         android:layout_width="match_parent"
@@ -24,7 +24,7 @@
         android:visibility="gone">
 
         <TextView
-            android:text="⚠️"
+            android:text="@string/home_error_icon"
             android:textSize="@dimen/text_hero"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -32,7 +32,7 @@
 
         <TextView
             android:id="@+id/tv_error_message"
-            android:text="Could not load data.\nCheck your connection."
+            android:text="@string/home_error_message"
             android:textColor="@color/text_secondary"
             android:textSize="@dimen/text_body"
             android:textAlignment="center"
@@ -44,602 +44,53 @@
             android:id="@+id/btn_retry"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Retry"
+            android:text="@string/home_retry"
             android:layout_marginTop="@dimen/spacing_lg"
             style="@style/Widget.F1.Button.Primary" />
 
     </LinearLayout>
 
-    <!-- Real content -->
+    <!-- Empty state: the user hid every card -->
+    <LinearLayout
+        android:id="@+id/layout_empty"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="@dimen/spacing_xl"
+        android:visibility="gone">
+
+        <TextView
+            android:text="@string/home_empty_message"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_body"
+            android:textAlignment="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_customize_home"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/customize_home_title"
+            android:layout_marginTop="@dimen/spacing_lg"
+            style="@style/Widget.F1.Button.Primary" />
+
+    </LinearLayout>
+
+    <!-- Real content: one item per enabled HomeCardType -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh_home"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone">
 
-        <ScrollView
-            android:id="@+id/scroll_content"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_home_cards"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:fillViewport="true"
-            android:clipToPadding="false">
+            android:clipToPadding="false" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <!-- ══════════════════════════════════════════════════
-                     SECTION 1 — RACE WEEKEND HERO
-                     ══════════════════════════════════════════════════ -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/card_next_race"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/spacing_md"
-                    android:layout_marginEnd="@dimen/spacing_md"
-                    android:layout_marginTop="@dimen/spacing_md"
-                    android:layout_marginBottom="@dimen/spacing_md"
-                    style="@style/Widget.F1.Card.Hero">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <!-- Circuit image with gradient overlay -->
-                        <FrameLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="@dimen/hero_image_height">
-
-                            <ImageView
-                                android:id="@+id/iv_next_race_circuit"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:scaleType="fitCenter"
-                                android:padding="@dimen/spacing_sm"
-                                android:background="@color/bg_hero_image" />
-
-                            <View
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:background="@drawable/gradient_bottom_dark" />
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_gravity="bottom"
-                                android:orientation="vertical"
-                                android:paddingStart="@dimen/spacing_md"
-                                android:paddingEnd="@dimen/spacing_md"
-                                android:paddingBottom="@dimen/spacing_md">
-
-                                <TextView
-                                    android:text="NEXT RACE"
-                                    android:textColor="@color/f1_red"
-                                    android:textSize="@dimen/text_label"
-                                    android:letterSpacing="0.12"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content" />
-
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:orientation="horizontal"
-                                    android:gravity="center_vertical"
-                                    android:layout_marginTop="@dimen/spacing_xs">
-
-                                    <TextView
-                                        android:id="@+id/tv_next_race_flag"
-                                        android:text=""
-                                        android:textSize="@dimen/text_display"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginEnd="@dimen/spacing_sm" />
-
-                                    <!-- Task 4: Race name at text_display (22sp) for premium feel -->
-                                    <TextView
-                                        android:id="@+id/tv_next_race_name"
-                                        android:text=""
-                                        android:textColor="@color/text_primary"
-                                        android:textSize="@dimen/text_display"
-                                        android:textStyle="bold"
-                                        android:letterSpacing="-0.01"
-                                        android:layout_width="0dp"
-                                        android:layout_height="wrap_content"
-                                        android:layout_weight="1"
-                                        android:maxLines="1"
-                                        android:ellipsize="end" />
-
-                                </LinearLayout>
-
-                            </LinearLayout>
-
-                        </FrameLayout>
-
-                        <!-- Content below image — Task 4: hierarchy is session label → countdown → context -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="@dimen/spacing_md">
-
-                            <!-- 1. NEXT SESSION LABEL — what session is coming up (eyebrow above countdown) -->
-                            <TextView
-                                android:id="@+id/tv_next_session"
-                                android:text=""
-                                android:textColor="@color/text_secondary"
-                                android:textSize="@dimen/text_label"
-                                android:letterSpacing="0.1"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:visibility="gone" />
-
-                            <!-- 2. COUNTDOWN — dominant visual element (Task 4: 48sp hero, white) -->
-                            <TextView
-                                android:id="@+id/tv_countdown"
-                                android:text=""
-                                android:textColor="@color/text_primary"
-                                android:textSize="@dimen/text_hero"
-                                android:textStyle="bold"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/spacing_xs" />
-
-                            <!-- 3. HERO STATE — Weekend Complete / Offseason (Task 2: replaces countdown when state changes) -->
-                            <LinearLayout
-                                android:id="@+id/layout_hero_state"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="vertical"
-                                android:visibility="gone">
-
-                                <TextView
-                                    android:id="@+id/tv_hero_state_title"
-                                    android:text=""
-                                    android:textColor="@color/text_secondary"
-                                    android:textSize="@dimen/text_title"
-                                    android:textStyle="bold"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginTop="@dimen/spacing_xs" />
-
-                                <TextView
-                                    android:id="@+id/tv_hero_state_subtitle"
-                                    android:text=""
-                                    android:textColor="@color/text_tertiary"
-                                    android:textSize="@dimen/text_metadata"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginTop="4dp" />
-
-                            </LinearLayout>
-
-                            <!-- 4. RACE DATE — secondary supporting context -->
-                            <TextView
-                                android:id="@+id/tv_next_race_date"
-                                android:text=""
-                                android:textColor="@color/text_tertiary"
-                                android:textSize="@dimen/text_metadata"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/spacing_xs" />
-
-                            <!-- 5. CIRCUIT NAME — tertiary context -->
-                            <TextView
-                                android:id="@+id/tv_next_race_circuit"
-                                android:text=""
-                                android:textColor="@color/text_hint"
-                                android:textSize="@dimen/text_metadata"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp" />
-
-                            <!-- 6. Weekend Timeline (visual session progress dots) -->
-                            <LinearLayout
-                                android:id="@+id/ll_weekend_timeline"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="vertical"
-                                android:layout_marginTop="@dimen/spacing_md"
-                                android:visibility="gone" />
-
-                            <!-- 7. Session times list -->
-                            <LinearLayout
-                                android:id="@+id/ll_session_times"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="vertical"
-                                android:layout_marginTop="@dimen/spacing_sm" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- ══════════════════════════════════════════════════
-                     SECTION 2 — CHAMPIONSHIP BATTLE
-                     Task 5: P1/P2 badges, rivalry feel, insight prominence
-                     ══════════════════════════════════════════════════ -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/bg_elevated" />
-
-                <LinearLayout
-                    android:id="@+id/card_leader"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:background="@color/bg_surface"
-                    android:paddingStart="@dimen/spacing_md"
-                    android:paddingEnd="@dimen/spacing_md"
-                    android:paddingTop="@dimen/spacing_md"
-                    android:paddingBottom="@dimen/spacing_md">
-
-                    <!-- Section eyebrow -->
-                    <TextView
-                        android:id="@+id/tv_leader_title"
-                        android:text="CHAMPIONSHIP BATTLE"
-                        android:textColor="@color/text_tertiary"
-                        android:textSize="@dimen/text_label"
-                        android:letterSpacing="0.1"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
-
-                    <!-- P1 row — Task 5: position badge adds competitor identity -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginTop="@dimen/spacing_md">
-
-                        <!-- P1 position badge -->
-                        <TextView
-                            android:text="P1"
-                            android:textColor="@color/text_primary"
-                            android:textSize="@dimen/text_metadata"
-                            android:textStyle="bold"
-                            android:letterSpacing="0.05"
-                            android:layout_width="20dp"
-                            android:layout_height="wrap_content"
-                            android:gravity="start" />
-
-                        <View
-                            android:id="@+id/view_leader_colour"
-                            android:layout_width="@dimen/team_strip_width"
-                            android:layout_height="48dp"
-                            android:background="@color/team_default"
-                            android:layout_marginEnd="@dimen/spacing_md" />
-
-                        <ImageView
-                            android:id="@+id/iv_leader_headshot"
-                            android:layout_width="@dimen/headshot_size_md"
-                            android:layout_height="@dimen/headshot_size_md"
-                            android:scaleType="centerCrop"
-                            android:background="@color/bg_elevated" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:layout_marginStart="@dimen/spacing_md">
-
-                            <TextView
-                                android:id="@+id/tv_leader_name"
-                                android:text=""
-                                android:textColor="@color/text_primary"
-                                android:textSize="@dimen/text_card_header"
-                                android:textStyle="bold"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-
-                            <TextView
-                                android:id="@+id/tv_leader_team"
-                                android:text=""
-                                android:textColor="@color/text_secondary"
-                                android:textSize="@dimen/text_metadata"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp" />
-
-                        </LinearLayout>
-
-                        <!-- Points block (right-aligned) -->
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:gravity="end">
-
-                            <TextView
-                                android:id="@+id/tv_leader_points"
-                                android:text=""
-                                android:textColor="@color/text_primary"
-                                android:textSize="@dimen/text_title"
-                                android:textStyle="bold"
-                                android:gravity="end"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-
-                            <TextView
-                                android:text="PTS"
-                                android:textColor="@color/text_tertiary"
-                                android:textSize="@dimen/text_label"
-                                android:letterSpacing="0.1"
-                                android:gravity="end"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                    <!-- Gap display: lines flanking the central gap number — Task 5: gap is visual focus -->
-                    <LinearLayout
-                        android:id="@+id/layout_champ_gap"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginTop="@dimen/spacing_sm"
-                        android:layout_marginBottom="@dimen/spacing_xs"
-                        android:visibility="gone">
-
-                        <View
-                            android:layout_width="0dp"
-                            android:layout_height="1dp"
-                            android:layout_weight="1"
-                            android:background="@color/bg_elevated"
-                            android:layout_marginEnd="@dimen/spacing_md" />
-
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:gravity="center">
-
-                            <TextView
-                                android:id="@+id/tv_champ_gap"
-                                android:text=""
-                                android:textColor="@color/f1_red"
-                                android:textSize="@dimen/text_countdown"
-                                android:textStyle="bold"
-                                android:gravity="center"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-
-                            <TextView
-                                android:text="PT GAP"
-                                android:textColor="@color/text_tertiary"
-                                android:textSize="@dimen/text_label"
-                                android:letterSpacing="0.1"
-                                android:gravity="center"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-
-                        </LinearLayout>
-
-                        <View
-                            android:layout_width="0dp"
-                            android:layout_height="1dp"
-                            android:layout_weight="1"
-                            android:background="@color/bg_elevated"
-                            android:layout_marginStart="@dimen/spacing_md" />
-
-                    </LinearLayout>
-
-                    <!-- Championship insight — Task 5: between gap and P2 for narrative flow -->
-                    <TextView
-                        android:id="@+id/tv_champ_insight"
-                        android:text=""
-                        android:textColor="@color/text_secondary"
-                        android:textSize="@dimen/text_metadata"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="@dimen/spacing_xs"
-                        android:gravity="center"
-                        android:visibility="gone" />
-
-                    <!-- P2 row — Task 5: challenger is visually secondary to leader -->
-                    <LinearLayout
-                        android:id="@+id/layout_p2"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:visibility="gone">
-
-                        <!-- P2 position badge -->
-                        <TextView
-                            android:text="P2"
-                            android:textColor="@color/text_tertiary"
-                            android:textSize="@dimen/text_metadata"
-                            android:textStyle="bold"
-                            android:letterSpacing="0.05"
-                            android:layout_width="20dp"
-                            android:layout_height="wrap_content"
-                            android:gravity="start" />
-
-                        <View
-                            android:id="@+id/view_p2_colour"
-                            android:layout_width="@dimen/team_strip_width"
-                            android:layout_height="48dp"
-                            android:background="@color/team_default"
-                            android:layout_marginEnd="@dimen/spacing_md" />
-
-                        <ImageView
-                            android:id="@+id/iv_p2_headshot"
-                            android:layout_width="@dimen/headshot_size_md"
-                            android:layout_height="@dimen/headshot_size_md"
-                            android:scaleType="centerCrop"
-                            android:background="@color/bg_elevated" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:layout_marginStart="@dimen/spacing_md">
-
-                            <!-- P2 name is text_secondary to distinguish challenger from leader -->
-                            <TextView
-                                android:id="@+id/tv_p2_name"
-                                android:text=""
-                                android:textColor="@color/text_secondary"
-                                android:textSize="@dimen/text_card_header"
-                                android:textStyle="bold"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-
-                            <TextView
-                                android:id="@+id/tv_p2_team"
-                                android:text=""
-                                android:textColor="@color/text_secondary"
-                                android:textSize="@dimen/text_metadata"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp" />
-
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:gravity="end">
-
-                            <TextView
-                                android:id="@+id/tv_p2_points"
-                                android:text=""
-                                android:textColor="@color/text_secondary"
-                                android:textSize="@dimen/text_title"
-                                android:textStyle="bold"
-                                android:gravity="end"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-
-                            <TextView
-                                android:text="PTS"
-                                android:textColor="@color/text_tertiary"
-                                android:textSize="@dimen/text_label"
-                                android:letterSpacing="0.1"
-                                android:gravity="end"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-                <!-- ══════════════════════════════════════════════════
-                     SECTION 3 — LAST RACE WINNER
-                     ══════════════════════════════════════════════════ -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/bg_elevated" />
-
-                <LinearLayout
-                    android:id="@+id/card_last_race"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:background="@color/bg_surface">
-
-                    <View
-                        android:id="@+id/view_last_winner_colour"
-                        android:layout_width="@dimen/team_strip_width"
-                        android:layout_height="match_parent"
-                        android:background="@color/team_default" />
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:padding="@dimen/spacing_md">
-
-                        <TextView
-                            android:text="LAST WINNER"
-                            android:textColor="@color/text_primary"
-                            android:textSize="@dimen/text_label"
-                            android:letterSpacing="0.12"
-                            android:paddingStart="6dp"
-                            android:paddingEnd="6dp"
-                            android:paddingTop="3dp"
-                            android:paddingBottom="3dp"
-                            android:background="@drawable/bg_badge_red"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:layout_marginTop="@dimen/spacing_sm">
-
-                            <ImageView
-                                android:id="@+id/iv_last_winner_headshot"
-                                android:layout_width="@dimen/headshot_size_md"
-                                android:layout_height="@dimen/headshot_size_md"
-                                android:scaleType="centerCrop"
-                                android:background="@color/bg_elevated" />
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:orientation="vertical"
-                                android:layout_marginStart="@dimen/spacing_md">
-
-                                <TextView
-                                    android:id="@+id/tv_last_winner"
-                                    android:text=""
-                                    android:textColor="@color/text_primary"
-                                    android:textSize="@dimen/text_card_header"
-                                    android:textStyle="bold"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content" />
-
-                                <TextView
-                                    android:id="@+id/tv_last_race_team"
-                                    android:text=""
-                                    android:textColor="@color/text_secondary"
-                                    android:textSize="@dimen/text_metadata"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginTop="2dp" />
-
-                                <TextView
-                                    android:id="@+id/tv_last_race_name"
-                                    android:text=""
-                                    android:textColor="@color/text_tertiary"
-                                    android:textSize="@dimen/text_metadata"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginTop="2dp" />
-
-                            </LinearLayout>
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/bg_elevated" />
-
-            </LinearLayout>
-        </ScrollView>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </FrameLayout>
