@@ -2,6 +2,7 @@ package com.f1stats;
 
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -27,8 +28,10 @@ import com.f1stats.home.HomeCardParams;
 import com.f1stats.home.HomeCardType;
 import com.f1stats.home.HomeLayoutStore;
 import com.f1stats.models.ConstructorStanding;
+import com.f1stats.models.NewsResponse;
 import com.f1stats.ui.compare.DriverPickerBottomSheet;
 import com.f1stats.ui.customize.CustomizeHomeAdapter;
+import com.f1stats.ui.news.NewsActivity;
 import com.f1stats.util.SystemBarInsets;
 import com.f1stats.util.TeamColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -37,8 +40,11 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Show, hide and reorder Home cards, and set each card's options. Every change is saved to
@@ -64,6 +70,7 @@ public class CustomizeHomeActivity extends AppCompatActivity
     /** The open pinned head-to-head dialog's views, refreshed after a pick. */
     @Nullable private View h2hDialogView;
     private boolean teamsLoading;
+    private boolean newsSourcesLoading;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -190,6 +197,9 @@ public class CustomizeHomeActivity extends AppCompatActivity
             case CHAMPIONSHIP_SNAPSHOT:
                 showSnapshotOptions();
                 break;
+            case NEWS:
+                loadNewsSources();
+                break;
             default:
                 break;
         }
@@ -212,6 +222,11 @@ public class CustomizeHomeActivity extends AppCompatActivity
             case CHAMPIONSHIP_SNAPSHOT:
                 return getString(HomeCardParams.isConstructorsMode(config)
                         ? R.string.options_snapshot_constructors : R.string.options_snapshot_drivers);
+            case NEWS: {
+                List<String> sources = HomeCardParams.newsSources(config);
+                return sources.isEmpty() ? getString(R.string.options_news_all)
+                        : TextUtils.join(", ", sources);
+            }
             default:
                 return null;
         }
@@ -395,6 +410,65 @@ public class CustomizeHomeActivity extends AppCompatActivity
                             ? HomeCardParams.MODE_CONSTRUCTORS : HomeCardParams.MODE_DRIVERS);
                     saveConfig(config);
                     dialog.dismiss();
+                })
+                .setNegativeButton(R.string.customize_home_cancel, null)
+                .show();
+    }
+
+    // News sources (the ones seen in the latest headlines) ──────────────────────
+
+    private void loadNewsSources() {
+        if (newsSourcesLoading) return;
+        newsSourcesLoading = true;
+        // Usually answered from the repository's memory cache (Home already fetched it)
+        F1Repository.getInstance(this).getNews(NewsActivity.NEWS_LIMIT, false,
+                new F1Repository.RepositoryCallback<NewsResponse>() {
+                    @Override
+                    public void onSuccess(NewsResponse data) {
+                        newsSourcesLoading = false;
+                        if (isFinishing() || isDestroyed()) return;
+                        showNewsSources(data);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        newsSourcesLoading = false;
+                        if (isFinishing() || isDestroyed()) return;
+                        Toast.makeText(CustomizeHomeActivity.this, R.string.options_news_sources_error,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void showNewsSources(NewsResponse news) {
+        List<String> chosen = HomeCardParams.newsSources(store.getConfig(HomeCardType.NEWS));
+        // Sources that failed this time, or were chosen earlier, can still be (un)selected
+        Set<String> available = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        for (NewsResponse.Item item : news.items) {
+            if (item.source != null && !item.source.isEmpty()) available.add(item.source);
+        }
+        available.addAll(news.failedSources);
+        available.addAll(chosen);
+        if (available.isEmpty()) {
+            Toast.makeText(this, R.string.options_news_sources_error, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] labels = available.toArray(new String[0]);
+        boolean[] checked = new boolean[labels.length];
+        for (int i = 0; i < labels.length; i++) {
+            checked[i] = chosen.isEmpty() || chosen.contains(labels[i]);
+        }
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.options_news_sources)
+                .setMultiChoiceItems(labels, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
+                .setPositiveButton(R.string.options_done, (dialog, which) -> {
+                    List<String> selected = new ArrayList<>();
+                    for (int i = 0; i < labels.length; i++) if (checked[i]) selected.add(labels[i]);
+                    HomeCardConfig config = store.getConfig(HomeCardType.NEWS);
+                    config.setParam(HomeCardParams.NEWS_SOURCES,
+                            HomeCardParams.joinSources(selected, Arrays.asList(labels)));
+                    saveConfig(config);
                 })
                 .setNegativeButton(R.string.customize_home_cancel, null)
                 .show();

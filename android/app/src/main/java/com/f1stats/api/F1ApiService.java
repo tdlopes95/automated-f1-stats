@@ -3,8 +3,11 @@ package com.f1stats.api;
 import com.f1stats.models.ConstructorStanding;
 import com.f1stats.models.DriverStanding;
 import com.f1stats.models.LiveSession;
+import com.f1stats.models.NewsResponse;
+import com.f1stats.models.OnThisDayResponse;
 import com.f1stats.models.PitStop;
 import com.f1stats.models.RaceResult;
+import com.f1stats.models.WeatherForecast;
 
 import java.util.List;
 import java.util.Map;
@@ -107,5 +110,20 @@ public interface F1ApiService {
 
     @GET("circuit/{circuitId}/stats")
     Call<com.f1stats.models.CircuitStatsResponse> getCircuitStats(@Path("circuitId") String circuitId);
+
+    // ── Weather forecast (Open-Meteo) ─────────────────────────────────────────
+
+    @GET("weather/{year}/{round}")
+    Call<WeatherForecast> getWeatherForecast(@Path("year") int year, @Path("round") int round);
+
+    // ── News headlines ────────────────────────────────────────────────────────
+
+    @GET("news")
+    Call<NewsResponse> getNews(@Query("limit") int limit);
+
+    // ── F1 history ────────────────────────────────────────────────────────────
+
+    @GET("history/on-this-day")
+    Call<OnThisDayResponse> getOnThisDay(@Query("date") String date, @Query("window") int window);
 
 }

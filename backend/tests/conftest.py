@@ -7,8 +7,8 @@ its context manager) and instead inject lightweight fakes:
 
   * a stub database whose reads miss (unless a test seeds standings rows), so
     requests fall through to the HTTP clients
-  * real httpx-backed Jolpica / OpenF1 clients, with all network traffic mocked
-    by respx (see individual tests)
+  * real httpx-backed Jolpica / OpenF1 / Open-Meteo / news clients, with all
+    network traffic mocked by respx (see individual tests)
 
 The slowapi rate limiter is disabled so repeated calls across the suite don't
 trip a limit.
@@ -19,7 +19,9 @@ from fastapi.testclient import TestClient
 
 from app import main
 from app.jolpica_client import JolpicaClient
+from app.news_client import NewsClient
 from app.openf1_client import OpenF1Client
+from app.weather_client import OpenMeteoClient
 
 JOLPICA_BASE = "https://api.jolpi.ca/ergast/f1"
 OPENF1_BASE = "https://api.openf1.org/v1"
@@ -81,6 +83,8 @@ def client(monkeypatch, stub_db):
     monkeypatch.setattr(main, "db", stub_db)
     monkeypatch.setattr(main, "jolpica", JolpicaClient())
     monkeypatch.setattr(main, "openf1", OpenF1Client())
+    monkeypatch.setattr(main, "openmeteo", OpenMeteoClient())
+    monkeypatch.setattr(main, "news", NewsClient())
     monkeypatch.setattr(main.limiter, "enabled", False)
     main._cache.clear()
 

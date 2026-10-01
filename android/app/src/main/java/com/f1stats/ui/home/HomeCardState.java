@@ -1,6 +1,9 @@
 package com.f1stats.ui.home;
 
 import com.f1stats.home.HomeCardType;
+import com.f1stats.models.NewsResponse;
+import com.f1stats.models.OnThisDayResponse;
+import com.f1stats.models.WeatherForecast;
 import com.f1stats.util.HeadToHead;
 
 import java.util.ArrayList;
@@ -98,6 +101,25 @@ public class HomeCardState {
             public String driverId, name, team, constructorId;
             public HeadToHead.DriverStats stats;
         }
+    }
+
+    public static class WeekendWeather extends HomeCardState {
+        /** The next race's forecast; null with {@link #noRace} set in the offseason. */
+        public WeatherForecast forecast;
+        public boolean noRace;
+    }
+
+    public static class News extends HomeCardState {
+        /** The newest headlines from the chosen sources, at most {@link #MAX_ITEMS}. */
+        public static final int MAX_ITEMS = 5;
+        public final List<NewsResponse.Item> items = new ArrayList<>();
+        /** The response had headlines, just none from the chosen sources. */
+        public boolean noneFromSources;
+    }
+
+    public static class OnThisDay extends HomeCardState {
+        public static final int MAX_ITEMS = 4;
+        public final List<OnThisDayResponse.Item> items = new ArrayList<>();
     }
 
     public static class Snapshot extends HomeCardState {

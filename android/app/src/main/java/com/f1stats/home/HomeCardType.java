@@ -18,7 +18,11 @@ public enum HomeCardType {
     FAVOURITE_DRIVER(true, false, true, R.string.home_card_favourite_driver_name, R.string.home_card_favourite_driver_desc),
     FAVOURITE_TEAM(true, false, true, R.string.home_card_favourite_team_name, R.string.home_card_favourite_team_desc),
     PINNED_H2H(true, false, true, R.string.home_card_pinned_h2h_name, R.string.home_card_pinned_h2h_desc),
-    CHAMPIONSHIP_SNAPSHOT(true, false, true, R.string.home_card_snapshot_name, R.string.home_card_snapshot_desc);
+    CHAMPIONSHIP_SNAPSHOT(true, false, true, R.string.home_card_snapshot_name, R.string.home_card_snapshot_desc),
+
+    WEEKEND_WEATHER(true, false, false, R.string.home_card_weekend_weather_name, R.string.home_card_weekend_weather_desc),
+    NEWS(true, false, true, R.string.home_card_news_name, R.string.home_card_news_desc),
+    ON_THIS_DAY(true, false, false, R.string.home_card_on_this_day_name, R.string.home_card_on_this_day_desc);
 
     private final boolean available;
     private final boolean defaultEnabled;

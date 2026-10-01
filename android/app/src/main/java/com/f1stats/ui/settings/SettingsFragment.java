@@ -77,6 +77,7 @@ public class SettingsFragment extends Fragment {
         bindLink(view, R.id.tv_credit_openf1,    R.string.credit_openf1_url);
         bindLink(view, R.id.tv_credit_circuits,  R.string.credit_circuits_url);
         bindLink(view, R.id.tv_credit_flagpedia, R.string.credit_flagpedia_url);
+        bindLink(view, R.id.tv_credit_openmeteo, R.string.credit_openmeteo_url);
     }
 
     private void bindLink(View root, int viewId, @StringRes int urlRes) {

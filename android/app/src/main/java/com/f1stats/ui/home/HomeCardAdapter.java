@@ -123,6 +123,12 @@ class HomeCardAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 return new PinnedH2hCardHolder(inflate(inflater, parent, R.layout.item_home_card_pinned_h2h));
             case CHAMPIONSHIP_SNAPSHOT:
                 return new SnapshotCardHolder(inflate(inflater, parent, R.layout.item_home_card_snapshot));
+            case WEEKEND_WEATHER:
+                return new WeatherCardHolder(inflate(inflater, parent, R.layout.item_home_card_weather));
+            case NEWS:
+                return new NewsCardHolder(inflate(inflater, parent, R.layout.item_home_card_news));
+            case ON_THIS_DAY:
+                return new OnThisDayCardHolder(inflate(inflater, parent, R.layout.item_home_card_on_this_day));
             default:
                 throw new IllegalArgumentException("No Home card view for " + type);
         }

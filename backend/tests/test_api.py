@@ -675,7 +675,7 @@ def test_drivers_by_year_keep_upstream_keys(client):
     assert resp.status_code == 200
     driver = resp.json()[0]
     assert driver["headshot_url"] == "https://example.com/ver.png"
-    assert driver["country_code"] == "NED"
+    assert "country_code" not in driver  # deprecated by OpenF1, no longer passed through
     assert driver["team_colour"] == "#3671C6"
 
 

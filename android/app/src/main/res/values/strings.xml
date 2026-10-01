@@ -22,6 +22,12 @@
     <string name="credit_flagpedia_detail">Country flags</string>
     <string name="credit_flagpedia_url" translatable="false">https://flagpedia.net</string>
 
+    <string name="credit_openmeteo_name">Open-Meteo</string>
+    <string name="credit_openmeteo_detail">Weather forecasts · CC BY 4.0</string>
+    <string name="credit_openmeteo_url" translatable="false">https://open-meteo.com</string>
+
+    <string name="credit_news_detail">News headlines link to their publishers: Formula 1, Autosport, Motorsport.com, The Race</string>
+
     <string name="about_disclaimer">This app is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1 and related marks are trade marks of Formula One Licensing B.V.</string>
     <string name="about_no_browser">No browser available to open the link</string>
     <!-- ── Home ──────────────────────────────────────────── -->
@@ -149,4 +155,49 @@
     <string name="options_teams_error">Couldn\'t load teams. Check your connection.</string>
     <string name="customize_choice_vs">%1$s vs %2$s</string>
     <string name="customize_choice_teammates">Favourite driver vs teammate</string>
+
+    <!-- ── Home: E2 cards ────────────────────────────────── -->
+    <string name="home_card_weekend_weather_name">Weekend forecast</string>
+    <string name="home_card_weekend_weather_desc">Weather for the next race weekend, by day and by session</string>
+    <string name="home_card_news_name">News</string>
+    <string name="home_card_news_desc">The latest F1 headlines</string>
+    <string name="home_card_on_this_day_name">This week in history</string>
+    <string name="home_card_on_this_day_desc">Grand Prix winners from this week in past seasons</string>
+
+    <!-- Weekend forecast card -->
+    <string name="weather_label">Weekend forecast</string>
+    <string name="weather_available_from">Forecast available from %1$s</string>
+    <string name="weather_no_race">No upcoming race</string>
+    <string name="weather_attribution">Weather data by Open-Meteo.com</string>
+    <string name="weather_temp">%1$d°</string>
+    <string name="weather_temp_range">%1$d° / %2$d°</string>
+    <string name="weather_rain">%1$d%% rain</string>
+    <string name="weather_unknown" translatable="false">–</string>
+
+    <!-- News card and screen -->
+    <string name="news_label">Latest news</string>
+    <string name="news_more">More news</string>
+    <string name="news_meta">%1$s · %2$s</string>
+    <string name="news_no_matching">No headlines from your selected sources right now</string>
+    <string name="news_title">News</string>
+    <string name="news_error">Couldn\'t load news. Pull down to retry.</string>
+    <string name="news_empty">No headlines right now</string>
+    <string name="time_just_now">Just now</string>
+    <string name="time_minutes_ago">%1$d min ago</string>
+    <string name="time_hours_ago">%1$d h ago</string>
+    <string name="time_days_ago">%1$d d ago</string>
+
+    <!-- This week in history card -->
+    <string name="history_label">This week in F1 history</string>
+    <plurals name="history_years_ago">
+        <item quantity="one">%1$d year ago · %2$s</item>
+        <item quantity="other">%1$d years ago · %2$s</item>
+    </plurals>
+    <string name="history_this_season">This season · %1$s</string>
+    <string name="history_empty">No races this week in history</string>
+
+    <!-- News card options -->
+    <string name="options_news_sources">News sources</string>
+    <string name="options_news_all">All sources</string>
+    <string name="options_news_sources_error">Couldn\'t load news sources. Check your connection.</string>
 </resources>

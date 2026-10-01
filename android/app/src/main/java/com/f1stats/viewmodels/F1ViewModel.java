@@ -13,9 +13,12 @@ import com.f1stats.db.CachedDriver;
 import com.f1stats.models.ConstructorStanding;
 import com.f1stats.models.DriverStanding;
 import com.f1stats.models.LiveSession;
+import com.f1stats.models.NewsResponse;
+import com.f1stats.models.OnThisDayResponse;
 import com.f1stats.models.PitStop;
 import com.f1stats.models.QualifyingResult;
 import com.f1stats.models.RaceResult;
+import com.f1stats.models.WeatherForecast;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,8 +42,6 @@ public class F1ViewModel extends ViewModel {
     private final MutableLiveData<LiveSession> liveSession = new MutableLiveData<>();
     private final MutableLiveData<Boolean> liveLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> liveError = new MutableLiveData<>();
-    private final MutableLiveData<String> lastRaceName = new MutableLiveData<>();
-    public LiveData<String> getLastRaceName() { return lastRaceName; }
 
     // ── Results ───────────────────────────────────────────────────────────────
     private final MutableLiveData<List<RaceResult>> raceResults = new MutableLiveData<>();
@@ -108,6 +109,29 @@ public class F1ViewModel extends ViewModel {
     public LiveData<List<DriverStanding>> getHomeDriverStandings() { return homeDriverStandings; }
     public LiveData<List<ConstructorStanding>> getHomeConstructorStandings() { return homeConstructorStandings; }
     public LiveData<HeadToHead.Season> getHomeSeasonResults() { return homeSeasonResults; }
+
+    // Latest race results for Home's last winner. Separate from raceResults, which the Results
+    // and Weekend tabs fill with whatever round they show.
+    private final MutableLiveData<List<RaceResult>> homeLatestResults = new MutableLiveData<>();
+    private final MutableLiveData<String> homeLastRaceName = new MutableLiveData<>();
+
+    public LiveData<List<RaceResult>> getHomeLatestResults() { return homeLatestResults; }
+    public LiveData<String> getHomeLastRaceName() { return homeLastRaceName; }
+
+    // ── Weekend forecast, news, history (Home cards; news also NewsActivity) ──
+    private final MutableLiveData<WeatherForecast> weekendForecast = new MutableLiveData<>();
+    private final MutableLiveData<String> weekendForecastError = new MutableLiveData<>(null);
+    private final MutableLiveData<NewsResponse> news = new MutableLiveData<>();
+    private final MutableLiveData<String> newsError = new MutableLiveData<>(null);
+    private final MutableLiveData<OnThisDayResponse> onThisDay = new MutableLiveData<>();
+    private final MutableLiveData<String> onThisDayError = new MutableLiveData<>(null);
+
+    public LiveData<WeatherForecast> getWeekendForecast() { return weekendForecast; }
+    public LiveData<String> getWeekendForecastError() { return weekendForecastError; }
+    public LiveData<NewsResponse> getNews() { return news; }
+    public LiveData<String> getNewsError() { return newsError; }
+    public LiveData<OnThisDayResponse> getOnThisDay() { return onThisDay; }
+    public LiveData<String> getOnThisDayError() { return onThisDayError; }
     public LiveData<Boolean> getSeasonStarted() { return seasonStarted; }
     public LiveData<Map<String, String>> getDriverHeadshotMap() { return driverHeadshotMap; }
 
@@ -137,27 +161,24 @@ public class F1ViewModel extends ViewModel {
 
     // ── Results ───────────────────────────────────────────────────────────────
 
-    public void fetchLatestResults(String sessionType, int year) {
-        resultsLoading.setValue(true);
+    /** Home's last winner: the latest race of the season, into Home's own LiveData. */
+    public void fetchHomeLatestResults(int year) {
         latestResultsError.setValue(null);
-        api().getLatestResults(sessionType, year).enqueue(new Callback<Map<String, Object>>() {
+        api().getLatestResults("Race", year).enqueue(new Callback<Map<String, Object>>() {
             @Override
             public void onResponse(Call<Map<String, Object>> call,
                                    Response<Map<String, Object>> response) {
-                resultsLoading.setValue(false);
                 if (response.isSuccessful() && response.body() != null) {
                     Map<String, Object> body = response.body();
                     Object rn = body.get("race_name");
-                    if (rn != null) lastRaceName.setValue(rn.toString());
-                    raceResults.setValue(parseRaceResults(body));
+                    if (rn != null) homeLastRaceName.setValue(rn.toString());
+                    homeLatestResults.setValue(parseRaceResults(body));
                 } else {
-                    resultsError.setValue(httpError(response.code()));
                     latestResultsError.setValue(httpError(response.code()));
                 }
             }
             @Override
             public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                resultsLoading.setValue(false);
                 latestResultsError.setValue(networkError(t));
             }
         });
@@ -404,6 +425,52 @@ public class F1ViewModel extends ViewModel {
             @Override
             public void onFailure(Call<Map<String, Object>> call, Throwable t) {
                 nextRaceError.setValue(networkError(t));
+            }
+        });
+    }
+
+
+    // ── Weekend forecast, news, history ───────────────────────────────────────
+
+    public void fetchWeekendForecast(int year, int round, boolean forceRefresh) {
+        weekendForecastError.setValue(null);
+        repo.getWeatherForecast(year, round, forceRefresh, new F1Repository.RepositoryCallback<WeatherForecast>() {
+            @Override
+            public void onSuccess(WeatherForecast data) {
+                weekendForecast.setValue(data);
+            }
+            @Override
+            public void onError(String error) {
+                weekendForecastError.setValue(error);
+            }
+        });
+    }
+
+    public void fetchNews(int limit, boolean forceRefresh) {
+        newsError.setValue(null);
+        repo.getNews(limit, forceRefresh, new F1Repository.RepositoryCallback<NewsResponse>() {
+            @Override
+            public void onSuccess(NewsResponse data) {
+                news.setValue(data);
+            }
+            @Override
+            public void onError(String error) {
+                newsError.setValue(error);
+            }
+        });
+    }
+
+    /** @param dateIso the local date, YYYY-MM-DD */
+    public void fetchOnThisDay(String dateIso) {
+        onThisDayError.setValue(null);
+        repo.getOnThisDay(dateIso, new F1Repository.RepositoryCallback<OnThisDayResponse>() {
+            @Override
+            public void onSuccess(OnThisDayResponse data) {
+                onThisDay.setValue(data);
+            }
+            @Override
+            public void onError(String error) {
+                onThisDayError.setValue(error);
             }
         });
     }

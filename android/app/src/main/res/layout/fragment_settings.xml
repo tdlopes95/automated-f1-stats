@@ -179,6 +179,19 @@
         android:text="@string/credit_flagpedia_detail" />
 
     <TextView
+        android:id="@+id/tv_credit_openmeteo"
+        style="@style/Widget.F1.CreditName"
+        android:text="@string/credit_openmeteo_name" />
+    <TextView
+        style="@style/Widget.F1.CreditDetail"
+        android:text="@string/credit_openmeteo_detail" />
+
+    <TextView
+        style="@style/Widget.F1.CreditDetail"
+        android:layout_marginTop="@dimen/spacing_row"
+        android:text="@string/credit_news_detail" />
+
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_lg"

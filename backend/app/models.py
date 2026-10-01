@@ -82,7 +82,6 @@ class PitStop(BaseModel):
     driver_number: int
     lap_number: int
     date: datetime | None = None
-    pit_duration: float | None = None     # total pit lane time (s)
     stop_duration: float | None = None    # stationary time (s)
 
 
@@ -186,6 +185,8 @@ class RaceSchedule(BaseModel):
     circuit_id: str | None = None
     country: str | None = None
     locality: str | None = None
+    lat: float | None = None
+    lng: float | None = None
     sessions: list[SessionEntry] = []
 
 
@@ -240,7 +241,6 @@ class DriverInfo(BaseModel):
     headshot_url: str | None = None
     team_name: str | None = None
     team_colour: str | None = None
-    country_code: str | None = None
 
 
 # ── Circuit Stats ──────────────────────────────────────────────────────────────
@@ -279,3 +279,74 @@ class CircuitStatsResponse(BaseModel):
     lapRecord: LapRecord | None = None
     lapRecordSinceYear: int | None = None   # earliest season with a timed fastest lap
     dataNote: str | None = None
+
+
+# ── Weather forecast (Open-Meteo) ──────────────────────────────────────────────
+
+class WeatherDay(BaseModel):
+    date: str                                   # YYYY-MM-DD (UTC)
+    weather_code: int | None = None             # WMO weather code
+    temp_max: float | None = None               # °C
+    temp_min: float | None = None
+    rain_probability_max: int | None = None     # %
+
+
+class WeatherSession(BaseModel):
+    name: str
+    datetime_utc: str
+    temperature: float | None = None            # °C
+    rain_probability: int | None = None         # %
+    precipitation: float | None = None          # mm
+    wind_speed: float | None = None             # km/h
+    weather_code: int | None = None
+
+
+class WeatherForecastResponse(BaseModel):
+    year: int
+    round: int
+    race_name: str | None = None
+    available: bool
+    available_from: str | None = None           # YYYY-MM-DD, set when not available
+    days: list[WeatherDay] = []
+    sessions: list[WeatherSession] = []
+    attribution: str
+
+
+# ── News headlines ─────────────────────────────────────────────────────────────
+
+class NewsItem(BaseModel):
+    title: str
+    link: str
+    source: str
+    published_utc: str | None = None            # None when the feed has no date
+
+
+class NewsResponse(BaseModel):
+    items: list[NewsItem] = []
+    failed_sources: list[str] = []
+
+
+# ── F1 history ─────────────────────────────────────────────────────────────────
+
+class RaceWinner(BaseModel):
+    season: int
+    round: int
+    race_name: str | None = None
+    date: str
+    circuit_id: str | None = None
+    circuit_name: str | None = None
+    country: str | None = None
+    driver_id: str | None = None
+    driver_name: str | None = None
+    constructor_id: str | None = None
+    constructor_name: str | None = None
+
+
+class OnThisDayItem(RaceWinner):
+    years_ago: int
+
+
+class OnThisDayResponse(BaseModel):
+    date: str
+    window: int
+    items: list[OnThisDayItem] = []

@@ -36,7 +36,8 @@ public class HomeLayoutStoreTest {
     private static final List<HomeCardType> ALL = Arrays.asList(
             HomeCardType.NEXT_RACE, HomeCardType.CHAMPIONSHIP_BATTLE, HomeCardType.LAST_WINNER,
             HomeCardType.FAVOURITE_DRIVER, HomeCardType.FAVOURITE_TEAM, HomeCardType.PINNED_H2H,
-            HomeCardType.CHAMPIONSHIP_SNAPSHOT);
+            HomeCardType.CHAMPIONSHIP_SNAPSHOT, HomeCardType.WEEKEND_WEATHER, HomeCardType.NEWS,
+            HomeCardType.ON_THIS_DAY);
 
     @Test
     public void defaultLayout_originalSectionsEnabled_newCardsDisabled() {
@@ -73,7 +74,11 @@ public class HomeLayoutStoreTest {
                 new HomeCardConfig(HomeCardType.CHAMPIONSHIP_BATTLE, true),
                 new HomeCardConfig(HomeCardType.FAVOURITE_DRIVER, false),
                 new HomeCardConfig(HomeCardType.FAVOURITE_TEAM, false),
-                new HomeCardConfig(HomeCardType.PINNED_H2H, false));
+                new HomeCardConfig(HomeCardType.PINNED_H2H, false),
+                new HomeCardConfig(HomeCardType.WEEKEND_WEATHER, false),
+                new HomeCardConfig(HomeCardType.NEWS, false,
+                        Collections.singletonMap(HomeCardParams.NEWS_SOURCES, "Autosport,The Race")),
+                new HomeCardConfig(HomeCardType.ON_THIS_DAY, false));
         store.save(saved);
 
         // A fresh store reads only what was persisted
@@ -108,7 +113,8 @@ public class HomeLayoutStoreTest {
         assertEquals(Arrays.asList(HomeCardType.LAST_WINNER, HomeCardType.NEXT_RACE,
                 HomeCardType.CHAMPIONSHIP_BATTLE, HomeCardType.FAVOURITE_DRIVER,
                 HomeCardType.FAVOURITE_TEAM, HomeCardType.PINNED_H2H,
-                HomeCardType.CHAMPIONSHIP_SNAPSHOT), types(layout));
+                HomeCardType.CHAMPIONSHIP_SNAPSHOT, HomeCardType.WEEKEND_WEATHER,
+                HomeCardType.NEWS, HomeCardType.ON_THIS_DAY), types(layout));
         for (HomeCardConfig c : layout.subList(3, layout.size())) assertFalse(c.isEnabled());
     }
 

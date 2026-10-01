@@ -31,6 +31,10 @@
             android:parentActivityName=".MainActivity"
             android:theme="@style/Theme.F1Stats" />
         <activity
+            android:name=".ui.news.NewsActivity"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.F1Stats" />
+        <activity
             android:name=".DriverProfileActivity"
             android:parentActivityName=".MainActivity"
             android:theme="@style/Theme.F1Stats" />

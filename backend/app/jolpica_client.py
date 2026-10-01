@@ -108,13 +108,16 @@ class JolpicaClient:
 
         schedule = []
         for race in races:
+            location = race.get("Circuit", {}).get("Location", {})
             entry = {
                 "round": int(race.get("round", 0)),
                 "race_name": race.get("raceName"),
                 "circuit": race.get("Circuit", {}).get("circuitName"),
                 "circuit_id": race.get("Circuit", {}).get("circuitId"),
-                "country": race.get("Circuit", {}).get("Location", {}).get("country"),
-                "locality": race.get("Circuit", {}).get("Location", {}).get("locality"),
+                "country": location.get("country"),
+                "locality": location.get("locality"),
+                "lat": self._to_float(location.get("lat")),
+                "lng": self._to_float(location.get("long")),
                 "sessions": self._parse_sessions(race),
             }
             schedule.append(entry)
@@ -156,6 +159,13 @@ class JolpicaClient:
             sessions.append({"name": "Race", "datetime": race_dt.isoformat()})
 
         return sessions
+
+    @staticmethod
+    def _to_float(value) -> float | None:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
     def _to_datetime(self, date_str: str | None, time_str: str | None) -> datetime | None:
         if not date_str:
@@ -305,6 +315,12 @@ class JolpicaClient:
     async def get_circuit_fastest_laps(self, circuit_id: str) -> list[dict]:
         """Races at a circuit with the fastest-lap holder (lap times exist from 2004 only)."""
         return await self._get_all_races(f"/circuits/{circuit_id}/fastest/1/results.json")
+
+    # ── Race winners ──────────────────────────────────────────────────────────
+
+    async def get_season_winners(self, year: int) -> list[dict]:
+        """Every race of a season with its P1 result row(s); one request for a modern season."""
+        return await self._get_all_races(f"/{year}/results/1.json")
 
     async def close(self):
         await self._client.aclose()

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home card: WEEKEND_WEATHER -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <View
+        android:id="@+id/divider_top"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/bg_elevated" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/bg_surface"
+        android:paddingStart="@dimen/spacing_md"
+        android:paddingEnd="@dimen/spacing_md"
+        android:paddingTop="@dimen/spacing_md"
+        android:paddingBottom="@dimen/spacing_md">
+
+        <include layout="@layout/view_home_card_status" />
+
+        <LinearLayout
+            android:id="@+id/card_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/weather_label"
+                android:textAllCaps="true"
+                android:textColor="@color/text_tertiary"
+                android:textSize="@dimen/text_label"
+                android:letterSpacing="0.1" />
+
+            <TextView
+                android:id="@+id/tv_weather_race"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_card_header"
+                android:textStyle="bold" />
+
+            <!-- "Forecast available from …" or "No upcoming race" -->
+            <TextView
+                android:id="@+id/tv_weather_message"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_metadata"
+                android:visibility="gone" />
+
+            <!-- Day columns built in code from item_weather_day -->
+            <LinearLayout
+                android:id="@+id/ll_weather_days"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_row"
+                android:orientation="horizontal" />
+
+            <!-- Session rows built in code from item_weather_session -->
+            <LinearLayout
+                android:id="@+id/ll_weather_sessions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/tv_weather_attribution"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:text="@string/weather_attribution"
+                android:textColor="@color/text_tertiary"
+                android:textSize="@dimen/text_label" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Shown when the next card isn't a flat section (or this is the last card) -->
+    <View
+        android:id="@+id/divider_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/bg_elevated"
+        android:visibility="gone" />
+
+</LinearLayout>

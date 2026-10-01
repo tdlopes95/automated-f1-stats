@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One day column in the weekend forecast card -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:orientation="vertical"
+    android:gravity="center_horizontal">
+
+    <TextView
+        android:id="@+id/tv_day_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="true"
+        android:textColor="@color/text_secondary"
+        android:textSize="@dimen/text_small"
+        android:letterSpacing="0.08" />
+
+    <ImageView
+        android:id="@+id/iv_day_icon"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginTop="@dimen/spacing_xs"
+        android:importantForAccessibility="no" />
+
+    <TextView
+        android:id="@+id/tv_day_temp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xs"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_body_sm"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tv_day_rain"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_secondary"
+        android:textSize="@dimen/text_small" />
+
+</LinearLayout>

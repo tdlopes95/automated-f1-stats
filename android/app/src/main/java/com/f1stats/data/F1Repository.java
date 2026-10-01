@@ -21,7 +21,10 @@ import com.f1stats.db.CachedSchedule;
 import com.f1stats.db.CachedSessionKey;
 import com.f1stats.db.CachedStandings;
 import com.f1stats.models.CircuitStatsResponse;
+import com.f1stats.models.NewsResponse;
+import com.f1stats.models.OnThisDayResponse;
 import com.f1stats.models.RaceResult;
+import com.f1stats.models.WeatherForecast;
 import com.f1stats.util.ResultStatus;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -36,6 +39,7 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -1079,6 +1083,77 @@ public class F1Repository {
                 })
             );
         });
+    }
+
+    // ── Weather forecast, news, history (memory cache only) ───────────────────
+
+    /** The backend's default "this week" window: ±3 days around the date. */
+    private static final int HISTORY_WINDOW_DAYS = 3;
+    private static final long NEWS_TTL_MS = 15 * 60 * 1000L;
+
+    private final MemoryCache<WeatherForecast> weatherCache = new MemoryCache<>(ONE_HOUR_MS);
+    private final MemoryCache<NewsResponse> newsCache = new MemoryCache<>(NEWS_TTL_MS);
+    // Keyed by date: valid until the date changes
+    private final MemoryCache<OnThisDayResponse> historyCache = new MemoryCache<>(Long.MAX_VALUE);
+
+    /** Race weekend forecast; cached for 1 hour. */
+    public void getWeatherForecast(int year, int round, boolean forceRefresh,
+                                   RepositoryCallback<WeatherForecast> callback) {
+        fetchMemoryCached(weatherCache, year + "/" + round, forceRefresh,
+                () -> api().getWeatherForecast(year, round), "forecast", callback);
+    }
+
+    /** Latest headlines, newest first; cached for 15 minutes per limit. */
+    public void getNews(int limit, boolean forceRefresh, RepositoryCallback<NewsResponse> callback) {
+        fetchMemoryCached(newsCache, String.valueOf(limit), forceRefresh,
+                () -> api().getNews(limit), "news", callback);
+    }
+
+    /** Race winners from this week in past seasons; cached until the date changes. */
+    public void getOnThisDay(String dateIso, RepositoryCallback<OnThisDayResponse> callback) {
+        historyCache.retainOnly(dateIso);
+        fetchMemoryCached(historyCache, dateIso, false,
+                () -> api().getOnThisDay(dateIso, HISTORY_WINDOW_DAYS), "history", callback);
+    }
+
+    /**
+     * Serves a fresh cached value, otherwise fetches. A failed fetch falls back to the last
+     * good value for the key, if there is one. Callbacks always run on the main thread.
+     */
+    private <T> void fetchMemoryCached(MemoryCache<T> cache, String key, boolean forceRefresh,
+                                       Supplier<Call<T>> request, String what,
+                                       RepositoryCallback<T> callback) {
+        T fresh = forceRefresh ? null : cache.getFresh(key, System.currentTimeMillis());
+        if (fresh != null) {
+            mainHandler.post(() -> callback.onSuccess(fresh));
+            return;
+        }
+        mainHandler.post(() -> request.get().enqueue(new Callback<T>() {
+            @Override
+            public void onResponse(Call<T> call, Response<T> response) {
+                T body = response.body();
+                if (response.isSuccessful() && body != null) {
+                    cache.put(key, body, System.currentTimeMillis());
+                    callback.onSuccess(body);
+                } else {
+                    deliverLastGood(cache, key, "Could not load " + what
+                            + " (HTTP " + response.code() + ")", callback);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<T> call, Throwable t) {
+                deliverLastGood(cache, key, "Connection error: " + t.getMessage(), callback);
+            }
+        }));
+    }
+
+    private static <T> void deliverLastGood(MemoryCache<T> cache, String key, String error,
+                                            RepositoryCallback<T> callback) {
+        T last = cache.getLast(key);
+        DebugLog.d("F1Repository", error + (last != null ? "; serving last good value" : ""));
+        if (last != null) callback.onSuccess(last);
+        else callback.onError(error);
     }
 
     // ── Misc helpers ──────────────────────────────────────────────────────────

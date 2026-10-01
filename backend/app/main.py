@@ -13,7 +13,8 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +22,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from . import history
 from .database import Database
 from .errors import UpstreamError
 from .jolpica_client import JolpicaClient
@@ -30,11 +32,24 @@ from .models import (
     DriverInfo,
     DriverStandingsResponse,
     MeetingInfo,
+    NewsResponse,
+    OnThisDayResponse,
     RaceSchedule,
     ResultsResponse,
+    WeatherForecastResponse,
 )
+from .news_client import MAX_ITEMS as NEWS_MAX_ITEMS
+from .news_client import NewsClient
 from .openf1_client import OpenF1Client
 from .scheduler import F1Scheduler
+from .weather_client import ATTRIBUTION as WEATHER_ATTRIBUTION
+from .weather_client import (
+    FORECAST_HORIZON_DAYS,
+    OpenMeteoClient,
+    forecast_end_date,
+    map_days,
+    map_sessions,
+)
 
 
 def client_ip(request: Request) -> str:
@@ -65,6 +80,9 @@ _cache: dict = {}
 CACHE_TTL           = 300        # 5 minutes  — live/current data
 CACHE_TTL_STANDINGS = 1800       # 30 minutes — current-season standings
 CACHE_TTL_FOREVER   = 86400 * 7  # 7 days     — historical data (never changes)
+CACHE_TTL_WEATHER   = 3600       # 1 hour     — race weekend forecast
+CACHE_TTL_NEWS      = 900        # 15 minutes — news headlines
+CACHE_TTL_HISTORY   = 3600       # 1 hour     — current-season race winners
 
 # Current-season results for a race this recent may still change (post-race penalties)
 RESULTS_VOLATILE_WINDOW = timedelta(hours=72)
@@ -141,6 +159,8 @@ async def fetch_results(year: int, round_number: int, session_type: str) -> list
 db: Database        = None
 jolpica: JolpicaClient  = None
 openf1: OpenF1Client    = None
+openmeteo: OpenMeteoClient = None
+news: NewsClient        = None
 scheduler: F1Scheduler  = None
 
 
@@ -222,11 +242,14 @@ async def on_prune():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global db, jolpica, openf1, scheduler
+    global db, jolpica, openf1, openmeteo, news, scheduler
     db = Database()
     await db.connect()
     jolpica  = JolpicaClient()
     openf1   = OpenF1Client(access_token=os.getenv("OPENF1_TOKEN"))
+    openmeteo = OpenMeteoClient()
+    news     = NewsClient()
+    history.load_race_winners()
     scheduler = F1Scheduler(
         jolpica=jolpica,
         on_live_poll=on_live_poll,
@@ -243,6 +266,8 @@ async def lifespan(app: FastAPI):
     scheduler.stop()
     await jolpica.close()
     await openf1.close()
+    await openmeteo.close()
+    await news.close()
     await db.close()
     logger.info("F1 Backend shut down.")
 
@@ -677,7 +702,6 @@ async def get_pit_stops(request: Request, session_key: int):
             "team_colour":   driver_info.get("colour", "#FFFFFF"),
             "lap_number":    stop.get("lap_number"),
             "stop_duration": stop.get("stop_duration"),
-            "pit_duration":  stop.get("pit_duration"),
         })
 
     result.sort(key=lambda x: x["stop_duration"])
@@ -800,7 +824,6 @@ async def get_drivers_by_year(request: Request, year: int):
             "headshot_url":  d.get("headshot_url"),
             "team_name":     d.get("team_name"),
             "team_colour":   "#" + d["team_colour"] if d.get("team_colour") else None,
-            "country_code":  d.get("country_code"),
         }
         for d in drivers_raw
     ]
@@ -967,3 +990,135 @@ async def get_circuit_stats(request: Request, circuit_id: str):
     else:
         cache_set_historical(cache_key, stats)
     return stats
+
+
+# ── Weather forecast (Open-Meteo) ─────────────────────────────────────────────
+
+def _session_start(session: dict) -> datetime:
+    dt = datetime.fromisoformat(session["datetime"])
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+
+@app.get("/weather/{year}/{round}", response_model=WeatherForecastResponse)
+@limiter.limit("30/minute")
+async def get_weather_forecast(request: Request, year: int, round: int):
+    """
+    Forecast for a race weekend at the circuit. Open-Meteo only forecasts ~16 days
+    ahead, so a weekend further out returns available=false and the date to retry from.
+    """
+    cache_key = f"weather_{year}_{round}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    schedule = await jolpica.get_schedule(year)
+    race = next((r for r in schedule if int(r.get("round", 0)) == round), None)
+    if not race:
+        raise HTTPException(status_code=404, detail="Round not found")
+
+    sessions = [s for s in race.get("sessions", []) if s.get("datetime")]
+    race_dt = race_datetime(race)
+    if not sessions or race_dt is None:
+        raise HTTPException(status_code=404, detail="Race date not found")
+
+    now = datetime.now(UTC)
+    if race_dt.date() < now.date():
+        raise HTTPException(status_code=404, detail="Race is in the past")
+
+    response = {
+        "year": year,
+        "round": round,
+        "race_name": race.get("race_name"),
+        "available": False,
+        "available_from": None,
+        "days": [],
+        "sessions": [],
+        "attribution": WEATHER_ATTRIBUTION,
+    }
+    first_start = min(_session_start(s) for s in sessions)
+    if first_start - now > timedelta(days=FORECAST_HORIZON_DAYS):
+        available_from = first_start.date() - timedelta(days=FORECAST_HORIZON_DAYS)
+        response["available_from"] = available_from.isoformat()
+        cache_set(cache_key, response, CACHE_TTL_WEATHER)
+        return response
+
+    if race.get("lat") is None or race.get("lng") is None:
+        raise HTTPException(status_code=404, detail="Circuit location not found")
+
+    # A weekend 15 days out runs past Open-Meteo's horizon; the later days come back
+    # as the forecast extends (sessions beyond it keep null values until then).
+    forecast = await openmeteo.get_forecast(
+        race["lat"], race["lng"],
+        start=first_start.date(),
+        end=forecast_end_date(race_dt.date(), now.date()),
+    )
+    response.update({
+        "available": True,
+        "days": map_days(forecast),
+        "sessions": map_sessions(forecast, sessions),
+    })
+    cache_set(cache_key, response, CACHE_TTL_WEATHER)
+    return response
+
+
+# ── News headlines ────────────────────────────────────────────────────────────
+
+@app.get("/news", response_model=NewsResponse)
+@limiter.limit("30/minute")
+async def get_news(request: Request, limit: int = Query(default=20, ge=1, le=NEWS_MAX_ITEMS)):
+    cache_key = "news"
+    cached = cache_get(cache_key)
+    if cached is None:
+        # UpstreamError("news") when every feed fails -> 502
+        items, failed_sources = await news.get_headlines()
+        cached = {"items": items, "failed_sources": failed_sources}
+        cache_set(cache_key, cached, CACHE_TTL_NEWS)
+    return {"items": cached["items"][:limit], "failed_sources": cached["failed_sources"]}
+
+
+# ── F1 history ────────────────────────────────────────────────────────────────
+
+async def _season_winners(year: int) -> list[dict]:
+    """Winners of one season from Jolpica (1h cache for the current season)."""
+    cache_key = f"history_winners_{year}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+    winners = [w for race in await jolpica.get_season_winners(year)
+               for w in history.race_to_winners(race)]
+    if year < datetime.now(UTC).year:
+        cache_set_historical(cache_key, winners)
+    else:
+        cache_set(cache_key, winners, CACHE_TTL_HISTORY)
+    return winners
+
+
+async def all_race_winners() -> list[dict]:
+    """
+    The bundled winners file plus every season after the newest one in it
+    (normally just the current season). A failed fetch leaves that season out
+    rather than failing the request: the bundled history is still worth serving.
+    """
+    bundled = history.load_race_winners()
+    current_year = datetime.now(UTC).year
+    newest_bundled = max((w["season"] for w in bundled), default=current_year - 1)
+    winners = list(bundled)
+    for year in range(newest_bundled + 1, current_year + 1):
+        try:
+            winners.extend(await _season_winners(year))
+        except UpstreamError as e:
+            logger.warning(f"History: {year} winners unavailable, serving without them: {e}")
+    return winners
+
+
+@app.get("/history/on-this-day", response_model=OnThisDayResponse)
+@limiter.limit("30/minute")
+async def get_on_this_day(
+    request: Request,
+    on_date: Annotated[date | None, Query(alias="date")] = None,
+    window: int = Query(default=3, ge=0, le=history.MAX_WINDOW),
+):
+    """Race winners whose race month-day is within ±window days of date (default today, UTC)."""
+    target = on_date or datetime.now(UTC).date()
+    items = history.on_this_day(await all_race_winners(), target, window)
+    return {"date": target.isoformat(), "window": window, "items": items}

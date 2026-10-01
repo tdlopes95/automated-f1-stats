@@ -1,6 +1,10 @@
 package com.f1stats;
 
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.time.format.TextStyle;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
@@ -41,5 +45,27 @@ public class DateHelper {
 
     public static String formatFull(String isoUtcString) {
         return formatForDisplay(isoUtcString, "EEE dd MMM yyyy, HH:mm");
+    }
+
+    /** A calendar date (YYYY-MM-DD, no time zone) in the device's medium date format. */
+    public static String formatLocalDate(String isoDate) {
+        if (isoDate == null) return "--";
+        try {
+            return LocalDate.parse(isoDate)
+                    .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM));
+        } catch (Exception e) {
+            return isoDate;
+        }
+    }
+
+    /** Short weekday name of a calendar date (YYYY-MM-DD), e.g. "Fri"; "" if unparseable. */
+    public static String weekdayShort(String isoDate) {
+        if (isoDate == null) return "";
+        try {
+            return LocalDate.parse(isoDate).getDayOfWeek()
+                    .getDisplayName(TextStyle.SHORT, Locale.getDefault());
+        } catch (Exception e) {
+            return "";
+        }
     }
 }

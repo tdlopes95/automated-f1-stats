@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.TimeUnit;
 
+import okhttp3.Dispatcher;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Response;
@@ -81,7 +82,13 @@ public class F1ApiClient {
                 ? HttpLoggingInterceptor.Level.BODY
                 : HttpLoggingInterceptor.Level.NONE);
 
+        // OkHttp allows 5 concurrent requests per host by default. Home starts more than that
+        // on a cold start, and a slow one (news fetches several RSS feeds) shouldn't hold up the rest.
+        Dispatcher dispatcher = new Dispatcher();
+        dispatcher.setMaxRequestsPerHost(10);
+
         OkHttpClient client = new OkHttpClient.Builder()
+                .dispatcher(dispatcher)
                 .addInterceptor(new RetryInterceptor(3))
                 .addInterceptor(logging)
                 // Generous timeouts: the free Koyeb instance sleeps after 1h idle

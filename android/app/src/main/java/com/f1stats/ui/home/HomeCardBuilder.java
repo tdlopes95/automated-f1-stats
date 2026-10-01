@@ -11,6 +11,7 @@ import com.f1stats.home.HomeCardParams;
 import com.f1stats.home.HomeCardType;
 import com.f1stats.models.ConstructorStanding;
 import com.f1stats.models.DriverStanding;
+import com.f1stats.models.NewsResponse;
 import com.f1stats.util.HeadToHead;
 
 import java.util.ArrayList;
@@ -284,6 +285,26 @@ final class HomeCardBuilder {
             if (i < SNAPSHOT_ROWS) state.rows.add(row);
             else if (row.highlighted) state.favourite = row;
         }
+        state.hasData = true;
+    }
+
+    // ── News ──────────────────────────────────────────────────────────────────
+
+    /** The newest headlines from the card's chosen sources (all sources if none chosen). */
+    void news(@NonNull HomeCardState.News state, @NonNull HomeCardConfig config,
+              @Nullable NewsResponse response) {
+        state.items.clear();
+        state.noneFromSources = false;
+        if (response == null) {
+            state.hasData = false;
+            return;
+        }
+        List<String> sources = HomeCardParams.newsSources(config);
+        for (NewsResponse.Item item : response.items) {
+            if (state.items.size() == HomeCardState.News.MAX_ITEMS) break;
+            if (sources.isEmpty() || sources.contains(item.source)) state.items.add(item);
+        }
+        state.noneFromSources = state.items.isEmpty() && !response.items.isEmpty();
         state.hasData = true;
     }
 

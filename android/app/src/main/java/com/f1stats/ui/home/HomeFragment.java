@@ -21,20 +21,26 @@ import com.f1stats.CustomizeHomeActivity;
 import com.f1stats.DriverProfileActivity;
 import com.f1stats.HomeCacheManager;
 import com.f1stats.R;
+import com.f1stats.RoundDetailActivity;
 import com.f1stats.SeasonHelper;
 import com.f1stats.home.HomeCardConfig;
 import com.f1stats.home.HomeCardParams;
 import com.f1stats.home.HomeCardType;
 import com.f1stats.home.HomeLayoutStore;
 import com.f1stats.models.DriverStanding;
+import com.f1stats.models.OnThisDayResponse;
 import com.f1stats.models.RaceResult;
+import com.f1stats.ui.news.NewsActivity;
 import com.f1stats.util.DebugLog;
+import com.f1stats.util.Flags;
+import com.f1stats.util.LinkOpener;
 import com.f1stats.util.MeetingMatcher;
 import com.f1stats.viewmodels.F1ViewModel;
 import com.facebook.shimmer.ShimmerFrameLayout;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.snackbar.Snackbar;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -53,8 +59,14 @@ public class HomeFragment extends Fragment {
 
     private static final String TAG = "HomeFragment";
 
-    /** Data Home fetches. Every card needs some subset of these. */
-    private enum Source { NEXT_RACE, LATEST_RESULTS, DRIVER_STANDINGS, CONSTRUCTOR_STANDINGS, SEASON_RESULTS }
+    /**
+     * Data Home fetches. Every card needs some subset of these. WEATHER needs the next race's
+     * round, so it's declared (and so started) after NEXT_RACE.
+     */
+    private enum Source {
+        NEXT_RACE, LATEST_RESULTS, DRIVER_STANDINGS, CONSTRUCTOR_STANDINGS, SEASON_RESULTS,
+        WEATHER, NEWS, ON_THIS_DAY
+    }
 
     private F1ViewModel viewModel;
     private HomeCacheManager cache;
@@ -67,6 +79,11 @@ public class HomeFragment extends Fragment {
     private final Map<Source, String> sourceErrors = new EnumMap<>(Source.class);
     /** ensureSeasonResultsCached runs at most once per Home load (plus explicit refreshes). */
     private boolean seasonResultsRequested;
+    /** WEATHER was requested before the next race (and so its round) was known. */
+    private boolean weatherAwaitingRace;
+    private boolean weatherForceRefresh;
+    /** Round of the forecast last requested; -1 for none (or no upcoming race). */
+    private int weatherRound = -1;
 
     private List<HomeCardConfig> layout = new ArrayList<>();
     private List<HomeCardConfig> enabledCards = new ArrayList<>();
@@ -151,10 +168,15 @@ public class HomeFragment extends Fragment {
         states.put(HomeCardType.FAVOURITE_TEAM, new HomeCardState.FavouriteTeam());
         states.put(HomeCardType.PINNED_H2H, new HomeCardState.PinnedH2h());
         states.put(HomeCardType.CHAMPIONSHIP_SNAPSHOT, new HomeCardState.Snapshot());
+        states.put(HomeCardType.WEEKEND_WEATHER, new HomeCardState.WeekendWeather());
+        states.put(HomeCardType.NEWS, new HomeCardState.News());
+        states.put(HomeCardType.ON_THIS_DAY, new HomeCardState.OnThisDay());
         sourceStatus.clear();
         sourceErrors.clear();
         for (Source source : Source.values()) sourceStatus.put(source, HomeCardState.Status.IDLE);
         seasonResultsRequested = false;
+        weatherAwaitingRace = false;
+        weatherRound = -1;
     }
 
     @SuppressWarnings("unchecked")
@@ -251,6 +273,12 @@ public class HomeFragment extends Fragment {
                 return HomeCardParams.isConstructorsMode(config)
                         ? EnumSet.of(Source.CONSTRUCTOR_STANDINGS)
                         : EnumSet.of(Source.DRIVER_STANDINGS);
+            case WEEKEND_WEATHER:
+                return EnumSet.of(Source.NEXT_RACE, Source.WEATHER);
+            case NEWS:
+                return EnumSet.of(Source.NEWS);
+            case ON_THIS_DAY:
+                return EnumSet.of(Source.ON_THIS_DAY);
             default:
                 return EnumSet.noneOf(Source.class);
         }
@@ -279,7 +307,7 @@ public class HomeFragment extends Fragment {
                     viewModel.fetchMeetings(year);
                     break;
                 case LATEST_RESULTS:
-                    viewModel.fetchLatestResults("Race", year);
+                    viewModel.fetchHomeLatestResults(year);
                     needsHeadshots = true;
                     break;
                 case DRIVER_STANDINGS:
@@ -293,9 +321,42 @@ public class HomeFragment extends Fragment {
                     seasonResultsRequested = true;
                     viewModel.fetchHomeSeasonResults(year);
                     break;
+                case WEATHER:
+                    weatherForceRefresh = userInitiated;
+                    // NEXT_RACE is started first; if it's loading, wait for its round
+                    if (sourceStatus.get(Source.NEXT_RACE) == HomeCardState.Status.LOADED) {
+                        fetchWeatherFor(viewModel.getNextRace().getValue());
+                    } else {
+                        weatherAwaitingRace = true;
+                    }
+                    break;
+                case NEWS:
+                    viewModel.fetchNews(NewsActivity.NEWS_LIMIT, userInitiated);
+                    break;
+                case ON_THIS_DAY:
+                    viewModel.fetchOnThisDay(LocalDate.now().toString());
+                    break;
             }
         }
         if (needsHeadshots) viewModel.prefetchDrivers(year);
+    }
+
+    /** Requests the forecast for the next race weekend; no race (offseason) settles WEATHER. */
+    private void fetchWeatherFor(@Nullable Map<String, Object> race) {
+        weatherAwaitingRace = false;
+        int round = race != null ? roundOf(race) : -1;
+        weatherRound = round;
+        if (round <= 0) {
+            HomeCardState.WeekendWeather state = state(HomeCardType.WEEKEND_WEATHER);
+            state.forecast = null;
+            state.noRace = true;
+            state.hasData = true;
+            sourceLoaded(Source.WEATHER);
+            return;
+        }
+        sourceStatus.put(Source.WEATHER, HomeCardState.Status.LOADING);
+        sourceErrors.remove(Source.WEATHER);
+        viewModel.fetchWeekendForecast(year, round, weatherForceRefresh);
     }
 
     private void sourceLoaded(Source source) {
@@ -340,6 +401,8 @@ public class HomeFragment extends Fragment {
                 configFor(HomeCardType.CHAMPIONSHIP_SNAPSHOT), favouriteDriverId,
                 layoutStore.getFavouriteConstructorId(),
                 drivers, viewModel.getHomeConstructorStandings().getValue());
+        builder.news(state(HomeCardType.NEWS), configFor(HomeCardType.NEWS),
+                viewModel.getNews().getValue());
 
         for (HomeCardConfig config : layout) updateStatus(config);
         adapter.notifyAllCardsChanged();
@@ -379,8 +442,15 @@ public class HomeFragment extends Fragment {
             HomeCardState state = states.get(config.getType());
             if (state == null) continue;
             boolean showsContent = state.hasData || state.promptMessage != null;
-            // Includes cached cards being refreshed, so pull-to-refresh ends with the data
-            if (state.status == HomeCardState.Status.LOADING) return;
+            if (state.status == HomeCardState.Status.LOADING) {
+                // Shows its own shimmer instead of holding up the others
+                if (loadsInBackground(config.getType())) {
+                    allFailed = false;
+                    continue;
+                }
+                // Includes cached cards being refreshed, so pull-to-refresh ends with the data
+                return;
+            }
             if (state.status == HomeCardState.Status.ERROR) anyError = true;
             if (showsContent || state.status != HomeCardState.Status.ERROR) allFailed = false;
         }
@@ -402,6 +472,11 @@ public class HomeFragment extends Fragment {
                     .setAnchorView(requireActivity().findViewById(R.id.bottom_navigation))
                     .show();
         }
+    }
+
+    /** Cards whose data can be slow (several upstream feeds) and is never urgent. */
+    private static boolean loadsInBackground(HomeCardType type) {
+        return type == HomeCardType.NEWS || type == HomeCardType.ON_THIS_DAY;
     }
 
     private void showSkeleton() {
@@ -466,6 +541,12 @@ public class HomeFragment extends Fragment {
             if (race != null) cache.saveNextRace(race);
             updateCircuitImage();
             sourceLoaded(Source.NEXT_RACE);
+            // The forecast follows the next race (also when it moves on to another round)
+            int round = race != null ? roundOf(race) : -1;
+            if (weatherAwaitingRace || (round != weatherRound
+                    && neededSources().contains(Source.WEATHER))) {
+                fetchWeatherFor(race);
+            }
         });
 
         // Next race and meetings arrive independently; whichever lands second sets the image
@@ -500,7 +581,7 @@ public class HomeFragment extends Fragment {
             if (season != null) sourceLoaded(Source.SEASON_RESULTS);
         });
 
-        viewModel.getRaceResults().observe(getViewLifecycleOwner(), results -> {
+        viewModel.getHomeLatestResults().observe(getViewLifecycleOwner(), results -> {
             if (results == null) return;
             HomeCardState.LastWinner state = state(HomeCardType.LAST_WINNER);
             state.hasData = true;
@@ -521,12 +602,39 @@ public class HomeFragment extends Fragment {
             sourceLoaded(Source.LATEST_RESULTS);
         });
 
-        viewModel.getLastRaceName().observe(getViewLifecycleOwner(), raceName -> {
+        viewModel.getHomeLastRaceName().observe(getViewLifecycleOwner(), raceName -> {
             if (raceName == null || raceName.isEmpty()) return;
             HomeCardState.LastWinner state = state(HomeCardType.LAST_WINNER);
             state.raceName = raceName;
             saveLastWinner(state);
             adapter.notifyCardChanged(HomeCardType.LAST_WINNER);
+        });
+
+        viewModel.getWeekendForecast().observe(getViewLifecycleOwner(), forecast -> {
+            // Ignore a forecast held over for another race
+            if (forecast == null || forecast.year != year || forecast.round != weatherRound) return;
+            HomeCardState.WeekendWeather state = state(HomeCardType.WEEKEND_WEATHER);
+            state.forecast = forecast;
+            state.noRace = false;
+            state.hasData = true;
+            sourceLoaded(Source.WEATHER);
+        });
+
+        viewModel.getNews().observe(getViewLifecycleOwner(), response -> {
+            // The card's items are rebuilt from the response in refreshCards (source filter)
+            if (response != null) sourceLoaded(Source.NEWS);
+        });
+
+        viewModel.getOnThisDay().observe(getViewLifecycleOwner(), response -> {
+            if (response == null) return;
+            HomeCardState.OnThisDay state = state(HomeCardType.ON_THIS_DAY);
+            state.items.clear();
+            for (OnThisDayResponse.Item item : response.items) {
+                if (state.items.size() == HomeCardState.OnThisDay.MAX_ITEMS) break;
+                state.items.add(item);
+            }
+            state.hasData = true;
+            sourceLoaded(Source.ON_THIS_DAY);
         });
 
         viewModel.getDriverHeadshotMap().observe(getViewLifecycleOwner(), map -> {
@@ -544,6 +652,16 @@ public class HomeFragment extends Fragment {
         });
         viewModel.getHomeConstructorStandingsError().observe(getViewLifecycleOwner(), error -> {
             if (error != null) sourceFailed(Source.CONSTRUCTOR_STANDINGS, error);
+        });
+        viewModel.getWeekendForecastError().observe(getViewLifecycleOwner(), error -> {
+            // A held-over error while the forecast still waits for the next race isn't news
+            if (error != null && !weatherAwaitingRace) sourceFailed(Source.WEATHER, error);
+        });
+        viewModel.getNewsError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null) sourceFailed(Source.NEWS, error);
+        });
+        viewModel.getOnThisDayError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null) sourceFailed(Source.ON_THIS_DAY, error);
         });
     }
 
@@ -585,6 +703,22 @@ public class HomeFragment extends Fragment {
         @Override
         public void onCardClick(@NonNull HomeCardType type) {
             openCard(type);
+        }
+
+        @Override
+        public void onOpenLink(@NonNull String url) {
+            LinkOpener.open(requireContext(), url);
+        }
+
+        @Override
+        public void onOpenNews() {
+            startActivity(new Intent(requireContext(), NewsActivity.class));
+            requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+        }
+
+        @Override
+        public void onOpenHistoryRace(@NonNull OnThisDayResponse.Item item) {
+            openHistoryRace(item);
         }
 
         @Override
@@ -659,7 +793,30 @@ public class HomeFragment extends Fragment {
         startActivity(intent);
     }
 
+    /** A past race: the same detail screen the Results tab opens, for that season. */
+    private void openHistoryRace(OnThisDayResponse.Item item) {
+        Intent intent = new Intent(requireContext(), RoundDetailActivity.class);
+        intent.putExtra(RoundDetailActivity.EXTRA_YEAR, item.season);
+        intent.putExtra(RoundDetailActivity.EXTRA_ROUND, item.round);
+        intent.putExtra(RoundDetailActivity.EXTRA_RACE_NAME, item.raceName);
+        intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT, item.circuitName);
+        intent.putExtra(RoundDetailActivity.EXTRA_CIRCUIT_ID, item.circuitId);
+        intent.putExtra(RoundDetailActivity.EXTRA_COUNTRY_FLAG, Flags.urlFor(item.country));
+        startActivity(intent);
+        requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static int roundOf(Map<String, Object> race) {
+        Object round = race.get("round");
+        if (round instanceof Number) return ((Number) round).intValue();
+        try {
+            return round != null ? Integer.parseInt(round.toString()) : -1;
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
 
     private void saveLastWinner(HomeCardState.LastWinner state) {
         if (state.winner == null || state.raceName == null) return;

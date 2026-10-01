@@ -14,6 +14,7 @@ import com.facebook.shimmer.ShimmerFrameLayout;
 import com.google.android.material.button.MaterialButton;
 import com.f1stats.R;
 import com.f1stats.home.HomeCardType;
+import com.f1stats.models.OnThisDayResponse;
 import com.f1stats.util.TeamColors;
 
 import java.util.Map;
@@ -31,6 +32,12 @@ abstract class HomeCardHolder<S extends HomeCardState> extends RecyclerView.View
         /** The prompt's action: open the options for {@code target}. */
         void onPromptAction(@NonNull HomeCardType target);
         void onCardClick(@NonNull HomeCardType type);
+        /** A web link inside a card (a news headline). */
+        void onOpenLink(@NonNull String url);
+        /** The NEWS card's "More news" footer. */
+        void onOpenNews();
+        /** A past race in the ON_THIS_DAY card. */
+        void onOpenHistoryRace(@NonNull OnThisDayResponse.Item item);
     }
 
     private final HomeCardType type;
@@ -43,6 +50,8 @@ abstract class HomeCardHolder<S extends HomeCardState> extends RecyclerView.View
     @Nullable private final View dividerBottom;
     /** The tappable area: card_root when the layout has one. */
     private final View clickTarget;
+    /** Set on each bind, for cards whose rows are tappable. */
+    @Nullable Callbacks callbacks;
 
     HomeCardHolder(@NonNull View itemView, @NonNull HomeCardType type) {
         super(itemView);
@@ -62,6 +71,7 @@ abstract class HomeCardHolder<S extends HomeCardState> extends RecyclerView.View
                         @NonNull Callbacks callbacks) {
         Context context = itemView.getContext();
         boolean clickable = false;
+        this.callbacks = callbacks;
 
         if (state.promptMessage != null) {
             onNoData();
