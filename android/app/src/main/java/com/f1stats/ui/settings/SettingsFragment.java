@@ -23,6 +23,7 @@ import com.f1stats.SettingsManager;
 import com.f1stats.api.F1ApiClient;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 public class SettingsFragment extends Fragment {
 
@@ -40,6 +41,7 @@ public class SettingsFragment extends Fragment {
 
         TextInputEditText etUrl = view.findViewById(R.id.et_base_url);
         MaterialButton btnSave  = view.findViewById(R.id.btn_save_url);
+        TextInputLayout tilUrl  = view.findViewById(R.id.til_base_url);
 
         // Show current URL
         String currentUrl = SettingsManager.getInstance(requireContext()).getBaseUrl();
@@ -53,9 +55,15 @@ public class SettingsFragment extends Fragment {
             }
             String url = SettingsManager.normaliseUrl(newUrl);
             if (url == null) {
-                Toast.makeText(requireContext(), "Enter a valid http:// or https:// URL", Toast.LENGTH_SHORT).show();
+                if (SettingsManager.normaliseUrl(newUrl, true) != null) {
+                    // A valid http:// URL in a release build
+                    tilUrl.setError(getString(R.string.settings_url_https_required));
+                } else {
+                    Toast.makeText(requireContext(), "Enter a valid http:// or https:// URL", Toast.LENGTH_SHORT).show();
+                }
                 return;
             }
+            tilUrl.setError(null);
             etUrl.setText(url);
             SettingsManager.getInstance(requireContext()).setBaseUrl(url);
             // Repository and ViewModel fetch the service per call, so this applies immediately

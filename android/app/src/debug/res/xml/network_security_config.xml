@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: allows plain HTTP so the app can reach a local backend
+     (e.g. http://10.0.2.2:8000/ from the emulator). Release builds stay HTTPS-only. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

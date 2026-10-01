@@ -14,7 +14,7 @@ import java.util.List;
 public class HomeCardParamsTest {
 
     private static final List<String> AVAILABLE =
-            Arrays.asList("Autosport", "Formula 1", "Motorsport.com", "The Race");
+            Arrays.asList("Autosport", "Motorsport.com", "The Race");
 
     @Test
     public void newsSources_absentMeansAll() {

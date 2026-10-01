@@ -44,14 +44,24 @@ public class SettingsManager {
     }
 
     /**
-     * Returns the URL with a trailing "/" if it is a valid http(s) URL, otherwise null.
-     * Retrofit requires base URLs to end with "/".
+     * Returns the URL with a trailing "/" if it is valid for this build, otherwise null.
+     * Debug builds accept http and https; release builds are HTTPS-only (no cleartext config).
      */
     @Nullable
     public static String normaliseUrl(@Nullable String raw) {
+        return normaliseUrl(raw, BuildConfig.DEBUG);
+    }
+
+    /**
+     * Returns the URL with a trailing "/" if it is a valid https URL (or http, when allowHttp),
+     * otherwise null. Retrofit requires base URLs to end with "/".
+     */
+    @Nullable
+    public static String normaliseUrl(@Nullable String raw, boolean allowHttp) {
         if (raw == null) return null;
         String url = raw.trim();
-        if (!url.startsWith("http://") && !url.startsWith("https://")) return null;
+        boolean http = url.startsWith("http://");
+        if (!url.startsWith("https://") && !(allowHttp && http)) return null;
         if (HttpUrl.parse(url) == null) return null;
         if (!url.endsWith("/")) url = url + "/";
         return url;

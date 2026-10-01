@@ -19,10 +19,8 @@ logger = logging.getLogger(__name__)
 USER_AGENT = "F1StatsApp/1.0 (personal, non-commercial)"
 MAX_ITEMS = 50
 
-# All four checked on 2026-10-01 and returned valid RSS 2.0.
-# formula1.com's feed carries no publish dates, so its items sort after dated ones.
+# All three checked on 2026-10-01 and returned valid RSS 2.0 with publish dates.
 FEEDS = [
-    {"source": "Formula 1", "url": "https://www.formula1.com/en/latest/all.xml"},
     {"source": "Autosport", "url": "https://www.autosport.com/rss/f1/news/"},
     {"source": "Motorsport.com", "url": "https://www.motorsport.com/rss/f1/news/"},
     {"source": "The Race", "url": "https://www.the-race.com/category/formula-1/feed/"},

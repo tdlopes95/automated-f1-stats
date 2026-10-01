@@ -26,10 +26,11 @@
     <string name="credit_openmeteo_detail">Weather forecasts · CC BY 4.0</string>
     <string name="credit_openmeteo_url" translatable="false">https://open-meteo.com</string>
 
-    <string name="credit_news_detail">News headlines link to their publishers: Formula 1, Autosport, Motorsport.com, The Race</string>
+    <string name="credit_news_detail">News headlines link to their publishers: Autosport, Motorsport.com, The Race</string>
 
     <string name="about_disclaimer">This app is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1 and related marks are trade marks of Formula One Licensing B.V.</string>
     <string name="about_no_browser">No browser available to open the link</string>
+    <string name="settings_url_https_required">The backend must use HTTPS</string>
     <!-- ── Home ──────────────────────────────────────────── -->
     <string name="home_error_icon" translatable="false">⚠️</string>
     <string name="home_error_message">Could not load data.\nCheck your connection.</string>
