@@ -28,6 +28,7 @@ public class PitStop {
     public int getDriverNumber() { return driverNumber; }
     public String getDriverName() { return driverName; }
     public String getTeamName() { return teamName; }
+    public String getTeamColour() { return teamColour; }
     public String getTeamColourHex() {
         return teamColour != null ? teamColour : "#FFFFFF";
     }

@@ -1,6 +1,5 @@
 package com.f1stats;
 
-import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -25,6 +24,8 @@ import com.f1stats.db.CachedResult;
 import com.f1stats.models.RaceResult;
 import com.f1stats.ui.compare.DriverPickerBottomSheet;
 import com.f1stats.util.ResultStatus;
+import com.f1stats.util.TeamColors;
+import com.f1stats.util.SystemBarInsets;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -88,6 +89,7 @@ public class CompareDriversActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_compare_drivers);
+        SystemBarInsets.applyToContentRoot(this);
 
         year = getIntent().getIntExtra(EXTRA_YEAR, SeasonHelper.getCurrentYear());
 
@@ -248,12 +250,7 @@ public class CompareDriversActivity extends AppCompatActivity
 
         if (driver.teamName != null) {
             tvTeam.setText(driver.teamName);
-            try {
-                tvTeam.setTextColor(driver.teamColour != null
-                        ? Color.parseColor(driver.teamColour) : Color.WHITE);
-            } catch (Exception e) {
-                tvTeam.setTextColor(Color.WHITE);
-            }
+            tvTeam.setTextColor(TeamColors.get(this, null, driver.teamName, driver.teamColour));
             tvTeam.setVisibility(View.VISIBLE);
         }
 
@@ -477,8 +474,8 @@ public class CompareDriversActivity extends AppCompatActivity
     }
 
     private void displayStats(DriverStats s1, DriverStats s2) {
-        int color1 = safeParseColor(driver1.teamColour, "#FFFFFF");
-        int color2 = safeParseColor(driver2.teamColour, "#FFFFFF");
+        int color1 = TeamColors.get(this, null, driver1.teamName, driver1.teamColour);
+        int color2 = TeamColors.get(this, null, driver2.teamName, driver2.teamColour);
 
         updateStatRow(rowPoints,   s1.points,         s2.points,         color1, color2, false,
                 formatPoints(s1.points),        formatPoints(s2.points));
@@ -577,14 +574,6 @@ public class CompareDriversActivity extends AppCompatActivity
         return String.valueOf(pts);
     }
 
-    private static int safeParseColor(String colour, String fallback) {
-        try {
-            return Color.parseColor(colour != null ? colour : fallback);
-        } catch (Exception e) {
-            try { return Color.parseColor(fallback); } catch (Exception ignored) {}
-            return Color.WHITE;
-        }
-    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {

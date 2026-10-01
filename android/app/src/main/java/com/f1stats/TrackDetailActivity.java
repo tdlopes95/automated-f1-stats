@@ -23,6 +23,7 @@ import com.bumptech.glide.Glide;
 import com.f1stats.util.DebugLog;
 import com.f1stats.data.F1Repository;
 import com.f1stats.models.CircuitStatsResponse;
+import com.f1stats.util.SystemBarInsets;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -60,6 +61,7 @@ public class TrackDetailActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_track_detail);
+        SystemBarInsets.applyToContentRoot(this);
 
         repository = F1Repository.getInstance(this);
 

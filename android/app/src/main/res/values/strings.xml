@@ -1,3 +1,27 @@
 <resources>
     <string name="app_name">F1 Stats</string>
+
+    <!-- ── Settings: About & credits ─────────────────────── -->
+    <string name="about_title">About</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_credits_title">Data &amp; credits</string>
+
+    <string name="credit_jolpica_name">Jolpica F1 API</string>
+    <string name="credit_jolpica_detail">Race data · CC BY-NC-SA 4.0</string>
+    <string name="credit_jolpica_url" translatable="false">https://github.com/jolpica/jolpica-f1</string>
+
+    <string name="credit_openf1_name">OpenF1</string>
+    <string name="credit_openf1_detail">Session data, headshots, circuit images (unofficial) · CC BY-NC-SA 4.0</string>
+    <string name="credit_openf1_url" translatable="false">https://openf1.org</string>
+
+    <string name="credit_circuits_name">julesr0y/f1-circuits-svg</string>
+    <string name="credit_circuits_detail">Circuit layouts · CC BY 4.0</string>
+    <string name="credit_circuits_url" translatable="false">https://github.com/julesr0y/f1-circuits-svg</string>
+
+    <string name="credit_flagpedia_name">Flagpedia (flagcdn.com)</string>
+    <string name="credit_flagpedia_detail">Country flags</string>
+    <string name="credit_flagpedia_url" translatable="false">https://flagpedia.net</string>
+
+    <string name="about_disclaimer">This app is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1 and related marks are trade marks of Formula One Licensing B.V.</string>
+    <string name="about_no_browser">No browser available to open the link</string>
 </resources>

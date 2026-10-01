@@ -21,6 +21,9 @@ import com.f1stats.db.CachedDriver;
 import com.f1stats.models.RaceResult;
 import com.f1stats.ui.driver.DriverResultAdapter;
 import com.f1stats.util.ResultStatus;
+import com.f1stats.util.TeamColors;
+import com.f1stats.util.SystemBarInsets;
+import androidx.annotation.ColorInt;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -40,7 +43,9 @@ public class DriverProfileActivity extends AppCompatActivity {
     public static final String EXTRA_YEAR         = "extra_year";
     public static final String EXTRA_HEADSHOT_URL = "extra_headshot_url";
     public static final String EXTRA_TEAM_NAME    = "extra_team_name";
+    /** Optional OpenF1 team_colour hex; otherwise resolved from constructor id / team name. */
     public static final String EXTRA_TEAM_COLOUR  = "extra_team_colour";
+    public static final String EXTRA_CONSTRUCTOR_ID = "extra_constructor_id";
     public static final String EXTRA_NATIONALITY  = "extra_nationality";
     public static final String EXTRA_DOB          = "extra_dob";
     public static final String EXTRA_NUMBER       = "extra_number";
@@ -74,6 +79,7 @@ public class DriverProfileActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_driver_profile);
+        SystemBarInsets.applyToContentRoot(this);
 
         String driverId    = getIntent().getStringExtra(EXTRA_DRIVER_ID);
         driverCode         = getIntent().getStringExtra(EXTRA_DRIVER_CODE);
@@ -82,6 +88,7 @@ public class DriverProfileActivity extends AppCompatActivity {
         String headshotUrl = getIntent().getStringExtra(EXTRA_HEADSHOT_URL);
         String teamName    = getIntent().getStringExtra(EXTRA_TEAM_NAME);
         String teamColour  = getIntent().getStringExtra(EXTRA_TEAM_COLOUR);
+        String constructorId = getIntent().getStringExtra(EXTRA_CONSTRUCTOR_ID);
         String nationality = getIntent().getStringExtra(EXTRA_NATIONALITY);
         String dob         = getIntent().getStringExtra(EXTRA_DOB);
         String number      = getIntent().getStringExtra(EXTRA_NUMBER);
@@ -114,12 +121,13 @@ public class DriverProfileActivity extends AppCompatActivity {
         resultsAdapter = new DriverResultAdapter();
         rv.setAdapter(resultsAdapter);
 
-        populateHeader(driverName, number, nationality, teamName, teamColour, dob, headshotUrl);
+        populateHeader(driverName, number, nationality, teamName,
+                TeamColors.get(this, constructorId, teamName, teamColour), dob, headshotUrl);
         loadStats(driverId, year, headshotUrl);
     }
 
     private void populateHeader(String name, String number, String nationality,
-                                String teamName, String teamColour, String dob,
+                                String teamName, @ColorInt int teamColor, String dob,
                                 String headshotUrl) {
         tvDriverName.setText(name != null ? name : "");
 
@@ -133,12 +141,7 @@ public class DriverProfileActivity extends AppCompatActivity {
 
         if (teamName != null) {
             tvTeamName.setText(teamName);
-            try {
-                tvTeamName.setTextColor(teamColour != null ?
-                        Color.parseColor(teamColour) : Color.WHITE);
-            } catch (Exception e) {
-                tvTeamName.setTextColor(Color.WHITE);
-            }
+            tvTeamName.setTextColor(teamColor);
         }
 
         if (dob != null && !dob.isEmpty()) {
@@ -147,12 +150,6 @@ public class DriverProfileActivity extends AppCompatActivity {
         }
 
         // Team colour border on headshot
-        int teamColor;
-        try {
-            teamColor = teamColour != null ? Color.parseColor(teamColour) : Color.WHITE;
-        } catch (Exception e) {
-            teamColor = Color.WHITE;
-        }
         ivHeadshot.setStrokeColor(ColorStateList.valueOf(teamColor));
 
         // Team colour gradient on header background

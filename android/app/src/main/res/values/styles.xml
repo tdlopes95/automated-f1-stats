@@ -61,6 +61,27 @@
         <item name="android:background">@color/team_default</item>
     </style>
 
+    <!-- ── About / credits ─────────────────────────────────── -->
+
+    <!-- Clickable credit source name (opens website) -->
+    <style name="Widget.F1.CreditName" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">@dimen/spacing_row</item>
+        <item name="android:minHeight">32dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+        <item name="android:textAppearance">@style/TextAppearance.F1.Body</item>
+        <item name="android:textColor">@color/f1_red</item>
+    </style>
+
+    <!-- Licence / usage line beneath a credit name -->
+    <style name="Widget.F1.CreditDetail" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textAppearance">@style/TextAppearance.F1.Metadata</item>
+    </style>
+
     <!-- ── Stat Display ───────────────────────────────────── -->
 
     <!-- Large numeric stat value (points, laps, etc.) -->

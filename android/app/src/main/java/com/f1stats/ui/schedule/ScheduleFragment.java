@@ -138,10 +138,9 @@ public class ScheduleFragment extends Fragment {
 
     private void mergeAndUpdate() {
         if (latestSchedule == null) return;
-        if (latestMeetings != null) {
-            for (Map<String, Object> race : latestSchedule) {
-                MeetingMatcher.apply(race, latestMeetings);
-            }
+        // Also runs before/without meetings so the flagcdn fallback applies
+        for (Map<String, Object> race : latestSchedule) {
+            MeetingMatcher.apply(race, latestMeetings);
         }
         adapter.setSchedule(latestSchedule);
         if (latestSchedule.isEmpty()) {

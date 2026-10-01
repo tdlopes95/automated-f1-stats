@@ -84,11 +84,6 @@ public class F1ApiClient {
         OkHttpClient client = new OkHttpClient.Builder()
                 .addInterceptor(new RetryInterceptor(3))
                 .addInterceptor(logging)
-                .addInterceptor(chain -> chain.proceed(
-                        chain.request().newBuilder()
-                                .header("ngrok-skip-browser-warning", "true")
-                                .build()
-                ))
                 // Generous timeouts: the free Koyeb instance sleeps after 1h idle
                 .connectTimeout(20, TimeUnit.SECONDS)
                 .readTimeout(40, TimeUnit.SECONDS)

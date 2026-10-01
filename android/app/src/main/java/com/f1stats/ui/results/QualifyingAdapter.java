@@ -12,6 +12,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.f1stats.R;
 import com.f1stats.models.QualifyingResult;
+import com.f1stats.models.RaceResult;
+import com.f1stats.util.TeamColors;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -124,38 +126,11 @@ public class QualifyingAdapter extends RecyclerView.Adapter<QualifyingAdapter.Vi
             }
 
             // Team colour strip
-            setTeamColour(result.getConstructor() != null ?
-                    result.getConstructor().getName() : "");
+            RaceResult.Constructor team = result.getConstructor();
+            teamColourStrip.setBackgroundColor(TeamColors.get(itemView.getContext(),
+                    team != null ? team.getConstructorId() : null,
+                    team != null ? team.getName() : null, null));
         }
 
-        private void setTeamColour(String teamName) {
-            java.util.Map<String, String> colours = new java.util.HashMap<>();
-            colours.put("Red Bull",      "#3671C6");
-            colours.put("Ferrari",       "#E8002D");
-            colours.put("Mercedes",      "#27F4D2");
-            colours.put("McLaren",       "#FF8000");
-            colours.put("Aston Martin",  "#229971");
-            colours.put("Alpine",        "#FF87BC");
-            colours.put("Williams",      "#64C4FF");
-            colours.put("RB",            "#6692FF");
-            colours.put("Haas",          "#B6BABD");
-            colours.put("Audi",          "#B5B5B5");
-            colours.put("Kick Sauber",   "#52E252");
-            colours.put("Sauber",        "#52E252");
-            colours.put("Cadillac",      "#CC0000");
-
-            String colour = "#FFFFFF";
-            for (java.util.Map.Entry<String, String> entry : colours.entrySet()) {
-                if (teamName.contains(entry.getKey())) {
-                    colour = entry.getValue();
-                    break;
-                }
-            }
-            try {
-                teamColourStrip.setBackgroundColor(Color.parseColor(colour));
-            } catch (Exception e) {
-                teamColourStrip.setBackgroundColor(Color.WHITE);
-            }
-        }
     }
 }

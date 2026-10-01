@@ -1,6 +1,5 @@
 package com.f1stats.ui.results;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.f1stats.R;
 import com.f1stats.models.RaceResult;
+import com.f1stats.util.TeamColors;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,22 +19,6 @@ public class ResultsAdapter extends RecyclerView.Adapter<ResultsAdapter.ViewHold
 
     private List<RaceResult> results = new ArrayList<>();
 
-    private static java.util.Map<String, String> TEAM_COLOURS = new java.util.HashMap<>();
-    static {
-        TEAM_COLOURS.put("Red Bull",      "#3671C6");
-        TEAM_COLOURS.put("Ferrari",       "#E8002D");
-        TEAM_COLOURS.put("Mercedes",      "#27F4D2");
-        TEAM_COLOURS.put("McLaren",       "#FF8000");
-        TEAM_COLOURS.put("Aston Martin",  "#229971");
-        TEAM_COLOURS.put("Alpine",        "#FF87BC");
-        TEAM_COLOURS.put("Williams",      "#64C4FF");
-        TEAM_COLOURS.put("RB",            "#6692FF");
-        TEAM_COLOURS.put("Haas",          "#B6BABD");
-        TEAM_COLOURS.put("Audi",          "#B5B5B5");
-        TEAM_COLOURS.put("Kick Sauber",   "#52E252");
-        TEAM_COLOURS.put("Sauber",        "#52E252");
-        TEAM_COLOURS.put("Cadillac",      "#CC0000");
-    }
 
     public interface OnDriverClickListener {
         void onDriverClick(RaceResult result);
@@ -117,21 +101,10 @@ public class ResultsAdapter extends RecyclerView.Adapter<ResultsAdapter.ViewHold
             }
 
             // Team colour strip
-            String teamName = result.getConstructor() != null ?
-                    result.getConstructor().getName() : "";
-            try {
-                teamColourStrip.setBackgroundColor(
-                        Color.parseColor(getTeamColour(teamName)));
-            } catch (Exception e) {
-                teamColourStrip.setBackgroundColor(Color.WHITE);
-            }
-        }
-
-        private String getTeamColour(String teamName) {
-            for (java.util.Map.Entry<String, String> entry : TEAM_COLOURS.entrySet()) {
-                if (teamName.contains(entry.getKey())) return entry.getValue();
-            }
-            return "#FFFFFF";
+            RaceResult.Constructor team = result.getConstructor();
+            teamColourStrip.setBackgroundColor(TeamColors.get(itemView.getContext(),
+                    team != null ? team.getConstructorId() : null,
+                    team != null ? team.getName() : null, null));
         }
     }
 }

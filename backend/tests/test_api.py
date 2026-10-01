@@ -5,17 +5,18 @@ Every outbound HTTP call to the Jolpica and OpenF1 APIs is mocked with respx,
 so the suite never touches the network.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import respx
 
+from app import main
 from app.main import compute_circuit_stats, last_completed_round
 from app.scheduler import F1Scheduler
 from tests.conftest import JOLPICA_BASE, OPENF1_BASE
 
 PAST_YEAR = 2023  # a completed season -> exercises the "historical" code paths
-CURRENT_YEAR = datetime.now(timezone.utc).year
+CURRENT_YEAR = datetime.now(UTC).year
 
 
 # ── Sample upstream payloads ─────────────────────────────────────────────────
@@ -350,7 +351,7 @@ class FakeJolpica:
 def _upcoming(hours_from_now, name="Race", round_number=5):
     return {"race_name": "Test GP", "country": "Nowhere", "round": round_number,
             "session_name": name,
-            "session_datetime": datetime.now(timezone.utc) + timedelta(hours=hours_from_now)}
+            "session_datetime": datetime.now(UTC) + timedelta(hours=hours_from_now)}
 
 
 async def _noop(*a, **kw):
@@ -389,7 +390,7 @@ def test_scheduler_with_token_arms_both_jobs_with_year_in_ids():
 def test_refresh_schedule_forgets_sessions_whose_results_time_passed():
     import asyncio
     sched = F1Scheduler(FakeJolpica(), _noop, _noop, live_polling_enabled=False)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     sched._armed_sessions = {"old": now - timedelta(minutes=1), "new": now + timedelta(hours=1)}
     asyncio.run(sched.refresh_schedule())
     assert list(sched._armed_sessions) == ["new"]
@@ -427,7 +428,9 @@ def _mock_circuit_routes(winners, poles, fastest):
     return (
         respx.get(f"{base}/results/1.json").mock(return_value=httpx.Response(200, json=winners)),
         respx.get(f"{base}/grid/1/results.json").mock(return_value=httpx.Response(200, json=poles)),
-        respx.get(f"{base}/fastest/1/results.json").mock(return_value=httpx.Response(200, json=fastest)),
+        respx.get(f"{base}/fastest/1/results.json").mock(
+            return_value=httpx.Response(200, json=fastest)
+        ),
     )
 
 
@@ -445,8 +448,10 @@ def test_get_circuit_stats_success(client):
     ])
     fastest = _race_table([
         _circuit_race(1959, 8, [{"Driver": LEC, "FastestLap": {"rank": "1"}}]),  # untimed
-        _circuit_race(2023, 14, [{"Driver": VER, "FastestLap": {"rank": "1", "Time": {"time": "1:25.072"}}}]),
-        _circuit_race(2024, 16, [{"Driver": LEC, "FastestLap": {"rank": "1", "Time": {"time": "1:21.432"}}}]),
+        _circuit_race(2023, 14, [{"Driver": VER,
+                                  "FastestLap": {"rank": "1", "Time": {"time": "1:25.072"}}}]),
+        _circuit_race(2024, 16, [{"Driver": LEC,
+                                  "FastestLap": {"rank": "1", "Time": {"time": "1:21.432"}}}]),
     ])
     routes = _mock_circuit_routes(winners, poles, fastest)
     resp = client.get("/circuit/monza/stats")
@@ -516,6 +521,7 @@ def test_get_circuit_stats_paginates_and_merges_straddling_race(client):
 
 def test_jolpica_merges_results_across_pages():
     import asyncio
+
     from app.jolpica_client import JolpicaClient
 
     pages = {
@@ -551,12 +557,13 @@ def test_compute_circuit_stats_most_wins_tie_prefers_most_recent():
 
 def _race(round_number, race_dt):
     return {"round": round_number,
-            "sessions": [{"name": "Qualifying", "datetime": (race_dt - timedelta(days=1)).isoformat()},
+            "sessions": [{"name": "Qualifying",
+                          "datetime": (race_dt - timedelta(days=1)).isoformat()},
                          {"name": "Race", "datetime": race_dt.isoformat()}]}
 
 
 def test_last_completed_round():
-    now = datetime(2026, 6, 1, 14, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 6, 1, 14, 0, tzinfo=UTC)
     schedule = [
         _race(1, now - timedelta(days=14)),
         _race(2, now - timedelta(hours=1)),      # started an hour ago -> counts
@@ -655,7 +662,9 @@ def test_meetings_keep_upstream_keys(client):
 
 @respx.mock
 def test_drivers_by_year_keep_upstream_keys(client):
-    respx.get(f"{OPENF1_BASE}/sessions").mock(return_value=httpx.Response(200, json=SESSIONS_PAYLOAD))
+    respx.get(f"{OPENF1_BASE}/sessions").mock(
+        return_value=httpx.Response(200, json=SESSIONS_PAYLOAD)
+    )
     respx.get(f"{OPENF1_BASE}/drivers").mock(return_value=httpx.Response(200, json=[{
         "driver_number": 1, "name_acronym": "VER", "full_name": "Max VERSTAPPEN",
         "headshot_url": "https://example.com/ver.png", "team_name": "Red Bull Racing",
@@ -672,8 +681,12 @@ def test_drivers_by_year_keep_upstream_keys(client):
 
 @respx.mock
 def test_circuit_stats_keep_computed_keys(client):
-    winners = _race_table([_circuit_race(2023, 14, [{"position": "1", "Driver": VER, "Constructor": RBR}])])
-    poles = _race_table([_circuit_race(2023, 14, [{"grid": "1", "Driver": VER, "Constructor": RBR}])])
+    winners = _race_table(
+        [_circuit_race(2023, 14, [{"position": "1", "Driver": VER, "Constructor": RBR}])]
+    )
+    poles = _race_table(
+        [_circuit_race(2023, 14, [{"grid": "1", "Driver": VER, "Constructor": RBR}])]
+    )
     fastest = _race_table([_circuit_race(
         2023, 14, [{"Driver": VER, "FastestLap": {"rank": "1", "Time": {"time": "1:25.072"}}}]
     )])
@@ -684,3 +697,79 @@ def test_circuit_stats_keep_computed_keys(client):
     assert body["mostWins"]["years"] == [2023]
     assert body["lapRecordSinceYear"] == 2023
     assert "dataNote" in body
+
+
+# ── Rate limiting ────────────────────────────────────────────────────────────
+
+@respx.mock
+def test_rate_limit_buckets_are_per_cf_connecting_ip(client, monkeypatch):
+    respx.get(f"{OPENF1_BASE}/drivers").mock(return_value=httpx.Response(200, json=[]))
+    monkeypatch.setattr(main.limiter, "enabled", True)
+    main.limiter.reset()
+    try:
+        url = "/sessions/9000/drivers"   # limited to 30/minute
+        ip_a = {"CF-Connecting-IP": "203.0.113.1"}
+        ip_b = {"CF-Connecting-IP": "203.0.113.2"}
+        for _ in range(30):
+            assert client.get(url, headers=ip_a).status_code == 200
+        assert client.get(url, headers=ip_a).status_code == 429
+        assert client.get(url, headers=ip_b).status_code == 200
+    finally:
+        main.limiter.reset()
+
+
+# ── Live poller ──────────────────────────────────────────────────────────────
+
+class FakeOpenF1:
+    def __init__(self, latest_session):
+        self.latest_session = latest_session
+        self.latest_session_calls = 0
+        self.snapshot_keys = []
+
+    async def get_latest_session(self):
+        self.latest_session_calls += 1
+        return self.latest_session
+
+    async def get_live_snapshot(self, session_key):
+        self.snapshot_keys.append(session_key)
+        return {"session_key": session_key}
+
+
+def _session(key, ends_in):
+    end = datetime.now(UTC) + ends_in
+    return {"session_key": key, "date_end": end.isoformat()}
+
+
+def _live_poll(monkeypatch, stub_db, cached, latest):
+    import asyncio
+    fake = FakeOpenF1(latest)
+    monkeypatch.setattr(main, "db", stub_db)
+    monkeypatch.setattr(main, "openf1", fake)
+    main._cache.clear()
+    main.cache_set(main.LATEST_SESSION_CACHE_KEY, cached)
+    asyncio.run(main.on_live_poll("Race", "Test GP"))
+    return fake
+
+
+def test_live_poll_refreshes_session_when_cached_one_has_ended(monkeypatch, stub_db):
+    fake = _live_poll(monkeypatch, stub_db,
+                      cached=_session(1, ends_in=-timedelta(minutes=10)),
+                      latest=_session(2, ends_in=timedelta(hours=1)))
+    assert fake.latest_session_calls == 1
+    assert fake.snapshot_keys == [2]
+    assert main.cache_get(main.LATEST_SESSION_CACHE_KEY)["session_key"] == 2
+
+
+def test_live_poll_refreshes_session_when_cached_one_has_no_end(monkeypatch, stub_db):
+    fake = _live_poll(monkeypatch, stub_db,
+                      cached={"session_key": 1},
+                      latest=_session(2, ends_in=timedelta(hours=1)))
+    assert fake.snapshot_keys == [2]
+
+
+def test_live_poll_uses_cached_session_while_in_progress(monkeypatch, stub_db):
+    fake = _live_poll(monkeypatch, stub_db,
+                      cached=_session(1, ends_in=timedelta(minutes=30)),
+                      latest=_session(2, ends_in=timedelta(hours=1)))
+    assert fake.latest_session_calls == 0
+    assert fake.snapshot_keys == [1]

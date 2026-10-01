@@ -43,4 +43,11 @@ public class DriverStanding {
         return "N/A";
     }
 
+    public String getConstructorId() {
+        if (constructors != null && !constructors.isEmpty()) {
+            return constructors.get(0).getConstructorId();
+        }
+        return null;
+    }
+
 }

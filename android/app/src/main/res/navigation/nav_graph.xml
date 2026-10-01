@@ -11,9 +11,9 @@
         android:label="Home" />
 
     <fragment
-        android:id="@+id/nav_live"
-        android:name="com.f1stats.ui.live.LiveFragment"
-        android:label="Live" />
+        android:id="@+id/nav_weekend"
+        android:name="com.f1stats.ui.weekend.WeekendFragment"
+        android:label="Weekend" />
 
     <fragment
         android:id="@+id/nav_results"

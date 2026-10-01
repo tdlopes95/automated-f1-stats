@@ -91,7 +91,7 @@
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
                 android:paddingTop="@dimen/spacing_sm"
-                android:paddingBottom="100dp"
+                android:paddingBottom="@dimen/spacing_md"
                 android:layoutAnimation="@anim/layout_fall_down" />
 
             <TextView

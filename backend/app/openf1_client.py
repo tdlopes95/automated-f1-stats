@@ -7,8 +7,8 @@ Sponsor tier: live data during sessions (requires token - see auth setup)
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 
@@ -20,7 +20,7 @@ BASE_URL = "https://api.openf1.org/v1"
 
 
 class OpenF1Client:
-    def __init__(self, access_token: Optional[str] = None):
+    def __init__(self, access_token: str | None = None):
         """
         access_token: Only needed for live data (sponsor tier).
                       Leave None for historical/free tier.
@@ -71,7 +71,9 @@ class OpenF1Client:
 
     # ── Sessions & Meetings ──────────────────────────────────────────────────
 
-    async def get_sessions(self, year: Optional[int] = None, session_type: Optional[str] = None) -> list[dict]:
+    async def get_sessions(
+        self, year: int | None = None, session_type: str | None = None
+    ) -> list[dict]:
         """
         Get all sessions, optionally filtered.
         session_type: "Race", "Qualifying", "Sprint", "Sprint Qualifying",
@@ -84,7 +86,7 @@ class OpenF1Client:
             params["session_type"] = session_type
         return await self._get("sessions", params)
 
-    async def get_latest_session(self, session_type: Optional[str] = None) -> Optional[dict]:
+    async def get_latest_session(self, session_type: str | None = None) -> dict | None:
         """Get the most recent session (useful to find current/last race)."""
         params = {"session_key": "latest"}
         if session_type:
@@ -92,7 +94,7 @@ class OpenF1Client:
         results = await self._get("sessions", params)
         return results[0] if results else None
 
-    async def get_meetings(self, year: Optional[int] = None) -> list[dict]:
+    async def get_meetings(self, year: int | None = None) -> list[dict]:
         """Get all race weekends (meetings) for a year."""
         params = {}
         if year:
@@ -105,7 +107,7 @@ class OpenF1Client:
         """Get all drivers in a session."""
         return await self._get("drivers", {"session_key": session_key})
 
-    async def get_driver(self, session_key: int, driver_number: int) -> Optional[dict]:
+    async def get_driver(self, session_key: int, driver_number: int) -> dict | None:
         results = await self._get("drivers", {
             "session_key": session_key,
             "driver_number": driver_number
@@ -114,7 +116,7 @@ class OpenF1Client:
 
     # ── Race Positions ────────────────────────────────────────────────────────
 
-    async def get_positions(self, session_key: int, driver_number: Optional[int] = None) -> list[dict]:
+    async def get_positions(self, session_key: int, driver_number: int | None = None) -> list[dict]:
         """
         Get position data for a session.
         During a live session, returns current positions.
@@ -141,8 +143,8 @@ class OpenF1Client:
 
     # ── Laps ─────────────────────────────────────────────────────────────────
 
-    async def get_laps(self, session_key: int, driver_number: Optional[int] = None,
-                       lap_number: Optional[int] = None) -> list[dict]:
+    async def get_laps(self, session_key: int, driver_number: int | None = None,
+                       lap_number: int | None = None) -> list[dict]:
         params = {"session_key": session_key}
         if driver_number:
             params["driver_number"] = driver_number
@@ -165,7 +167,7 @@ class OpenF1Client:
 
     # ── Pit Stops ─────────────────────────────────────────────────────────────
 
-    async def get_pit_stops(self, session_key: int, driver_number: Optional[int] = None) -> list[dict]:
+    async def get_pit_stops(self, session_key: int, driver_number: int | None = None) -> list[dict]:
         params = {"session_key": session_key}
         if driver_number:
             params["driver_number"] = driver_number
@@ -173,7 +175,7 @@ class OpenF1Client:
 
     # ── Stints / Tyre Strategy ────────────────────────────────────────────────
 
-    async def get_stints(self, session_key: int, driver_number: Optional[int] = None) -> list[dict]:
+    async def get_stints(self, session_key: int, driver_number: int | None = None) -> list[dict]:
         params = {"session_key": session_key}
         if driver_number:
             params["driver_number"] = driver_number
@@ -184,7 +186,7 @@ class OpenF1Client:
     async def get_race_control(self, session_key: int) -> list[dict]:
         return await self._get("race_control", {"session_key": session_key})
 
-    async def get_current_flag(self, session_key: int) -> Optional[str]:
+    async def get_current_flag(self, session_key: int) -> str | None:
         """Returns the current/latest track flag."""
         messages = await self.get_race_control(session_key)
         flag_messages = [m for m in messages if m.get("flag")]
@@ -215,7 +217,7 @@ class OpenF1Client:
     async def get_weather(self, session_key: int) -> list[dict]:
         return await self._get("weather", {"session_key": session_key})
 
-    async def get_latest_weather(self, session_key: int) -> Optional[dict]:
+    async def get_latest_weather(self, session_key: int) -> dict | None:
         weather = await self.get_weather(session_key)
         if not weather:
             return None
@@ -277,8 +279,14 @@ class OpenF1Client:
 
         sc_messages = [m for m in race_control if "SAFETY CAR" in (m.get("message") or "").upper()]
         vsc_messages = [m for m in race_control if "VIRTUAL" in (m.get("message") or "").upper()]
-        safety_car_active = bool(sc_messages) and "ENDING" not in (sc_messages[-1].get("message") or "").upper()
-        vsc_active = bool(vsc_messages) and "ENDING" not in (vsc_messages[-1].get("message") or "").upper()
+        safety_car_active = (
+            bool(sc_messages)
+            and "ENDING" not in (sc_messages[-1].get("message") or "").upper()
+        )
+        vsc_active = (
+            bool(vsc_messages)
+            and "ENDING" not in (vsc_messages[-1].get("message") or "").upper()
+        )
 
         driver_states = []
         for pos in sorted(positions, key=lambda p: p.get("position", 99)):
@@ -318,7 +326,7 @@ class OpenF1Client:
             "drivers": driver_states,
             "weather": weather,
             "last_updated": last_updated,
-            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "captured_at": datetime.now(UTC).isoformat(),
         }
 
     async def close(self):

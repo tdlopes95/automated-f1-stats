@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<androidx.core.widget.NestedScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="@dimen/spacing_lg"
     android:background="@color/bg_dark">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="@dimen/spacing_lg">
 
     <TextView
         android:text="SETTINGS"
@@ -53,4 +57,76 @@
         style="@style/Widget.Material3.Button"
         android:backgroundTint="@color/f1_red" />
 
+    <!-- ── About ─────────────────────────────────────────── -->
+
+    <View
+        style="@style/Widget.F1.Divider"
+        android:layout_marginTop="@dimen/spacing_xl" />
+
+    <TextView
+        android:text="@string/about_title"
+        android:textAllCaps="true"
+        android:textColor="@color/f1_red"
+        android:textSize="@dimen/text_small"
+        android:letterSpacing="0.1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_lg" />
+
+    <TextView
+        android:id="@+id/tv_app_version"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:textAppearance="@style/TextAppearance.F1.Body" />
+
+    <TextView
+        style="@style/Widget.F1.SectionLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/about_credits_title" />
+
+    <TextView
+        android:id="@+id/tv_credit_jolpica"
+        style="@style/Widget.F1.CreditName"
+        android:layout_marginTop="0dp"
+        android:text="@string/credit_jolpica_name" />
+    <TextView
+        style="@style/Widget.F1.CreditDetail"
+        android:text="@string/credit_jolpica_detail" />
+
+    <TextView
+        android:id="@+id/tv_credit_openf1"
+        style="@style/Widget.F1.CreditName"
+        android:text="@string/credit_openf1_name" />
+    <TextView
+        style="@style/Widget.F1.CreditDetail"
+        android:text="@string/credit_openf1_detail" />
+
+    <TextView
+        android:id="@+id/tv_credit_circuits"
+        style="@style/Widget.F1.CreditName"
+        android:text="@string/credit_circuits_name" />
+    <TextView
+        style="@style/Widget.F1.CreditDetail"
+        android:text="@string/credit_circuits_detail" />
+
+    <TextView
+        android:id="@+id/tv_credit_flagpedia"
+        style="@style/Widget.F1.CreditName"
+        android:text="@string/credit_flagpedia_name" />
+    <TextView
+        style="@style/Widget.F1.CreditDetail"
+        android:text="@string/credit_flagpedia_detail" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_lg"
+        android:text="@string/about_disclaimer"
+        android:textColor="@color/text_tertiary"
+        android:textSize="@dimen/text_metadata" />
+
 </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

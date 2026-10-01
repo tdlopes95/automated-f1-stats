@@ -10,16 +10,21 @@ Strategy:
      (live polling only when live_polling_enabled, i.e. an OpenF1 token exists)
   3. A daily refresh job keeps the schedule in sync
   4. A daily prune job trims old live snapshots
+
+All of this is best-effort. The backend runs on Koyeb's free tier, which scales to
+zero after 1 hour without traffic: jobs only run while the instance is awake, and the
+SQLite file doesn't survive a sleep. Correctness relies on the TTL caches in main.py,
+not on these jobs having run.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Callable, Optional
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from apscheduler.triggers.cron import CronTrigger
 
 from .jolpica_client import JolpicaClient
 
@@ -59,9 +64,10 @@ class F1Scheduler:
         self,
         jolpica: JolpicaClient,
         on_live_poll: Callable,      # async fn(session_name, race_name) called during session
-        on_session_ended: Callable,  # async fn(session_name, race_name, round, year) called after session
+        # async fn(session_name, race_name, round, year) called after session
+        on_session_ended: Callable,
         live_polling_enabled: bool,  # False -> only results jobs are armed
-        on_prune: Optional[Callable] = None,  # async fn() called daily to trim stored snapshots
+        on_prune: Callable | None = None,  # async fn() called daily to trim stored snapshots
     ):
         self.jolpica = jolpica
         self.on_live_poll = on_live_poll
@@ -76,7 +82,8 @@ class F1Scheduler:
     async def start(self):
         """Start the scheduler and arm initial jobs."""
         self.scheduler.start()
-        mode = "live polling + results" if self.live_polling_enabled else "results only (no OPENF1_TOKEN)"
+        mode = ("live polling + results" if self.live_polling_enabled
+                else "results only (no OPENF1_TOKEN)")
         logger.info(f"Scheduler started. Mode: {mode}.")
 
         # Arm jobs for sessions coming up in the next 14 days
@@ -124,7 +131,7 @@ class F1Scheduler:
     async def refresh_schedule(self):
         """Pull upcoming sessions and arm jobs for any not yet scheduled."""
         logger.info("Refreshing race schedule...")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for session_id in [sid for sid, t in self._armed_sessions.items() if t <= now]:
             del self._armed_sessions[session_id]
         try:
@@ -156,7 +163,7 @@ class F1Scheduler:
         session_end = session_dt + timedelta(minutes=duration_min)
         results_time = self.results_time(session_dt, session_name)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # ── Job 1: Live polling during session ────────────────────────────────
         if self.live_polling_enabled and session_end > now:
@@ -171,11 +178,14 @@ class F1Scheduler:
 
             self.scheduler.add_job(
                 make_poll_job,
-                IntervalTrigger(seconds=LIVE_POLL_INTERVAL, start_date=start_at, end_date=session_end),
+                IntervalTrigger(
+                    seconds=LIVE_POLL_INTERVAL, start_date=start_at, end_date=session_end
+                ),
                 id=f"live_poll_{session_id}",
                 replace_existing=True,
             )
-            logger.info(f"Armed live polling for {session_name} at {session_dt} (ends ~{session_end})")
+            logger.info(f"Armed live polling for {session_name} at {session_dt} "
+                        f"(ends ~{session_end})")
 
         # ── Job 2: Fetch final results after session ──────────────────────────
         if results_time > now:

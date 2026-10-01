@@ -13,33 +13,45 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from .database import Database
 from .errors import UpstreamError
 from .jolpica_client import JolpicaClient
-from .openf1_client import OpenF1Client
-from .scheduler import F1Scheduler
 from .models import (
+    CircuitStatsResponse,
+    ConstructorStandingsResponse,
+    DriverInfo,
+    DriverStandingsResponse,
+    MeetingInfo,
     RaceSchedule,
     ResultsResponse,
-    DriverStandingsResponse,
-    ConstructorStandingsResponse,
-    MeetingInfo,
-    DriverInfo,
-    CircuitStatsResponse,
 )
+from .openf1_client import OpenF1Client
+from .scheduler import F1Scheduler
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 
-limiter = Limiter(key_func=get_remote_address)
+def client_ip(request: Request) -> str:
+    """
+    The real client IP. The app runs behind Cloudflare and Koyeb's proxy, so
+    request.client.host is the proxy's address and would put everyone in one bucket.
+    """
+    cf_ip = request.headers.get("cf-connecting-ip", "").strip()
+    if cf_ip:
+        return cf_ip
+    forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    if forwarded:
+        return forwarded
+    return request.client.host if request.client else "127.0.0.1"
+
+
+limiter = Limiter(key_func=client_ip)
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -94,7 +106,7 @@ def add_gap_to_second(standings: list) -> list:
         standings[0]["gap_to_second"] = 0
     return standings
 
-def race_datetime(race: dict) -> Optional[datetime]:
+def race_datetime(race: dict) -> datetime | None:
     """UTC datetime of a schedule entry's Race session, or None."""
     for session in race.get("sessions", []):
         if session.get("name") == "Race" and session.get("datetime"):
@@ -102,12 +114,12 @@ def race_datetime(race: dict) -> Optional[datetime]:
                 dt = datetime.fromisoformat(session["datetime"])
             except ValueError:
                 return None
-            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+            return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
     return None
 
-def last_completed_round(schedule: list, now: Optional[datetime] = None) -> int:
+def last_completed_round(schedule: list, now: datetime | None = None) -> int:
     """Highest round whose Race start is at or before now (UTC); 0 if none."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     last_round = 0
     for race in schedule:
         dt = race_datetime(race)
@@ -132,20 +144,35 @@ openf1: OpenF1Client    = None
 scheduler: F1Scheduler  = None
 
 
-async def resolve_latest_session() -> Optional[dict]:
+async def resolve_latest_session(force_refresh: bool = False) -> dict | None:
     """OpenF1's latest session, cached in memory for 5 minutes."""
-    cached = cache_get(LATEST_SESSION_CACHE_KEY)
+    cached = None if force_refresh else cache_get(LATEST_SESSION_CACHE_KEY)
     if cached is not None:
         return cached or None
     session = await openf1.get_latest_session()
     cache_set(LATEST_SESSION_CACHE_KEY, session or {})
     return session
 
+def session_in_progress(session: dict | None, now: datetime | None = None) -> bool:
+    """True if the session has a date_end that is still in the future."""
+    if not session or not session.get("date_end"):
+        return False
+    try:
+        end = datetime.fromisoformat(session["date_end"])
+    except (TypeError, ValueError):
+        return False
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=UTC)
+    return end > (now or datetime.now(UTC))
+
 # ── Scheduler callbacks ───────────────────────────────────────────────────────
 
 async def on_live_poll(session_name: str, race_name: str):
     try:
-        session = await resolve_latest_session()
+        # A cached session that has ended is the previous one; refetch so a session
+        # that just started is picked up now rather than when the cache expires.
+        cached = cache_get(LATEST_SESSION_CACHE_KEY)
+        session = await resolve_latest_session(force_refresh=not session_in_progress(cached))
         if not session:
             return
         session_key = session.get("session_key")
@@ -167,10 +194,11 @@ async def on_session_ended(session_name: str, race_name: str, round_number: int,
                 results = await fetch_results(year, round_number, session_name)
                 if results:
                     await db.save_results(year, round_number, session_name, results)
-                    logger.info(f"[RESULTS] {session_name} results saved for {race_name} R{round_number}")
+                    logger.info(f"[RESULTS] {session_name} results saved for "
+                                f"{race_name} R{round_number}")
                 else:
-                    logger.warning(f"[RESULTS] {session_name} results for {race_name} R{round_number} "
-                                   f"not available yet from Jolpica")
+                    logger.warning(f"[RESULTS] {session_name} results for {race_name} "
+                                   f"R{round_number} not available yet from Jolpica")
             finally:
                 # Standings are not saved here: Jolpica often lags the flag by more than
                 # 30 minutes. Dropping the caches makes the next request fetch fresh data.
@@ -206,6 +234,9 @@ async def lifespan(app: FastAPI):
         live_polling_enabled=bool(os.getenv("OPENF1_TOKEN")),
         on_prune=on_prune,
     )
+    # Best-effort only: Koyeb's free tier scales to zero after an hour without traffic,
+    # so these jobs run only while the instance is awake (and the SQLite file doesn't
+    # survive a sleep). Correctness relies on the TTL caches, not on the jobs running.
     await scheduler.start()
     logger.info("F1 Backend started and ready.")
     yield
@@ -256,7 +287,7 @@ async def root():
 
 @app.get("/schedule", response_model=list[RaceSchedule])
 @limiter.limit("30/minute")
-async def get_schedule(request: Request, year: Optional[int] = None):
+async def get_schedule(request: Request, year: int | None = None):
     # Cached inside JolpicaClient (1h current/future, 7 days past seasons).
     return await jolpica.get_schedule(year)
 
@@ -271,13 +302,14 @@ async def get_next_race(request: Request):
 
 
 @app.get("/schedule/upcoming-sessions")
-async def get_upcoming_sessions(days: int = Query(default=14, le=30)):
+@limiter.limit("30/minute")
+async def get_upcoming_sessions(request: Request, days: int = Query(default=14, le=30)):
     return await jolpica.get_upcoming_sessions(days_ahead=days)
 
 
 # ── Live Session ──────────────────────────────────────────────────────────────
 
-async def get_snapshot(session_key: int) -> Optional[dict]:
+async def get_snapshot(session_key: int) -> dict | None:
     """
     A poller-saved snapshot if one was captured in the last 2 minutes, otherwise an
     on-demand snapshot built from OpenF1 (memory-cached for 5 minutes, never stored).
@@ -285,7 +317,7 @@ async def get_snapshot(session_key: int) -> Optional[dict]:
     """
     stored = await db.get_latest_snapshot_entry(session_key)
     if stored:
-        age = datetime.now(timezone.utc) - stored["captured_at"]
+        age = datetime.now(UTC) - stored["captured_at"]
         if age < LIVE_STORED_MAX_AGE:
             return {**stored["snapshot"], "is_live": age < LIVE_IS_LIVE_MAX_AGE}
 
@@ -327,14 +359,14 @@ async def get_live_by_session(request: Request, session_key: int):
 async def get_latest_results(
     request: Request,
     session_type: str = Query(default="Race", enum=["Race", "Qualifying", "Sprint"]),
-    year: Optional[int] = None
+    year: int | None = None
 ):
     """
     Latest results. With no year (or the current year): the last completed round of
     the current season, falling back to last season's final round if it hasn't
     started. With a past year: that season's final round.
     """
-    current_year = datetime.now(timezone.utc).year
+    current_year = datetime.now(UTC).year
     cache_key = f"results_latest_{session_type}_{year if year is not None else 'default'}"
     cached = cache_get(cache_key)
     if cached is not None:
@@ -382,13 +414,13 @@ async def _results_row_is_fresh(year: int, round_number: int, fetched_at: dateti
         return True  # can't tell; a stored row beats a 502
     race = next((r for r in schedule if int(r.get("round", 0)) == round_number), None)
     race_dt = race_datetime(race) if race else None
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if race_dt is None or now - race_dt >= RESULTS_VOLATILE_WINDOW:
         return True
     return now - fetched_at < RESULTS_VOLATILE_MAX_AGE
 
 
-async def _race_name_for_round(year: int, round_number: int) -> Optional[str]:
+async def _race_name_for_round(year: int, round_number: int) -> str | None:
     """Race name from the (client-cached) schedule; None if it can't be resolved."""
     try:
         schedule = await jolpica.get_schedule(year)
@@ -408,7 +440,7 @@ async def get_results(
     round: int,
     session_type: str = Query(default="Race", enum=["Race", "Qualifying", "Sprint"])
 ):
-    current_year = datetime.now(timezone.utc).year
+    current_year = datetime.now(UTC).year
     cache_key = f"results_{year}_{round}_{session_type}"
     if year < current_year:
         mem_cached = cache_get(cache_key)
@@ -450,8 +482,8 @@ async def get_results(
 
 @app.get("/standings/drivers", response_model=DriverStandingsResponse)
 @limiter.limit("30/minute")
-async def get_driver_standings(request: Request, year: Optional[int] = None):
-    current_year = datetime.now(timezone.utc).year
+async def get_driver_standings(request: Request, year: int | None = None):
+    current_year = datetime.now(UTC).year
     target_year  = year or current_year
     cache_key    = f"driver_standings_{target_year}"
 
@@ -499,8 +531,8 @@ async def get_driver_standings(request: Request, year: Optional[int] = None):
 
 @app.get("/standings/constructors", response_model=ConstructorStandingsResponse)
 @limiter.limit("30/minute")
-async def get_constructor_standings(request: Request, year: Optional[int] = None):
-    current_year = datetime.now(timezone.utc).year
+async def get_constructor_standings(request: Request, year: int | None = None):
+    current_year = datetime.now(UTC).year
     target_year  = year or current_year
     cache_key    = f"constructor_standings_{target_year}"
 
@@ -539,17 +571,20 @@ async def get_constructor_standings(request: Request, year: Optional[int] = None
 # ── Session Details (OpenF1) ──────────────────────────────────────────────────
 
 @app.get("/sessions")
-async def get_sessions(year: Optional[int] = None, session_type: Optional[str] = None):
+@limiter.limit("30/minute")
+async def get_sessions(request: Request, year: int | None = None, session_type: str | None = None):
     return await openf1.get_sessions(year=year, session_type=session_type)
 
 
 @app.get("/sessions/{session_key}/laps")
-async def get_session_laps(session_key: int, driver_number: Optional[int] = None):
+@limiter.limit("30/minute")
+async def get_session_laps(request: Request, session_key: int, driver_number: int | None = None):
     return await openf1.get_laps(session_key, driver_number=driver_number)
 
 
 @app.get("/sessions/{session_key}/fastest-laps")
-async def get_fastest_laps(session_key: int):
+@limiter.limit("30/minute")
+async def get_fastest_laps(request: Request, session_key: int):
     return await openf1.get_fastest_laps(session_key)
 
 
@@ -651,17 +686,20 @@ async def get_pit_stops(request: Request, session_key: int):
 
 
 @app.get("/sessions/{session_key}/race-control")
-async def get_race_control(session_key: int):
+@limiter.limit("30/minute")
+async def get_race_control(request: Request, session_key: int):
     return await openf1.get_race_control(session_key)
 
 
 @app.get("/sessions/{session_key}/weather")
-async def get_weather(session_key: int):
+@limiter.limit("30/minute")
+async def get_weather(request: Request, session_key: int):
     return await openf1.get_latest_weather(session_key)
 
 
 @app.get("/sessions/{session_key}/drivers")
-async def get_drivers(session_key: int):
+@limiter.limit("30/minute")
+async def get_drivers(request: Request, session_key: int):
     return await openf1.get_drivers(session_key)
 
 
@@ -701,8 +739,8 @@ async def get_session_key(request: Request, year: int, round: int):
 
 @app.get("/meetings", response_model=list[MeetingInfo])
 @limiter.limit("30/minute")
-async def get_meetings(request: Request, year: Optional[int] = None):
-    current_year = datetime.now(timezone.utc).year
+async def get_meetings(request: Request, year: int | None = None):
+    current_year = datetime.now(UTC).year
     target_year = year or current_year
     cache_key = f"meetings_{target_year}"
     cached = cache_get(cache_key)
@@ -736,7 +774,7 @@ async def get_meetings(request: Request, year: Optional[int] = None):
 @app.get("/drivers/{year}", response_model=list[DriverInfo])
 @limiter.limit("30/minute")
 async def get_drivers_by_year(request: Request, year: int):
-    current_year = datetime.now(timezone.utc).year
+    current_year = datetime.now(UTC).year
     cache_key = f"drivers_{year}"
     cached = cache_get(cache_key)
     if cached is not None:
@@ -788,7 +826,9 @@ def _parse_lap_time(time_str: str) -> float:
 
 
 CIRCUIT_STATS_TTL_ACTIVE = 86400  # 24h for circuits raced this season
-CIRCUIT_DATA_NOTE = "Poles counted as starts from grid 1. Lap record is the fastest race lap since 2004."
+CIRCUIT_DATA_NOTE = (
+    "Poles counted as starts from grid 1. Lap record is the fastest race lap since 2004."
+)
 
 
 def _unique_races(races: list) -> dict:
@@ -828,7 +868,9 @@ def _tally_constructors(races: dict) -> dict:
             if not constructor_id or constructor_id in seen:
                 continue
             seen.add(constructor_id)
-            entry = tally.setdefault(constructor_id, {"name": constructor.get("name", ""), "seasons": []})
+            entry = tally.setdefault(
+                constructor_id, {"name": constructor.get("name", ""), "seasons": []}
+            )
             entry["seasons"].append(season)
     return tally
 
@@ -920,7 +962,7 @@ async def get_circuit_stats(request: Request, circuit_id: str):
         raise HTTPException(status_code=404, detail=f"No races found for circuit '{circuit_id}'")
 
     stats = compute_circuit_stats(circuit_id, winners, pole_starters, fastest_laps)
-    if stats["lastGPYear"] == datetime.now(timezone.utc).year:
+    if stats["lastGPYear"] == datetime.now(UTC).year:
         cache_set(cache_key, stats, CIRCUIT_STATS_TTL_ACTIVE)
     else:
         cache_set_historical(cache_key, stats)

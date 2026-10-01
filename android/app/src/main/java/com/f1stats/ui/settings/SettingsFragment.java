@@ -1,15 +1,21 @@
 package com.f1stats.ui.settings;
 
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.fragment.app.Fragment;
 
+import com.f1stats.BuildConfig;
 import com.f1stats.F1App;
 import com.f1stats.R;
 import com.f1stats.SettingsManager;
@@ -54,6 +60,29 @@ public class SettingsFragment extends Fragment {
             // Repository and ViewModel fetch the service per call, so this applies immediately
             F1ApiClient.reset(requireContext());
             Toast.makeText(requireContext(), "URL saved", Toast.LENGTH_SHORT).show();
+        });
+
+        bindAbout(view);
+    }
+
+    private void bindAbout(View view) {
+        TextView tvVersion = view.findViewById(R.id.tv_app_version);
+        tvVersion.setText(getString(R.string.about_version, BuildConfig.VERSION_NAME));
+
+        bindLink(view, R.id.tv_credit_jolpica,   R.string.credit_jolpica_url);
+        bindLink(view, R.id.tv_credit_openf1,    R.string.credit_openf1_url);
+        bindLink(view, R.id.tv_credit_circuits,  R.string.credit_circuits_url);
+        bindLink(view, R.id.tv_credit_flagpedia, R.string.credit_flagpedia_url);
+    }
+
+    private void bindLink(View root, int viewId, @StringRes int urlRes) {
+        root.findViewById(viewId).setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(urlRes)));
+            try {
+                startActivity(intent);
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(requireContext(), R.string.about_no_browser, Toast.LENGTH_SHORT).show();
+            }
         });
     }
 }

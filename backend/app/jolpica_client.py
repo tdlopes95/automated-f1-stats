@@ -8,8 +8,7 @@ No API key needed. Free for non-commercial use.
 import asyncio
 import logging
 import time
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import httpx
 
@@ -78,7 +77,7 @@ class JolpicaClient:
     @staticmethod
     def _resolve_year(year) -> int:
         if year is None or year == "current":
-            return datetime.now(timezone.utc).year
+            return datetime.now(UTC).year
         return int(year)
 
     def invalidate_schedule(self, year: int = None):
@@ -121,7 +120,7 @@ class JolpicaClient:
             schedule.append(entry)
 
         if schedule:
-            current_year = datetime.now(timezone.utc).year
+            current_year = datetime.now(UTC).year
             ttl = SCHEDULE_TTL_PAST if season < current_year else SCHEDULE_TTL_CURRENT
             self._schedule_cache[season] = (schedule, time.time(), ttl)
         return schedule
@@ -158,7 +157,7 @@ class JolpicaClient:
 
         return sessions
 
-    def _to_datetime(self, date_str: Optional[str], time_str: Optional[str]) -> Optional[datetime]:
+    def _to_datetime(self, date_str: str | None, time_str: str | None) -> datetime | None:
         if not date_str:
             return None
         try:
@@ -169,16 +168,16 @@ class JolpicaClient:
         except ValueError:
             return None
 
-    async def get_next_race(self) -> Optional[dict]:
+    async def get_next_race(self) -> dict | None:
         """Returns the next upcoming race from the current season."""
         schedule = await self.get_schedule()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for race in schedule:
             for session in race.get("sessions", []):
                 if session["name"] == "Race":
                     race_dt = datetime.fromisoformat(session["datetime"])
                     if race_dt.tzinfo is None:
-                        race_dt = race_dt.replace(tzinfo=timezone.utc)
+                        race_dt = race_dt.replace(tzinfo=UTC)
                     if race_dt >= now:
                         return race
         return None
@@ -189,7 +188,7 @@ class JolpicaClient:
         Used by the scheduler to arm jobs.
         """
         schedule = await self.get_schedule()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cutoff = now + timedelta(days=days_ahead)
         upcoming = []
         for race in schedule:
@@ -251,7 +250,9 @@ class JolpicaClient:
             return []
         return lists[0].get("DriverStandings", [])
 
-    async def get_constructor_standings(self, year: int = None, round_number: int = None) -> list[dict]:
+    async def get_constructor_standings(
+        self, year: int = None, round_number: int = None
+    ) -> list[dict]:
         season = str(year) if year else "current"
         path = f"/{season}"
         if round_number:

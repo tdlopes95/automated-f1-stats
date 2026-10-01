@@ -17,7 +17,6 @@
     <dimen name="headshot_size_lg">64dp</dimen>
     <dimen name="card_corner_radius">8dp</dimen>
     <dimen name="hero_image_height">160dp</dimen>
-    <dimen name="bottom_nav_height">72dp</dimen>
 
     <!-- ── Typography Scale ───────────────────────────────── -->
     <!-- Hero: countdowns, championship gaps, race-day numbers -->

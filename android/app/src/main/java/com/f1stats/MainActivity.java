@@ -3,9 +3,12 @@ package com.f1stats;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
@@ -14,6 +17,7 @@ import androidx.navigation.ui.NavigationUI;
 import androidx.core.splashscreen.SplashScreen;
 
 import com.f1stats.models.LiveSession;
+import com.f1stats.util.SystemBarInsets;
 import com.f1stats.viewmodels.F1ViewModel;
 import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -43,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
 
         AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
                 R.id.nav_home,
-                R.id.nav_live,
+                R.id.nav_weekend,
                 R.id.nav_results,
                 R.id.nav_standings,
                 R.id.nav_schedule
@@ -53,10 +57,12 @@ public class MainActivity extends AppCompatActivity {
         bottomNav = findViewById(R.id.bottom_navigation);
         NavigationUI.setupWithNavController(bottomNav, navController);
 
+        setupEdgeToEdge();
+
         // Clear Weekend badge when the user navigates to that tab
         navController.addOnDestinationChangedListener((ctrl, dest, args) -> {
-            if (dest.getId() == R.id.nav_live) {
-                bottomNav.removeBadge(R.id.nav_live);
+            if (dest.getId() == R.id.nav_weekend) {
+                bottomNav.removeBadge(R.id.nav_weekend);
             }
         });
 
@@ -66,15 +72,44 @@ public class MainActivity extends AppCompatActivity {
         viewModel.fetchLiveSession();
     }
 
+    /**
+     * Android 15 (targetSdk 35) is always edge-to-edge: the app bar pads for the status bar,
+     * the bottom bar pads for the navigation bar, and the nav host reserves exactly the
+     * bottom bar's measured height so the last item of every tab can scroll into view.
+     */
+    private void setupEdgeToEdge() {
+        View appBar = findViewById(R.id.app_bar);
+        View bottomBar = findViewById(R.id.bottom_bar_container);
+        View navHost = findViewById(R.id.nav_host_fragment);
+
+        SystemBarInsets.applyPadding(appBar, true, true, true, false);
+        // Consumes the insets, so BottomNavigationView doesn't add its own bottom padding too
+        SystemBarInsets.applyPadding(bottomBar, true, false, true, true);
+
+        ViewCompat.setOnApplyWindowInsetsListener(navHost, (v, insets) -> {
+            Insets i = insets.getInsets(SystemBarInsets.TYPES);
+            v.setPadding(i.left, v.getPaddingTop(), i.right, v.getPaddingBottom());
+            return insets;
+        });
+
+        bottomBar.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            int height = b - t;
+            if (navHost.getPaddingBottom() != height) {
+                navHost.setPadding(navHost.getPaddingLeft(), navHost.getPaddingTop(),
+                        navHost.getPaddingRight(), height);
+            }
+        });
+    }
+
     private void updateWeekendBadge(LiveSession session) {
         if (session == null || session.getSessionKey() == 0) {
-            bottomNav.removeBadge(R.id.nav_live);
+            bottomNav.removeBadge(R.id.nav_weekend);
             return;
         }
 
         // Don't badge if we're already on the Weekend tab
         if (navController.getCurrentDestination() != null
-                && navController.getCurrentDestination().getId() == R.id.nav_live) {
+                && navController.getCurrentDestination().getId() == R.id.nav_weekend) {
             return;
         }
 
@@ -93,11 +128,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (shouldShow) {
-            BadgeDrawable badge = bottomNav.getOrCreateBadge(R.id.nav_live);
+            BadgeDrawable badge = bottomNav.getOrCreateBadge(R.id.nav_weekend);
             badge.setVisible(true);
             badge.clearNumber();
         } else {
-            bottomNav.removeBadge(R.id.nav_live);
+            bottomNav.removeBadge(R.id.nav_weekend);
         }
     }
 

@@ -7,8 +7,7 @@ Easy to swap to PostgreSQL later by changing the driver.
 import json
 import logging
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import aiosqlite
 
@@ -21,7 +20,7 @@ DB_PATH = os.getenv("DB_PATH", "data/f1_data.db")
 class Database:
     def __init__(self, path: str = DB_PATH):
         self.path = path
-        self._db: Optional[aiosqlite.Connection] = None
+        self._db: aiosqlite.Connection | None = None
 
     async def connect(self):
         parent = os.path.dirname(self.path)
@@ -124,11 +123,11 @@ class Database:
             ON CONFLICT(year, round, session_type) DO UPDATE SET
                 fetched_at=excluded.fetched_at,
                 results_json=excluded.results_json
-        """, (year, round_number, session_type, datetime.now(timezone.utc).isoformat(), json.dumps(results)))
+        """, (year, round_number, session_type, datetime.now(UTC).isoformat(), json.dumps(results)))
         await self._db.commit()
         logger.info(f"Saved {session_type} results for {year} R{round_number}")
 
-    async def get_results(self, year: int, round_number: int, session_type: str) -> Optional[list]:
+    async def get_results(self, year: int, round_number: int, session_type: str) -> list | None:
         async with self._db.execute("""
             SELECT results_json FROM race_results
             WHERE year=? AND round=? AND session_type=?
@@ -136,8 +135,13 @@ class Database:
             row = await cursor.fetchone()
             return json.loads(row["results_json"]) if row else None
 
-    async def get_results_entry(self, year: int, round_number: int, session_type: str) -> Optional[dict]:
-        """Like get_results, but also returns when the row was fetched: {"results", "fetched_at"}."""
+    async def get_results_entry(
+        self, year: int, round_number: int, session_type: str
+    ) -> dict | None:
+        """Like get_results, but also returns when the row was fetched.
+
+        Returns {"results", "fetched_at"}.
+        """
         async with self._db.execute("""
             SELECT results_json, fetched_at FROM race_results
             WHERE year=? AND round=? AND session_type=?
@@ -150,7 +154,7 @@ class Database:
                 "fetched_at": datetime.fromisoformat(row["fetched_at"]),
             }
 
-    async def get_latest_results(self, session_type: str = "Race") -> Optional[dict]:
+    async def get_latest_results(self, session_type: str = "Race") -> dict | None:
         """Get the most recently stored results of a given type."""
         async with self._db.execute("""
             SELECT year, round, results_json FROM race_results
@@ -174,10 +178,10 @@ class Database:
         await self._db.execute("""
             INSERT INTO live_snapshots (session_key, captured_at, snapshot_json)
             VALUES (?, ?, ?)
-        """, (session_key, datetime.now(timezone.utc).isoformat(), json.dumps(snapshot)))
+        """, (session_key, datetime.now(UTC).isoformat(), json.dumps(snapshot)))
         await self._db.commit()
 
-    async def get_latest_snapshot_entry(self, session_key: int) -> Optional[dict]:
+    async def get_latest_snapshot_entry(self, session_key: int) -> dict | None:
         """Newest stored snapshot for a session: {"snapshot", "captured_at"} or None."""
         async with self._db.execute("""
             SELECT snapshot_json, captured_at FROM live_snapshots
@@ -195,7 +199,7 @@ class Database:
 
     async def prune_snapshots(self, older_than_hours: int = 48) -> int:
         """Delete live snapshots older than the cutoff; returns rows deleted."""
-        cutoff = (datetime.now(timezone.utc) - timedelta(hours=older_than_hours)).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(hours=older_than_hours)).isoformat()
         cursor = await self._db.execute(
             "DELETE FROM live_snapshots WHERE captured_at < ?", (cutoff,)
         )
@@ -205,14 +209,14 @@ class Database:
 
     # ── Standings ─────────────────────────────────────────────────────────────
 
-    async def save_driver_standings(self, year: int, round_number: Optional[int], standings: list):
+    async def save_driver_standings(self, year: int, round_number: int | None, standings: list):
         await self._db.execute("""
             INSERT INTO driver_standings (year, round, fetched_at, standings_json)
             VALUES (?, ?, ?, ?)
-        """, (year, round_number, datetime.now(timezone.utc).isoformat(), json.dumps(standings)))
+        """, (year, round_number, datetime.now(UTC).isoformat(), json.dumps(standings)))
         await self._db.commit()
 
-    async def get_latest_driver_standings(self, year: int) -> Optional[list]:
+    async def get_latest_driver_standings(self, year: int) -> list | None:
         """Most recently fetched driver standings stored for a season."""
         async with self._db.execute("""
             SELECT standings_json FROM driver_standings
@@ -223,14 +227,16 @@ class Database:
             row = await cursor.fetchone()
             return json.loads(row["standings_json"]) if row else None
 
-    async def save_constructor_standings(self, year: int, round_number: Optional[int], standings: list):
+    async def save_constructor_standings(
+        self, year: int, round_number: int | None, standings: list
+    ):
         await self._db.execute("""
             INSERT INTO constructor_standings (year, round, fetched_at, standings_json)
             VALUES (?, ?, ?, ?)
-        """, (year, round_number, datetime.now(timezone.utc).isoformat(), json.dumps(standings)))
+        """, (year, round_number, datetime.now(UTC).isoformat(), json.dumps(standings)))
         await self._db.commit()
 
-    async def get_latest_constructor_standings(self, year: int) -> Optional[list]:
+    async def get_latest_constructor_standings(self, year: int) -> list | None:
         """Most recently fetched constructor standings stored for a season."""
         async with self._db.execute("""
             SELECT standings_json FROM constructor_standings

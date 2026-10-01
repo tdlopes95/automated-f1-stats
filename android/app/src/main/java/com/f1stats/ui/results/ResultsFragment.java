@@ -20,6 +20,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.f1stats.R;
 import com.f1stats.RoundDetailActivity;
 import com.f1stats.SeasonHelper;
+import com.f1stats.util.Flags;
 import com.f1stats.util.MeetingMatcher;
 import com.f1stats.SeasonPickerHelper;
 import com.f1stats.models.RoundSchedule;
@@ -168,23 +169,26 @@ public class ResultsFragment extends Fragment {
     private void mergeAndUpdate() {
         if (latestSchedule == null) return;
         List<RoundSchedule> rounds = buildRoundList(latestSchedule);
+        // Match on the raw schedule maps (they carry sessions + country), keyed by round
+        Map<Integer, Map<String, Object>> meetingByRound = new HashMap<>();
         if (latestMeetings != null) {
-            // Match on the raw schedule maps (they carry sessions + country), keyed by round
-            Map<Integer, Map<String, Object>> meetingByRound = new HashMap<>();
             for (Map<String, Object> race : latestSchedule) {
                 Object roundObj = race.get("round");
                 if (!(roundObj instanceof Number)) continue;
                 Map<String, Object> meeting = MeetingMatcher.match(race, latestMeetings);
                 if (meeting != null) meetingByRound.put(((Number) roundObj).intValue(), meeting);
             }
-            for (RoundSchedule round : rounds) {
-                Map<String, Object> meeting = meetingByRound.get(round.getRound());
-                if (meeting == null) continue;
+        }
+        for (RoundSchedule round : rounds) {
+            Map<String, Object> meeting = meetingByRound.get(round.getRound());
+            if (meeting != null) {
                 Object img = meeting.get("circuit_image");
                 if (img != null) round.setCircuitImage(img.toString());
-                Object flag = meeting.get("country_flag");
-                if (flag != null) round.setCountryFlag(flag.toString());
             }
+            // OpenF1 flag first; flagcdn by Jolpica country when unmatched or flagless
+            String flag = MeetingMatcher.flagFor(null, meeting);
+            if (flag == null) flag = Flags.urlFor(round.getCountry());
+            if (flag != null) round.setCountryFlag(flag);
         }
         roundAdapter.setRounds(rounds);
         if (rounds.isEmpty()) {

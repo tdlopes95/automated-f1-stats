@@ -1,6 +1,5 @@
 package com.f1stats.ui.standings;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +13,8 @@ import com.f1stats.R;
 import com.f1stats.models.ConstructorStanding;
 import com.f1stats.models.DriverStanding;
 import com.f1stats.models.PitStop;
+import com.f1stats.models.RaceResult;
+import com.f1stats.util.TeamColors;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -166,7 +167,7 @@ public class StandingsAdapter extends RecyclerView.Adapter<StandingsAdapter.View
             tvSubtitle.setText(standing.getTeamName());
             tvPoints.setText(standing.getPoints());
             tvWins.setText(standing.getWins() + " wins");
-            setTeamColour(standing.getTeamName());
+            setTeamColour(standing.getConstructorId(), standing.getTeamName());
         }
 
         void bindConstructor(ConstructorStanding standing) {
@@ -182,8 +183,9 @@ public class StandingsAdapter extends RecyclerView.Adapter<StandingsAdapter.View
             tvPoints.setText(standing.getPoints());
             tvWins.setText(standing.getWins() + " wins");
             tvPodiums.setVisibility(View.GONE);
-            setTeamColour(standing.getConstructor() != null ?
-                    standing.getConstructor().getName() : "");
+            RaceResult.Constructor team = standing.getConstructor();
+            setTeamColour(team != null ? team.getConstructorId() : null,
+                    team != null ? team.getName() : null);
         }
 
         void bindPitStop(PitStop stop, int rank) {
@@ -197,42 +199,13 @@ public class StandingsAdapter extends RecyclerView.Adapter<StandingsAdapter.View
             tvPodiums.setVisibility(View.GONE);
             tvPoints.setText(stop.getFormattedStopDuration()); // pit time
             tvWins.setText("Lap " + stop.getLapNumber());
-            try {
-                teamColourStrip.setBackgroundColor(
-                        Color.parseColor(stop.getTeamColourHex()));
-            } catch (Exception e) {
-                teamColourStrip.setBackgroundColor(Color.WHITE);
-            }
+            teamColourStrip.setBackgroundColor(TeamColors.get(itemView.getContext(),
+                    null, stop.getTeamName(), stop.getTeamColour()));
         }
 
-        private void setTeamColour(String teamName) {
-            java.util.Map<String, String> colours = new java.util.HashMap<>();
-            colours.put("Red Bull",      "#3671C6");
-            colours.put("Ferrari",       "#E8002D");
-            colours.put("Mercedes",      "#27F4D2");
-            colours.put("McLaren",       "#FF8000");
-            colours.put("Aston Martin",  "#229971");
-            colours.put("Alpine",        "#FF87BC");
-            colours.put("Williams",      "#64C4FF");
-            colours.put("RB F1 Team",    "#6692FF");
-            colours.put("RB",            "#6692FF");
-            colours.put("Haas",          "#B6BABD");
-            colours.put("Audi",          "#B5B5B5");
-            colours.put("Kick Sauber",   "#52E252");
-            colours.put("Sauber",        "#52E252");
-            colours.put("Cadillac",      "#CC0000");
-            String colour = "#FFFFFF";
-            for (java.util.Map.Entry<String, String> entry : colours.entrySet()) {
-                if (teamName.contains(entry.getKey())) {
-                    colour = entry.getValue();
-                    break;
-                }
-            }
-            try {
-                teamColourStrip.setBackgroundColor(Color.parseColor(colour));
-            } catch (Exception e) {
-                teamColourStrip.setBackgroundColor(Color.WHITE);
-            }
+        private void setTeamColour(String constructorId, String teamName) {
+            teamColourStrip.setBackgroundColor(
+                    TeamColors.get(itemView.getContext(), constructorId, teamName, null));
         }
     }
 }

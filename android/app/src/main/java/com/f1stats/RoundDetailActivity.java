@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.f1stats.util.DebugLog;
+import com.f1stats.util.TeamColors;
 import com.f1stats.models.QualifyingResult;
 import com.f1stats.models.RaceResult;
 import com.f1stats.ui.results.PitStopAdapter;
@@ -38,6 +39,7 @@ import com.f1stats.ui.results.ResultsAdapter;
 import com.f1stats.ui.results.QualifyingAdapter;
 import com.f1stats.ui.strategy.StrategyAdapter;
 import com.f1stats.viewmodels.F1ViewModel;
+import com.f1stats.util.SystemBarInsets;
 import com.google.android.material.tabs.TabLayout;
 
 
@@ -78,6 +80,7 @@ public class RoundDetailActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_round_detail);
+        SystemBarInsets.applyToContentRoot(this);
 
         round    = getIntent().getIntExtra(EXTRA_ROUND, 1);
         year     = getIntent().getIntExtra(EXTRA_YEAR, 2026);
@@ -263,9 +266,9 @@ public class RoundDetailActivity extends AppCompatActivity {
         intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_NAME, driver.getFullName());
         intent.putExtra(DriverProfileActivity.EXTRA_YEAR, year);
         if (result.getConstructor() != null) {
-            String team = result.getConstructor().getName();
-            intent.putExtra(DriverProfileActivity.EXTRA_TEAM_NAME, team);
-            intent.putExtra(DriverProfileActivity.EXTRA_TEAM_COLOUR, getTeamColour(team));
+            intent.putExtra(DriverProfileActivity.EXTRA_TEAM_NAME, result.getConstructor().getName());
+            intent.putExtra(DriverProfileActivity.EXTRA_CONSTRUCTOR_ID,
+                    result.getConstructor().getConstructorId());
         }
         intent.putExtra(DriverProfileActivity.EXTRA_NATIONALITY, driver.getNationality());
         intent.putExtra(DriverProfileActivity.EXTRA_NUMBER, driver.getNumber());
@@ -281,9 +284,9 @@ public class RoundDetailActivity extends AppCompatActivity {
         intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_NAME, driver.getFullName());
         intent.putExtra(DriverProfileActivity.EXTRA_YEAR, year);
         if (result.getConstructor() != null) {
-            String team = result.getConstructor().getName();
-            intent.putExtra(DriverProfileActivity.EXTRA_TEAM_NAME, team);
-            intent.putExtra(DriverProfileActivity.EXTRA_TEAM_COLOUR, getTeamColour(team));
+            intent.putExtra(DriverProfileActivity.EXTRA_TEAM_NAME, result.getConstructor().getName());
+            intent.putExtra(DriverProfileActivity.EXTRA_CONSTRUCTOR_ID,
+                    result.getConstructor().getConstructorId());
         }
         intent.putExtra(DriverProfileActivity.EXTRA_NATIONALITY, driver.getNationality());
         intent.putExtra(DriverProfileActivity.EXTRA_NUMBER, driver.getNumber());
@@ -291,27 +294,6 @@ public class RoundDetailActivity extends AppCompatActivity {
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
     }
 
-    private static String getTeamColour(String teamName) {
-        if (teamName == null) return "#FFFFFF";
-        java.util.Map<String, String> colours = new java.util.HashMap<>();
-        colours.put("Red Bull",     "#3671C6");
-        colours.put("Ferrari",      "#E8002D");
-        colours.put("Mercedes",     "#27F4D2");
-        colours.put("McLaren",      "#FF8000");
-        colours.put("Aston Martin", "#229971");
-        colours.put("Alpine",       "#FF87BC");
-        colours.put("Williams",     "#64C4FF");
-        colours.put("RB",           "#6692FF");
-        colours.put("Haas",         "#B6BABD");
-        colours.put("Audi",         "#B5B5B5");
-        colours.put("Kick Sauber",  "#52E252");
-        colours.put("Sauber",       "#52E252");
-        colours.put("Cadillac",     "#CC0000");
-        for (java.util.Map.Entry<String, String> e : colours.entrySet()) {
-            if (teamName.contains(e.getKey())) return e.getValue();
-        }
-        return "#FFFFFF";
-    }
 
     private Map<String, Integer> buildFinishPositions() {
         Map<String, Integer> map = new HashMap<>();
@@ -497,8 +479,7 @@ public class RoundDetailActivity extends AppCompatActivity {
 
         String code     = strVal(driver.get("name_acronym"), "???");
         String team     = strVal(driver.get("team_name"), "");
-        String colour   = strVal(driver.get("team_colour"), "FFFFFF");
-        if (colour != null && !colour.startsWith("#")) colour = "#" + colour;
+        int colour      = TeamColors.get(this, null, team, strVal(driver.get("team_colour"), null));
         String headshot = strVal(driver.get("headshot_url"), null);
 
         ((TextView) card.findViewById(R.id.tv_grid_position)).setText("P" + gridPosition);
@@ -510,12 +491,10 @@ public class RoundDetailActivity extends AppCompatActivity {
                 isAlternate ? R.color.bg_dark : R.color.bg_surface));
 
         // team colour left border
-        try {
-            View border = card.findViewById(R.id.view_team_border);
-            GradientDrawable bd = new GradientDrawable();
-            bd.setColor(Color.parseColor(colour));
-            border.setBackground(bd);
-        } catch (Exception ignored) {}
+        View border = card.findViewById(R.id.view_team_border);
+        GradientDrawable bd = new GradientDrawable();
+        bd.setColor(colour);
+        border.setBackground(bd);
 
         // P1 gold border/glow
         if (gridPosition == 1) {

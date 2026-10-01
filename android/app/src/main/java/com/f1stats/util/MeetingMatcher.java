@@ -68,17 +68,32 @@ public final class MeetingMatcher {
         return null;
     }
 
-    /** Copies circuit_image/country_flag from the matched meeting, or clears them. */
+    /**
+     * Copies circuit_image/country_flag from the matched meeting. Without a match (no meeting,
+     * or rejected for country mismatch) the image is cleared and the flag falls back to
+     * {@link Flags} using the Jolpica country.
+     */
     public static void apply(Map<String, Object> race, @Nullable List<Map<String, Object>> meetings) {
         Map<String, Object> meeting = match(race, meetings);
         if (meeting != null) {
             race.put("circuit_image", meeting.get("circuit_image"));
-            race.put("country_flag", meeting.get("country_flag"));
         } else {
-            // DriverHelper only has emoji flags; flag views load URLs, so leave it empty
             race.remove("circuit_image");
-            race.remove("country_flag");
         }
+        String flag = flagFor(race, meeting);
+        if (flag != null) race.put("country_flag", flag);
+        else race.remove("country_flag");
+    }
+
+    /** OpenF1 meeting flag if present, else a flagcdn URL for the Jolpica race country. */
+    @Nullable
+    public static String flagFor(@Nullable Map<String, Object> race,
+                                 @Nullable Map<String, Object> meeting) {
+        if (meeting != null) {
+            String flag = str(meeting.get("country_flag"));
+            if (flag != null && !flag.trim().isEmpty()) return flag;
+        }
+        return race != null ? Flags.urlFor(str(race.get("country"))) : null;
     }
 
     @Nullable

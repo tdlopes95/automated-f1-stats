@@ -29,7 +29,8 @@ public class NextSessionWidget extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] widgetIds) {
-        updateAllWidgets(context, manager);
+        // Called from within onReceive, so goAsync() is valid here
+        updateAllWidgets(context, manager, goAsync());
     }
 
     @Override
@@ -47,20 +48,27 @@ public class NextSessionWidget extends AppWidgetProvider {
         super.onReceive(context, intent);
         if (ACTION_TICK.equals(intent.getAction())) {
             AppWidgetManager manager = AppWidgetManager.getInstance(context);
-            updateAllWidgets(context, manager);
+            updateAllWidgets(context, manager, goAsync());
             scheduleMinuteTick(context);
         }
     }
 
     // ── Internal ──────────────────────────────────────────────────────────────
 
-    private static void updateAllWidgets(Context context, AppWidgetManager manager) {
+    /** Room lookup runs off the main thread; the receiver stays alive until {@code result} finishes. */
+    private static void updateAllWidgets(Context context, AppWidgetManager manager,
+                                         PendingResult result) {
         int[] ids = manager.getAppWidgetIds(
                 new ComponentName(context, NextSessionWidget.class));
+        Context appContext = context.getApplicationContext();
         new Thread(() -> {
-            NextSessionInfo info = findNextSession(context);
-            for (int id : ids) {
-                applyViews(context, manager, id, info);
+            try {
+                NextSessionInfo info = findNextSession(appContext);
+                for (int id : ids) {
+                    applyViews(appContext, manager, id, info);
+                }
+            } finally {
+                result.finish();
             }
         }).start();
     }
@@ -162,8 +170,9 @@ public class NextSessionWidget extends AppWidgetProvider {
     }
 
     private static PendingIntent tickIntent(Context context) {
-        Intent intent = new Intent(context, NextSessionWidget.class);
-        intent.setAction(ACTION_TICK);
+        // Explicit: the TICK action isn't in the manifest filter, so only a targeted intent arrives
+        Intent intent = new Intent(ACTION_TICK);
+        intent.setClass(context, NextSessionWidget.class);
         return PendingIntent.getBroadcast(
                 context, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);

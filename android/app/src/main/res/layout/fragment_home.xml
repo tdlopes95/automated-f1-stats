@@ -62,8 +62,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:fillViewport="true"
-            android:clipToPadding="false"
-            android:paddingBottom="@dimen/bottom_nav_height">
+            android:clipToPadding="false">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -97,8 +96,9 @@
                                 android:id="@+id/iv_next_race_circuit"
                                 android:layout_width="match_parent"
                                 android:layout_height="match_parent"
-                                android:scaleType="centerCrop"
-                                android:background="@color/bg_dark" />
+                                android:scaleType="fitCenter"
+                                android:padding="@dimen/spacing_sm"
+                                android:background="@color/bg_hero_image" />
 
                             <View
                                 android:layout_width="match_parent"

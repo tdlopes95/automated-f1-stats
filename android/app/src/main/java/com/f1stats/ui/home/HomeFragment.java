@@ -32,6 +32,7 @@ import com.f1stats.HomeCacheManager;
 import com.f1stats.R;
 import com.f1stats.SeasonHelper;
 import com.f1stats.util.MeetingMatcher;
+import com.f1stats.util.TeamColors;
 import com.f1stats.viewmodels.F1ViewModel;
 import com.facebook.shimmer.ShimmerFrameLayout;
 import com.google.android.material.snackbar.Snackbar;
@@ -184,7 +185,7 @@ public class HomeFragment extends Fragment {
         }
         if (leaderTeam != null) {
             tvLeaderTeam.setText(leaderTeam);
-            applyTeamColour(viewLeaderColour, leaderTeam);
+            applyTeamColour(viewLeaderColour, null, leaderTeam);
         }
         if (leaderPoints != null) {
             tvLeaderPoints.setText(stripPtsSuffix(leaderPoints));
@@ -218,7 +219,7 @@ public class HomeFragment extends Fragment {
             tvP2Name.setText(p2Name);
             tvP2Team.setText(p2Team != null ? p2Team : "");
             tvP2Points.setText(stripPtsSuffix(p2Points != null ? p2Points : ""));
-            if (p2Team != null) applyTeamColour(viewP2Colour, p2Team);
+            if (p2Team != null) applyTeamColour(viewP2Colour, null, p2Team);
             layoutP2.setVisibility(View.VISIBLE);
         }
 
@@ -230,7 +231,7 @@ public class HomeFragment extends Fragment {
         String lastTeam = cache.loadLastTeam();
         if (lastTeam != null) {
             tvLastRaceTeam.setText(lastTeam);
-            applyTeamColour(viewLastWinnerColour, lastTeam);
+            applyTeamColour(viewLastWinnerColour, null, lastTeam);
         }
         String lastRaceName = cache.loadLastRaceName();
         if (lastRaceName != null) {
@@ -347,7 +348,7 @@ public class HomeFragment extends Fragment {
             tvLeaderName.setText(name);
             tvLeaderTeam.setText(team);
             tvLeaderPoints.setText(leader.getPoints());
-            applyTeamColour(viewLeaderColour, team);
+            applyTeamColour(viewLeaderColour, leader.getConstructorId(), team);
             leaderCode = leader.getDriver() != null ? leader.getDriver().getCode() : null;
             loadHeadshot(ivLeaderHeadshot, leaderCode, viewModel.getDriverHeadshotMap().getValue());
 
@@ -376,7 +377,7 @@ public class HomeFragment extends Fragment {
                 tvP2Name.setText(p2Name);
                 tvP2Team.setText(p2Team);
                 tvP2Points.setText(p2.getPoints());
-                applyTeamColour(viewP2Colour, p2Team);
+                applyTeamColour(viewP2Colour, p2.getConstructorId(), p2Team);
                 p2Code = p2.getDriver() != null ? p2.getDriver().getCode() : null;
                 loadHeadshot(ivP2Headshot, p2Code, viewModel.getDriverHeadshotMap().getValue());
                 layoutP2.setVisibility(View.VISIBLE);
@@ -415,7 +416,9 @@ public class HomeFragment extends Fragment {
                     winner.getConstructor().getName() : "";
             tvLastWinner.setText(winnerName);
             tvLastRaceTeam.setText(team);
-            applyTeamColour(viewLastWinnerColour, team);
+            applyTeamColour(viewLastWinnerColour,
+                    winner.getConstructor() != null ? winner.getConstructor().getConstructorId() : null,
+                    team);
             winnerCode = winner.getDriver() != null ? winner.getDriver().getCode() : null;
             loadHeadshot(ivLastWinnerHeadshot, winnerCode,
                     viewModel.getDriverHeadshotMap().getValue());
@@ -819,32 +822,9 @@ public class HomeFragment extends Fragment {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private void applyTeamColour(View strip, String teamName) {
+    private void applyTeamColour(View strip, String constructorId, String teamName) {
         if (strip == null || teamName == null) return;
-        Map<String, String> colours = new java.util.HashMap<>();
-        colours.put("Red Bull",     "#3671C6");
-        colours.put("Ferrari",      "#E8002D");
-        colours.put("Mercedes",     "#27F4D2");
-        colours.put("McLaren",      "#FF8000");
-        colours.put("Aston Martin", "#229971");
-        colours.put("Alpine",       "#FF87BC");
-        colours.put("Williams",     "#64C4FF");
-        colours.put("RB",           "#6692FF");
-        colours.put("Haas",         "#B6BABD");
-        colours.put("Audi",         "#B5B5B5");
-        colours.put("Kick Sauber",  "#52E252");
-        colours.put("Sauber",       "#52E252");
-        colours.put("Cadillac",     "#CC0000");
-        String hex = "#3A3A3A";
-        for (Map.Entry<String, String> entry : colours.entrySet()) {
-            if (teamName.contains(entry.getKey())) {
-                hex = entry.getValue();
-                break;
-            }
-        }
-        try {
-            strip.setBackgroundColor(Color.parseColor(hex));
-        } catch (Exception ignored) {}
+        strip.setBackgroundColor(TeamColors.get(requireContext(), constructorId, teamName, null));
     }
 
     private void loadHeadshot(ImageView iv, String code, Map<String, String> headshotMap) {

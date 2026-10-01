@@ -1,6 +1,5 @@
 package com.f1stats.ui.results;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.f1stats.R;
 import com.f1stats.models.PitStop;
+import com.f1stats.util.TeamColors;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,12 +62,8 @@ public class PitStopAdapter extends RecyclerView.Adapter<PitStopAdapter.ViewHold
             tvLap.setText("Lap " + stop.getLapNumber());
             tvDuration.setText(stop.getFormattedStopDuration());
 
-            try {
-                teamColourStrip.setBackgroundColor(
-                        Color.parseColor(stop.getTeamColourHex()));
-            } catch (Exception e) {
-                teamColourStrip.setBackgroundColor(Color.WHITE);
-            }
+            teamColourStrip.setBackgroundColor(TeamColors.get(itemView.getContext(),
+                    null, stop.getTeamName(), stop.getTeamColour()));
         }
     }
 }

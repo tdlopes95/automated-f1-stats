@@ -12,11 +12,13 @@ env/
 dist/
 build/
 .pytest_cache/
+.ruff_cache/
 
 # ── Environment / Secrets ─────────────────────────────────────────────────────
 .env
 *.env
-!.env.example        # keep the template, never the real one
+# keep the template, never the real one
+!.env.example
 
 # ── Database ──────────────────────────────────────────────────────────────────
 *.db
@@ -27,14 +29,18 @@ build/
 android/.gradle/
 android/build/
 android/app/build/
-android/local.properties        # contains your local SDK path — never commit
-android/*.keystore               # signing keys — never commit
+# contains your local SDK path — never commit
+android/local.properties
+# signing keys — never commit
+android/*.keystore
 android/*.jks
 *.apk
 *.aab
 
 # ── Android Studio IDE ────────────────────────────────────────────────────────
 .idea/
+.vscode/
+.gradle/
 *.iml
 .DS_Store
 Thumbs.db
@@ -52,9 +58,14 @@ logs/
 ehthumbs.db
 Thumbs.db
 
-# ── CLAUDE ────────────────────────────
+# ── Claude Code / local notes ─────────────────────────────────────────────────
+.claude/
+memory/
 CLAUDE.md
 F1-Stats-Implementation-Plan.md
-.*
 *_CONTEXT.md
 *_HANDOFF.md
+.prompt_feedback*.md
+
+# Local project status notes
+CURRENT-STATE.md

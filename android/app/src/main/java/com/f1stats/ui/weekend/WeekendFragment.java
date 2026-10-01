@@ -1,4 +1,4 @@
-package com.f1stats.ui.live;
+package com.f1stats.ui.weekend;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -35,7 +35,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class LiveFragment extends Fragment {
+public class WeekendFragment extends Fragment {
 
     private F1ViewModel viewModel;
 
@@ -61,7 +61,7 @@ public class LiveFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_live, container, false);
+        return inflater.inflate(R.layout.fragment_weekend, container, false);
     }
 
     @Override
@@ -135,10 +135,9 @@ public class LiveFragment extends Fragment {
     private void mergeAndDisplay() {
         if (latestSchedule == null) return;
 
-        if (latestMeetings != null) {
-            for (Map<String, Object> race : latestSchedule) {
-                MeetingMatcher.apply(race, latestMeetings);
-            }
+        // Also runs before/without meetings so the flagcdn fallback applies
+        for (Map<String, Object> race : latestSchedule) {
+            MeetingMatcher.apply(race, latestMeetings);
         }
 
         Map<String, Object> targetRace = findCurrentOrNextRace(latestSchedule);
@@ -182,7 +181,7 @@ public class LiveFragment extends Fragment {
                     str(targetRace, "locality", ""));
             intent.putExtra(com.f1stats.TrackDetailActivity.EXTRA_COUNTRY_FLAG,
                     (String) targetRace.get("country_flag"));
-            DebugLog.d("CIRCUIT_DEBUG", "LiveFragment passing circuitId=" + str(targetRace, "circuit_id", ""));
+            DebugLog.d("CIRCUIT_DEBUG", "WeekendFragment passing circuitId=" + str(targetRace, "circuit_id", ""));
             startActivity(intent);
             requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         });

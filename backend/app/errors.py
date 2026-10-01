@@ -2,7 +2,6 @@
 F1 Backend - Shared error types
 """
 
-from typing import Optional
 
 
 class UpstreamError(Exception):
@@ -12,7 +11,7 @@ class UpstreamError(Exception):
     A 404 is NOT an UpstreamError — it means "no data" and yields an empty payload.
     """
 
-    def __init__(self, source: str, path: str, status_code: Optional[int] = None):
+    def __init__(self, source: str, path: str, status_code: int | None = None):
         self.source = source
         self.path = path
         self.status_code = status_code

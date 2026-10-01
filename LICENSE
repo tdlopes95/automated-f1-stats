@@ -1,0 +1,36 @@
+MIT License
+
+Copyright (c) 2026 Torcato Lopes
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Third-party data
+
+The MIT licence above covers this project's source code only. Data the app
+fetches or displays is licensed by its providers and is not covered by MIT:
+race data from the Jolpica F1 API and session data from OpenF1 (both
+CC BY-NC-SA 4.0), circuit layouts from julesr0y/f1-circuits-svg (CC BY 4.0),
+and country flags from Flagpedia (flagcdn.com). See the credits in the app's
+Settings > About screen.
+
+This project is unofficial and is not associated in any way with the Formula 1
+companies. F1, FORMULA ONE, FORMULA 1 and related marks are trade marks of
+Formula One Licensing B.V.

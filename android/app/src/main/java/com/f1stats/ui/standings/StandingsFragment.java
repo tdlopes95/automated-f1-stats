@@ -1,7 +1,6 @@
 package com.f1stats.ui.standings;
 
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.widget.ImageButton;
 import android.view.LayoutInflater;
@@ -140,7 +139,7 @@ public class StandingsFragment extends Fragment {
         intent.putExtra(DriverProfileActivity.EXTRA_DRIVER_NAME, driver.getFullName());
         intent.putExtra(DriverProfileActivity.EXTRA_YEAR, selectedYear);
         intent.putExtra(DriverProfileActivity.EXTRA_TEAM_NAME, standing.getTeamName());
-        intent.putExtra(DriverProfileActivity.EXTRA_TEAM_COLOUR, getTeamColour(standing.getTeamName()));
+        intent.putExtra(DriverProfileActivity.EXTRA_CONSTRUCTOR_ID, standing.getConstructorId());
         intent.putExtra(DriverProfileActivity.EXTRA_NATIONALITY, driver.getNationality());
         intent.putExtra(DriverProfileActivity.EXTRA_NUMBER, driver.getNumber());
         if (headshotUrl != null) {
@@ -150,27 +149,6 @@ public class StandingsFragment extends Fragment {
         requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
     }
 
-    private static String getTeamColour(String teamName) {
-        if (teamName == null) return "#FFFFFF";
-        java.util.Map<String, String> colours = new java.util.HashMap<>();
-        colours.put("Red Bull",     "#3671C6");
-        colours.put("Ferrari",      "#E8002D");
-        colours.put("Mercedes",     "#27F4D2");
-        colours.put("McLaren",      "#FF8000");
-        colours.put("Aston Martin", "#229971");
-        colours.put("Alpine",       "#FF87BC");
-        colours.put("Williams",     "#64C4FF");
-        colours.put("RB",           "#6692FF");
-        colours.put("Haas",         "#B6BABD");
-        colours.put("Audi",         "#B5B5B5");
-        colours.put("Kick Sauber",  "#52E252");
-        colours.put("Sauber",       "#52E252");
-        colours.put("Cadillac",     "#CC0000");
-        for (java.util.Map.Entry<String, String> e : colours.entrySet()) {
-            if (teamName.contains(e.getKey())) return e.getValue();
-        }
-        return "#FFFFFF";
-    }
 
     private void loadCurrentTab() {
         viewModel.clearStandings();
