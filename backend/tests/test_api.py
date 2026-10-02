@@ -539,6 +539,40 @@ def test_jolpica_merges_results_across_pages():
     assert [x["position"] for x in races[0]["Results"]] == ["1", "2"]
 
 
+def test_jolpica_fetches_remaining_pages_concurrently_in_page_order():
+    import asyncio
+    import time
+
+    from app.jolpica_client import MIN_REQUEST_INTERVAL, JolpicaClient
+
+    in_flight = 0
+    peak = 0
+
+    async def page(request):
+        nonlocal in_flight, peak
+        offset = int(request.url.params["offset"])
+        in_flight += 1
+        peak = max(peak, in_flight)
+        # later pages answer first: the merge must still follow page order
+        # (starts are 0.25s apart, so page 2 ends at ~1.0s, page 3 ~0.85s, page 4 ~0.7s)
+        await asyncio.sleep(0 if offset == 0 else 1.0 - (offset - 100) / 250)
+        in_flight -= 1
+        race = _circuit_race(2020, 1, [{"position": str(offset // 100 + 1)}])
+        return httpx.Response(200, json=_race_table([race], total=350, offset=offset))
+
+    with respx.mock:
+        route = respx.get(f"{JOLPICA_BASE}/circuits/monza/results.json").mock(side_effect=page)
+        started = time.monotonic()
+        races = asyncio.run(JolpicaClient()._get_all_races("/circuits/monza/results.json"))
+        elapsed = time.monotonic() - started
+
+    assert route.call_count == 4
+    assert sorted(int(c.request.url.params["offset"]) for c in route.calls) == [0, 100, 200, 300]
+    assert peak >= 2                                     # pages 2-4 overlapped
+    assert [x["position"] for x in races[0]["Results"]] == ["1", "2", "3", "4"]
+    assert elapsed >= 3 * MIN_REQUEST_INTERVAL           # request starts stay spaced out
+
+
 def test_compute_circuit_stats_most_wins_tie_prefers_most_recent():
     winners = [
         _circuit_race(2010, 1, [{"Driver": LEC, "Constructor": FER}]),

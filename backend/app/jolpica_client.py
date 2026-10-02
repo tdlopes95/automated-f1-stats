@@ -20,6 +20,7 @@ BASE_URL = "https://api.jolpi.ca/ergast/f1"
 SCHEDULE_TTL_CURRENT = 3600        # 1 hour  — current / future seasons
 SCHEDULE_TTL_PAST    = 86400 * 7   # 7 days  — past seasons (immutable)
 
+MIN_REQUEST_INTERVAL = 0.25  # seconds between request starts: Jolpica's 4 req/s burst limit
 PAGE_LIMIT   = 100   # Jolpica's maximum page size
 MAX_PAGES    = 30    # safety cap for paginated fetches
 # Per-race row lists that pagination can split across pages
@@ -33,8 +34,21 @@ class JolpicaClient:
             timeout=15.0
         )
         self._semaphore = asyncio.Semaphore(4)
+        # Request starts are spaced MIN_REQUEST_INTERVAL apart, so concurrent callers
+        # (e.g. parallel page fetches) can't exceed 4 req/s however fast Jolpica answers.
+        self._rate_lock = asyncio.Lock()
+        self._next_request_at = 0.0
         # season -> (schedule, stored_at, ttl)
         self._schedule_cache: dict[int, tuple[list[dict], float, float]] = {}
+
+    async def _throttle(self):
+        """Wait for the next free request slot (one every MIN_REQUEST_INTERVAL seconds)."""
+        async with self._rate_lock:
+            now = time.monotonic()
+            slot = max(now, self._next_request_at)
+            self._next_request_at = slot + MIN_REQUEST_INTERVAL
+        if slot > now:
+            await asyncio.sleep(slot - now)
 
     async def _get(self, path: str, params: dict = None) -> dict:
         """
@@ -44,6 +58,7 @@ class JolpicaClient:
         """
         async with self._semaphore:
             for attempt in range(4):
+                await self._throttle()
                 try:
                     response = await self._client.get(path, params=params)
                 except httpx.RequestError as e:
@@ -283,13 +298,29 @@ class JolpicaClient:
         Fetch every page of a RaceTable endpoint (Jolpica caps limit at 100).
         Pagination is over result rows, so one race can straddle two pages:
         races are merged by (season, round) and their result lists extended.
+        The first page gives MRData.total; the remaining pages are then fetched
+        concurrently (still subject to _get's semaphore and request spacing).
         """
+        started = time.perf_counter()
+        base_params = {**(params or {}), "limit": PAGE_LIMIT}
+        first = await self._get(path, {**base_params, "offset": 0})
+        try:
+            total = int(first.get("MRData", {}).get("total", 0))
+        except (TypeError, ValueError):
+            total = 0
+        page_count = max(1, -(-total // PAGE_LIMIT))
+        if page_count > MAX_PAGES:
+            logger.warning(f"Jolpica: hit {MAX_PAGES}-page cap on {path}")
+            page_count = MAX_PAGES
+        rest = await asyncio.gather(*(
+            self._get(path, {**base_params, "offset": page * PAGE_LIMIT})
+            for page in range(1, page_count)
+        ))
+
+        # gather keeps page order, so straddling races are extended in row order
         merged: dict[tuple, dict] = {}
-        offset = 0
-        for _ in range(MAX_PAGES):
-            data = await self._get(path, {**(params or {}), "limit": PAGE_LIMIT, "offset": offset})
-            mr_data = data.get("MRData", {})
-            for race in mr_data.get("RaceTable", {}).get("Races", []):
+        for data in (first, *rest):
+            for race in data.get("MRData", {}).get("RaceTable", {}).get("Races", []):
                 key = (race.get("season"), race.get("round"))
                 existing = merged.get(key)
                 if existing is None:
@@ -298,11 +329,8 @@ class JolpicaClient:
                 for results_key in RESULTS_KEYS:
                     if results_key in race:
                         existing.setdefault(results_key, []).extend(race[results_key])
-            offset += PAGE_LIMIT
-            if offset >= int(mr_data.get("total", 0)):
-                break
-        else:
-            logger.warning(f"Jolpica: hit {MAX_PAGES}-page cap on {path}")
+        logger.debug(f"Jolpica: {path} fetched {page_count} page(s), {total} rows "
+                     f"in {time.perf_counter() - started:.2f}s")
         return list(merged.values())
 
     async def get_circuit_winners(self, circuit_id: str) -> list[dict]:
