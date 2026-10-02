@@ -172,6 +172,18 @@
         android:text="@string/credit_circuits_detail" />
 
     <TextView
+        android:id="@+id/tv_credit_multiviewer"
+        style="@style/Widget.F1.CreditName"
+        android:text="@string/credit_multiviewer_name" />
+    <TextView
+        style="@style/Widget.F1.CreditDetail"
+        android:text="@string/credit_multiviewer_detail" />
+    <TextView
+        style="@style/Widget.F1.CreditDetail"
+        android:layout_marginTop="@dimen/spacing_xs"
+        android:text="@string/credit_track_maps_detail" />
+
+    <TextView
         android:id="@+id/tv_credit_flagpedia"
         style="@style/Widget.F1.CreditName"
         android:text="@string/credit_flagpedia_name" />

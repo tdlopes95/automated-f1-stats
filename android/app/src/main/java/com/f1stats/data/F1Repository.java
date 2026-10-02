@@ -14,6 +14,7 @@ import com.f1stats.api.F1ApiClient;
 import com.f1stats.api.F1ApiService;
 import com.f1stats.db.AppDatabase;
 import com.f1stats.db.CachedCircuitStats;
+import com.f1stats.db.CachedTrackMap;
 import com.f1stats.db.CachedDriver;
 import com.f1stats.db.CachedMeeting;
 import com.f1stats.db.CachedRaceAnalysis;
@@ -23,6 +24,7 @@ import com.f1stats.db.CachedSessionKey;
 import com.f1stats.db.CachedStandings;
 import com.f1stats.models.CircuitPitHistory;
 import com.f1stats.models.CircuitStatsResponse;
+import com.f1stats.models.TrackMap;
 import com.f1stats.models.NewsResponse;
 import com.f1stats.models.OnThisDayResponse;
 import com.f1stats.models.RaceAnalysis;
@@ -1085,6 +1087,57 @@ public class F1Repository {
                     }
                     @Override
                     public void onFailure(retrofit2.Call<CircuitStatsResponse> call, Throwable t) {
+                        callback.onError("Connection error: " + t.getMessage());
+                    }
+                })
+            );
+        });
+    }
+
+    // ── Track map ─────────────────────────────────────────────────────────────
+
+    /**
+     * Generated circuit map. A stored map is permanent (the data is static); a 404 is stored
+     * as an empty row so the backend is only asked again after 7 days. Calls onError when
+     * there is no map, so the caller falls back to its other renderings.
+     */
+    public void getTrackMap(String circuitId, RepositoryCallback<TrackMap> callback) {
+        executor.execute(() -> {
+            CachedTrackMap row = db.trackMapDao().get(circuitId);
+            if (row != null) {
+                if (row.json != null) {
+                    TrackMap stored = gson.fromJson(row.json, TrackMap.class);
+                    if (stored != null && stored.points.size() > 1) {
+                        mainHandler.post(() -> callback.onSuccess(stored));
+                        return;
+                    }
+                } else if (System.currentTimeMillis() - row.fetchedAt < SEVEN_DAYS_MS) {
+                    mainHandler.post(() -> callback.onError("No track map for " + circuitId));
+                    return;
+                }
+            }
+
+            mainHandler.post(() ->
+                api().getTrackMap(circuitId).enqueue(new retrofit2.Callback<TrackMap>() {
+                    @Override
+                    public void onResponse(retrofit2.Call<TrackMap> call, retrofit2.Response<TrackMap> response) {
+                        TrackMap map = response.body();
+                        boolean usable = response.isSuccessful() && map != null && map.points.size() > 1;
+                        if (usable || response.code() == 404) executor.execute(() -> {
+                            CachedTrackMap entity = new CachedTrackMap();
+                            entity.circuitId = circuitId;
+                            entity.json      = usable ? gson.toJson(map) : null;
+                            entity.fetchedAt = System.currentTimeMillis();
+                            db.trackMapDao().upsert(entity);
+                        });
+                        if (usable) {
+                            callback.onSuccess(map);
+                        } else {
+                            callback.onError("No track map (HTTP " + response.code() + ")");
+                        }
+                    }
+                    @Override
+                    public void onFailure(retrofit2.Call<TrackMap> call, Throwable t) {
                         callback.onError("Connection error: " + t.getMessage());
                     }
                 })

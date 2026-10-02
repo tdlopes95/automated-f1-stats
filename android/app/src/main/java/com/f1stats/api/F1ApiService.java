@@ -113,6 +113,9 @@ public interface F1ApiService {
     @GET("circuit/{circuitId}/stats")
     Call<com.f1stats.models.CircuitStatsResponse> getCircuitStats(@Path("circuitId") String circuitId);
 
+    @GET("track-map/{circuitId}")
+    Call<com.f1stats.models.TrackMap> getTrackMap(@Path("circuitId") String circuitId);
+
     @GET("circuit/{circuitId}/pit-history")
     Call<CircuitPitHistory> getCircuitPitHistory(@Path("circuitId") String circuitId,
                                                  @Query("seasons") int seasons);

@@ -30,6 +30,11 @@
 
     <string name="about_disclaimer">This app is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1 and related marks are trade marks of Formula One Licensing B.V.</string>
     <string name="about_no_browser">No browser available to open the link</string>
+    <string name="credit_multiviewer_name">MultiViewer</string>
+    <string name="credit_multiviewer_detail">Corner data</string>
+    <string name="credit_multiviewer_url" translatable="false">https://multiviewer.app</string>
+    <string name="credit_track_maps_detail">Circuit maps are generated from OpenF1 position data, with corner data from MultiViewer</string>
+
     <string name="credit_mpandroidchart_name">MPAndroidChart</string>
     <string name="credit_mpandroidchart_detail">Charts by Philipp Jahoda · Apache License 2.0</string>
     <string name="credit_mpandroidchart_url" translatable="false">https://github.com/PhilJay/MPAndroidChart</string>
@@ -236,4 +241,10 @@
     <string name="track_pit_avg_stops">Average stops per finisher</string>
     <string name="track_pit_fastest_label">FASTEST STOP · %1$d</string>
     <string name="track_pit_fastest_driver_lap">%1$s · Lap %2$d</string>
+    <string name="track_pit_season_round">%1$d R%2$d</string>
+    <string name="track_map_content_description">%1$s map, %2$d corners</string>
+    <string name="track_map_sectors">Sectors</string>
+    <string name="track_map_s1">S1</string>
+    <string name="track_map_s2">S2</string>
+    <string name="track_map_s3">S3</string>
 </resources>

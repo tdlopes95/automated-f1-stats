@@ -25,22 +25,27 @@ import com.f1stats.util.DebugLog;
 import com.f1stats.data.F1Repository;
 import com.f1stats.models.CircuitPitHistory;
 import com.f1stats.models.CircuitStatsResponse;
+import com.f1stats.models.TrackMap;
 import com.f1stats.ui.analysis.RaceAnalysisSection;
 import com.f1stats.ui.charts.ChartStyle;
+import com.f1stats.ui.track.TrackMapView;
 import com.f1stats.util.SystemBarInsets;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class TrackDetailActivity extends AppCompatActivity {
 
@@ -127,13 +132,60 @@ public class TrackDetailActivity extends AppCompatActivity {
         tvStatsError       = findViewById(R.id.tv_stats_error);
 
         if (circuitId != null && !circuitId.isEmpty()) {
-            loadInteractiveTrack(circuitId);
+            loadTrackMap(circuitId, circuitName);
             loadCircuitStats(circuitId);
             loadPitHistory(circuitId);
         } else {
             tvStatsError.setText("Circuit ID unavailable — open schedule again to refresh.");
             tvStatsError.setVisibility(View.VISIBLE);
         }
+    }
+
+    // ── Track map ─────────────────────────────────────────────────────────────
+
+    /** Generated map first; without one, the bundled SVG, then the circuit image. */
+    private void loadTrackMap(String circuitId, String circuitName) {
+        repository.getTrackMap(circuitId, new F1Repository.RepositoryCallback<TrackMap>() {
+            @Override
+            public void onSuccess(TrackMap map) {
+                if (!isFinishing()) showTrackMap(map, circuitName);
+            }
+
+            @Override
+            public void onError(String message) {
+                DebugLog.d(TAG, "Track map unavailable: " + message);
+                if (!isFinishing()) loadInteractiveTrack(circuitId);
+            }
+        });
+    }
+
+    private void showTrackMap(TrackMap map, String circuitName) {
+        TrackMapView mapView = findViewById(R.id.track_map_view);
+        mapView.setTrackMap(map);
+        String name = map.circuitName != null ? map.circuitName
+                : circuitName != null ? circuitName : "";
+        mapView.setContentDescription(
+                getString(R.string.track_map_content_description, name, map.corners.size()));
+
+        View controls = findViewById(R.id.layout_track_map_controls);
+        View legend = findViewById(R.id.layout_sector_legend);
+        MaterialSwitch sectorSwitch = findViewById(R.id.switch_sectors);
+        controls.setVisibility(mapView.hasSectors() ? View.VISIBLE : View.GONE);
+        mapView.setShowSectors(sectorSwitch.isChecked());
+        legend.setAlpha(sectorSwitch.isChecked() ? 1f : 0.3f);
+        sectorSwitch.setOnCheckedChangeListener((button, checked) -> {
+            mapView.setShowSectors(checked);
+            legend.setAlpha(checked ? 1f : 0.3f);
+        });
+
+        TextView attribution = findViewById(R.id.tv_track_map_attribution);
+        boolean hasAttribution = map.attribution != null && !map.attribution.isEmpty();
+        attribution.setText(hasAttribution ? map.attribution : "");
+        attribution.setVisibility(hasAttribution ? View.VISIBLE : View.GONE);
+
+        findViewById(R.id.layout_track_map).setVisibility(View.VISIBLE);
+        webTrackMap.setVisibility(View.GONE);
+        flHero.setVisibility(View.GONE);
     }
 
     private void loadInteractiveTrack(String circuitId) {
@@ -317,12 +369,19 @@ public class TrackDetailActivity extends AppCompatActivity {
 
     /** Average stops per finisher by season, and the most recent race's fastest stop. */
     private void displayPitHistory(CircuitPitHistory history) {
+        // A circuit can host two races in one season (Red Bull Ring 2020): label those by round
+        Map<Integer, Integer> racesPerSeason = new HashMap<>();
+        for (CircuitPitHistory.Race race : history.races) {
+            if (race.avgStopsPerFinisher != null) racesPerSeason.merge(race.season, 1, Integer::sum);
+        }
         List<BarEntry> bars = new ArrayList<>();
         List<String> seasons = new ArrayList<>();
         for (CircuitPitHistory.Race race : history.races) {
             if (race.avgStopsPerFinisher == null) continue;
             bars.add(new BarEntry(bars.size(), race.avgStopsPerFinisher.floatValue()));
-            seasons.add(String.valueOf(race.season));
+            seasons.add(racesPerSeason.get(race.season) > 1
+                    ? getString(R.string.track_pit_season_round, race.season, race.round)
+                    : String.valueOf(race.season));
         }
         View card = findViewById(R.id.card_pit_strategy);
         if (bars.isEmpty()) {

@@ -47,6 +47,16 @@
     <color name="chart_pit_dot">@color/text_primary</color>
     <color name="chart_marker_bg">@color/bg_elevated</color>
 
+    <!-- ── Track map ──────────────────────────────────────── -->
+    <color name="sector_1">#FF4D6D</color>
+    <color name="sector_2">#3DA5FF</color>
+    <color name="sector_3">#FFC93C</color>
+    <color name="track_map_neutral">#BDBDBD</color>
+    <color name="track_map_underlay">#000000</color>
+    <color name="track_map_chevron">@color/white</color>
+    <color name="track_map_corner_bg">#E6E6E6</color>
+    <color name="track_map_corner_text">@color/bg_dark</color>
+
     <!-- ── Team Colors (team_<Jolpica constructorId>) ─────── -->
     <color name="team_mercedes">#27F4D2</color>
     <color name="team_ferrari">#E8002D</color>

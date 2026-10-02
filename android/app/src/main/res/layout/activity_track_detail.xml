@@ -25,6 +25,93 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- Generated track map (shown when /track-map has one for this circuit) -->
+            <LinearLayout
+                android:id="@+id/layout_track_map"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:background="@color/bg_surface"
+                android:paddingBottom="@dimen/spacing_sm">
+
+                <com.f1stats.ui.track.TrackMapView
+                    android:id="@+id/track_map_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="320dp" />
+
+                <LinearLayout
+                    android:id="@+id/layout_track_map_controls"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="@dimen/spacing_md"
+                    android:paddingEnd="@dimen/spacing_md">
+
+                    <LinearLayout
+                        android:id="@+id/layout_sector_legend"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <View
+                            android:layout_width="14dp"
+                            android:layout_height="4dp"
+                            android:background="@color/sector_1" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/spacing_xs"
+                            android:layout_marginEnd="@dimen/spacing_row"
+                            android:text="@string/track_map_s1"
+                            android:textAppearance="@style/TextAppearance.F1.Metadata" />
+
+                        <View
+                            android:layout_width="14dp"
+                            android:layout_height="4dp"
+                            android:background="@color/sector_2" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/spacing_xs"
+                            android:layout_marginEnd="@dimen/spacing_row"
+                            android:text="@string/track_map_s2"
+                            android:textAppearance="@style/TextAppearance.F1.Metadata" />
+
+                        <View
+                            android:layout_width="14dp"
+                            android:layout_height="4dp"
+                            android:background="@color/sector_3" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/spacing_xs"
+                            android:text="@string/track_map_s3"
+                            android:textAppearance="@style/TextAppearance.F1.Metadata" />
+                    </LinearLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_sectors"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="@string/track_map_sectors"
+                        android:textColor="@color/text_secondary" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_track_map_attribution"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="@dimen/spacing_md"
+                    android:paddingEnd="@dimen/spacing_md"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="@dimen/text_metadata" />
+            </LinearLayout>
+
             <!-- Interactive SVG track map (WebView, shown when bundled SVG exists) -->
             <WebView
                 android:id="@+id/web_track_map"
