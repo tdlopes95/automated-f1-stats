@@ -408,3 +408,31 @@ class CircuitPitHistoryResponse(BaseModel):
     circuit_id: str
     races: list[CircuitPitRace] = []              # oldest first
     duration_note: str
+
+
+# ── Circuit map ────────────────────────────────────────────────────────────────
+
+class TrackMapSource(BaseModel):
+    year: int
+    meeting_name: str
+    session: str                    # "Qualifying", or "Race" as a fallback
+    driver_number: int              # whose fastest lap traced the outline
+
+
+class TrackMapCorner(BaseModel):
+    number: int
+    letter: str | None = None
+    x: float
+    y: float
+    angle: float | None = None      # screen degrees from +x, clockwise (Y points down)
+
+
+class TrackMapResponse(BaseModel):
+    circuit_id: str
+    circuit_name: str | None = None
+    source: TrackMapSource
+    points: list[list[float]]       # [x, y] in a 1000x1000 box, Y down; point 0 = start/finish
+    sector_breaks: list[int]        # indices into points: end of S1, end of S2
+    corners: list[TrackMapCorner] = []
+    generated_at: str
+    attribution: str

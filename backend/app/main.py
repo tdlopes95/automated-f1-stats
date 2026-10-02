@@ -22,7 +22,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from . import history
+from . import history, track_maps
 from .database import Database
 from .errors import UpstreamError
 from .jolpica_client import JolpicaClient
@@ -38,6 +38,7 @@ from .models import (
     RaceAnalysisResponse,
     RaceSchedule,
     ResultsResponse,
+    TrackMapResponse,
     WeatherForecastResponse,
 )
 from .news_client import MAX_ITEMS as NEWS_MAX_ITEMS
@@ -252,6 +253,7 @@ async def lifespan(app: FastAPI):
     openmeteo = OpenMeteoClient()
     news     = NewsClient()
     history.load_race_winners()
+    track_maps.load_track_maps()
     scheduler = F1Scheduler(
         jolpica=jolpica,
         on_live_poll=on_live_poll,
@@ -1344,3 +1346,13 @@ async def get_on_this_day(
     target = on_date or datetime.now(UTC).date()
     items = history.on_this_day(await all_race_winners(), target, window)
     return {"date": target.isoformat(), "window": window, "items": items}
+
+
+@app.get("/track-map/{circuit_id}", response_model=TrackMapResponse)
+@limiter.limit("30/minute")
+async def get_track_map(request: Request, circuit_id: str):
+    """Generated circuit outline with sector breaks and corners (static, see track_maps.py)."""
+    track = track_maps.get_track_map(circuit_id)
+    if track is None:
+        raise HTTPException(status_code=404, detail=f"No track map for circuit '{circuit_id}'")
+    return track
