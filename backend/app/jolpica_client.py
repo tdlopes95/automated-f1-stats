@@ -22,7 +22,8 @@ SCHEDULE_TTL_PAST    = 86400 * 7   # 7 days  — past seasons (immutable)
 
 PAGE_LIMIT   = 100   # Jolpica's maximum page size
 MAX_PAGES    = 30    # safety cap for paginated fetches
-RESULTS_KEYS = ("Results", "QualifyingResults", "SprintResults")
+# Per-race row lists that pagination can split across pages
+RESULTS_KEYS = ("Results", "QualifyingResults", "SprintResults", "Laps", "PitStops")
 
 
 class JolpicaClient:
@@ -218,7 +219,7 @@ class JolpicaClient:
 
     async def get_race_results(self, year: int, round_number: int) -> list[dict]:
         """Get final race results for a specific round."""
-        data = await self._get(f"/{year}/{round_number}/results.json")
+        data = await self._get(f"/{year}/{round_number}/results.json", {"limit": PAGE_LIMIT})
         races = data.get("MRData", {}).get("RaceTable", {}).get("Races", [])
         if not races:
             return []
@@ -321,6 +322,30 @@ class JolpicaClient:
     async def get_season_winners(self, year: int) -> list[dict]:
         """Every race of a season with its P1 result row(s); one request for a modern season."""
         return await self._get_all_races(f"/{year}/results/1.json")
+
+    # ── Race analysis ─────────────────────────────────────────────────────────
+
+    async def get_race_laps(self, year: int, round_number: int) -> list[dict]:
+        """
+        Every lap of a race as {"number": int, "Timings": [...]}, sorted by lap number.
+        Pagination is over timing rows, so a lap can straddle two pages: timings are
+        merged by lap number. Lap data exists from 1996.
+        """
+        races = await self._get_all_races(f"/{year}/{round_number}/laps.json")
+        merged: dict[int, list] = {}
+        for race in races:
+            for lap in race.get("Laps", []):
+                try:
+                    number = int(lap.get("number"))
+                except (TypeError, ValueError):
+                    continue
+                merged.setdefault(number, []).extend(lap.get("Timings", []))
+        return [{"number": n, "Timings": timings} for n, timings in sorted(merged.items())]
+
+    async def get_race_pit_stops(self, year: int, round_number: int) -> list[dict]:
+        """Every pit stop of a race (driverId, stop, lap, time, duration). Data from 2011."""
+        races = await self._get_all_races(f"/{year}/{round_number}/pitstops.json")
+        return [stop for race in races for stop in race.get("PitStops", [])]
 
     async def close(self):
         await self._client.aclose()

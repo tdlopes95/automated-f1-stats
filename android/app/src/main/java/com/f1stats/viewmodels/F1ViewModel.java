@@ -17,6 +17,7 @@ import com.f1stats.models.NewsResponse;
 import com.f1stats.models.OnThisDayResponse;
 import com.f1stats.models.PitStop;
 import com.f1stats.models.QualifyingResult;
+import com.f1stats.models.RaceAnalysis;
 import com.f1stats.models.RaceResult;
 import com.f1stats.models.WeatherForecast;
 
@@ -125,6 +126,15 @@ public class F1ViewModel extends ViewModel {
     private final MutableLiveData<String> newsError = new MutableLiveData<>(null);
     private final MutableLiveData<OnThisDayResponse> onThisDay = new MutableLiveData<>();
     private final MutableLiveData<String> onThisDayError = new MutableLiveData<>(null);
+
+    // ── Race analysis ─────────────────────────────────────────────────────────
+    private final MutableLiveData<RaceAnalysis> raceAnalysis = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> raceAnalysisLoading = new MutableLiveData<>(false);
+    private final MutableLiveData<String> raceAnalysisError = new MutableLiveData<>(null);
+
+    public LiveData<RaceAnalysis> getRaceAnalysis() { return raceAnalysis; }
+    public LiveData<Boolean> getRaceAnalysisLoading() { return raceAnalysisLoading; }
+    public LiveData<String> getRaceAnalysisError() { return raceAnalysisError; }
 
     public LiveData<WeatherForecast> getWeekendForecast() { return weekendForecast; }
     public LiveData<String> getWeekendForecastError() { return weekendForecastError; }
@@ -429,6 +439,29 @@ public class F1ViewModel extends ViewModel {
         });
     }
 
+
+    // ── Race analysis ─────────────────────────────────────────────────────────
+
+    /** Loads the analysis for a race unless it is already loaded (or loading). */
+    public void fetchRaceAnalysis(int year, int round, boolean forceRefresh) {
+        RaceAnalysis current = raceAnalysis.getValue();
+        if (!forceRefresh && current != null && current.year == year && current.round == round) return;
+        if (Boolean.TRUE.equals(raceAnalysisLoading.getValue())) return;
+        raceAnalysisLoading.setValue(true);
+        raceAnalysisError.setValue(null);
+        repo.getRaceAnalysis(year, round, new F1Repository.RepositoryCallback<RaceAnalysis>() {
+            @Override
+            public void onSuccess(RaceAnalysis data) {
+                raceAnalysisLoading.setValue(false);
+                raceAnalysis.setValue(data);
+            }
+            @Override
+            public void onError(String error) {
+                raceAnalysisLoading.setValue(false);
+                raceAnalysisError.setValue(error);
+            }
+        });
+    }
 
     // ── Weekend forecast, news, history ───────────────────────────────────────
 

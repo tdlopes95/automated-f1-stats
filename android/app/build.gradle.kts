@@ -84,6 +84,9 @@ dependencies {
     // Chrome Custom Tabs (news headlines open in the browser)
     implementation("androidx.browser:browser:1.8.0")
 
+    // MPAndroidChart (race analysis and pit strategy charts)
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
     // Glide (image loading)
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")

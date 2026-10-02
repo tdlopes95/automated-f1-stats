@@ -50,7 +50,7 @@ public class SettingsFragment extends Fragment {
         btnSave.setOnClickListener(v -> {
             String newUrl = etUrl.getText() != null ? etUrl.getText().toString().trim() : "";
             if (newUrl.isEmpty()) {
-                Toast.makeText(requireContext(), "URL cannot be empty", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.settings_url_empty, Toast.LENGTH_SHORT).show();
                 return;
             }
             String url = SettingsManager.normaliseUrl(newUrl);
@@ -59,7 +59,9 @@ public class SettingsFragment extends Fragment {
                     // A valid http:// URL in a release build
                     tilUrl.setError(getString(R.string.settings_url_https_required));
                 } else {
-                    Toast.makeText(requireContext(), "Enter a valid http:// or https:// URL", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), BuildConfig.DEBUG
+                            ? R.string.settings_url_invalid_any
+                            : R.string.settings_url_invalid_https, Toast.LENGTH_SHORT).show();
                 }
                 return;
             }
@@ -68,7 +70,7 @@ public class SettingsFragment extends Fragment {
             SettingsManager.getInstance(requireContext()).setBaseUrl(url);
             // Repository and ViewModel fetch the service per call, so this applies immediately
             F1ApiClient.reset(requireContext());
-            Toast.makeText(requireContext(), "URL saved", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), R.string.settings_url_saved, Toast.LENGTH_SHORT).show();
         });
 
         view.findViewById(R.id.row_customize_home).setOnClickListener(v ->
@@ -86,6 +88,7 @@ public class SettingsFragment extends Fragment {
         bindLink(view, R.id.tv_credit_circuits,  R.string.credit_circuits_url);
         bindLink(view, R.id.tv_credit_flagpedia, R.string.credit_flagpedia_url);
         bindLink(view, R.id.tv_credit_openmeteo, R.string.credit_openmeteo_url);
+        bindLink(view, R.id.tv_credit_mpandroidchart, R.string.credit_mpandroidchart_url);
     }
 
     private void bindLink(View root, int viewId, @StringRes int urlRes) {

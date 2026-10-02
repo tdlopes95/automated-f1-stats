@@ -188,6 +188,14 @@
         android:text="@string/credit_openmeteo_detail" />
 
     <TextView
+        android:id="@+id/tv_credit_mpandroidchart"
+        style="@style/Widget.F1.CreditName"
+        android:text="@string/credit_mpandroidchart_name" />
+    <TextView
+        style="@style/Widget.F1.CreditDetail"
+        android:text="@string/credit_mpandroidchart_detail" />
+
+    <TextView
         style="@style/Widget.F1.CreditDetail"
         android:layout_marginTop="@dimen/spacing_row"
         android:text="@string/credit_news_detail" />

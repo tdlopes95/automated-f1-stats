@@ -30,7 +30,7 @@ Home is a list of cards. Show, hide and reorder them from the Customize screen, 
 - **Weekend tab:** the current or next race weekend at a glance.
 - **Schedule:** the full calendar for any season, with session times in your local time zone.
 - **Results:** race, qualifying and sprint classifications for every round since 1950.
-- **Round detail:** race, qualifying and sprint results and the starting grid, plus tyre strategy, pit stops and session weather (2023 onwards).
+- **Round detail:** race, qualifying and sprint results and the starting grid, plus tyre strategy, pit stops and session weather (2023 onwards). An Analysis tab charts every driver's position lap by lap and compares lap times for the drivers you pick (1996 onwards), and lists each driver's pit stops (2011 onwards).
 
 ### Standings and comparisons
 - **Standings:** driver and constructor standings for any season.
@@ -38,7 +38,7 @@ Home is a list of cards. Show, hide and reorder them from the Customize screen, 
 - **Head-to-head:** compares two drivers in a season on points (including sprints), wins, podiums, DNFs, average finish, best grid, poles and race head-to-head.
 
 ### Circuits and widget
-- **Track detail:** an interactive circuit map, plus circuit history: total races, most wins, most poles, most constructor wins and the race lap record.
+- **Track detail:** an interactive circuit map, plus circuit history: total races, most wins, most poles, most constructor wins and the race lap record. A pit strategy trend shows the average number of stops per finisher in recent races there, and the latest race's fastest stop.
 - **Home-screen widget:** a countdown to the next session.
 
 ## Architecture
@@ -66,7 +66,7 @@ When a source fails, it returns HTTP 502 rather than an empty success, so client
 
 | Area | Technologies |
 |------|--------------|
-| Android | Java, Material Design 3 (dark theme), MVVM with LiveData, Room, Retrofit, OkHttp, Gson, Glide, Navigation Component, Facebook Shimmer, AndroidX Browser |
+| Android | Java, Material Design 3 (dark theme), MVVM with LiveData, Room, Retrofit, OkHttp, Gson, Glide, Navigation Component, Facebook Shimmer, MPAndroidChart, AndroidX Browser |
 | Backend | Python 3.11+, FastAPI, Uvicorn, httpx, Pydantic, aiosqlite, APScheduler, slowapi, feedparser, python-dotenv |
 | Quality | pytest, respx, ruff, JUnit, GitHub Actions |
 | Hosting | Docker, Koyeb |

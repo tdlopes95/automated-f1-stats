@@ -30,7 +30,15 @@
 
     <string name="about_disclaimer">This app is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1 and related marks are trade marks of Formula One Licensing B.V.</string>
     <string name="about_no_browser">No browser available to open the link</string>
+    <string name="credit_mpandroidchart_name">MPAndroidChart</string>
+    <string name="credit_mpandroidchart_detail">Charts by Philipp Jahoda · Apache License 2.0</string>
+    <string name="credit_mpandroidchart_url" translatable="false">https://github.com/PhilJay/MPAndroidChart</string>
+
     <string name="settings_url_https_required">The backend must use HTTPS</string>
+    <string name="settings_url_empty">URL cannot be empty</string>
+    <string name="settings_url_invalid_https">Enter a valid https:// URL</string>
+    <string name="settings_url_invalid_any">Enter a valid http:// or https:// URL</string>
+    <string name="settings_url_saved">URL saved</string>
     <!-- ── Home ──────────────────────────────────────────── -->
     <string name="home_error_icon" translatable="false">⚠️</string>
     <string name="home_error_message">Could not load data.\nCheck your connection.</string>
@@ -201,4 +209,31 @@
     <string name="options_news_sources">News sources</string>
     <string name="options_news_all">All sources</string>
     <string name="options_news_sources_error">Couldn\'t load news sources. Check your connection.</string>
+
+    <!-- ── Race analysis (round detail) ──────────────────── -->
+    <string name="analysis_tab">Analysis</string>
+    <string name="analysis_positions_title">Positions</string>
+    <string name="analysis_lap_times_title">Lap times</string>
+    <string name="analysis_hide_slow_laps">Hide slow laps</string>
+    <string name="analysis_pit_stops_title">Pit stops</string>
+    <string name="analysis_pit_from_2011">Pit stop data is available from 2011</string>
+    <string name="analysis_no_pit_stops">No pit stop data for this race</string>
+    <string name="analysis_no_laps">Lap data isn\'t available for this race</string>
+    <string name="analysis_select_driver">Select a driver to compare lap times</string>
+    <string name="analysis_max_selected">You can compare up to %1$d drivers</string>
+    <string name="analysis_error">Couldn\'t load the race analysis</string>
+    <string name="analysis_position">P%1$d</string>
+    <string name="analysis_stop_lap">Stop %1$d · Lap %2$d</string>
+    <string name="analysis_stop">Stop %1$d</string>
+    <string name="analysis_fastest">Fastest</string>
+    <string name="analysis_seconds">%1$ss</string>
+    <string name="analysis_marker">Lap %1$d · %2$s\n%3$s</string>
+    <string name="pit_lane_note">Pit stop durations are pit-lane times (entry to exit), not stationary times.</string>
+    <string name="chart_no_data">No data</string>
+
+    <!-- ── Pit strategy (track detail) ───────────────────── -->
+    <string name="track_pit_strategy_title">PIT STRATEGY</string>
+    <string name="track_pit_avg_stops">Average stops per finisher</string>
+    <string name="track_pit_fastest_label">FASTEST STOP · %1$d</string>
+    <string name="track_pit_fastest_driver_lap">%1$s · Lap %2$d</string>
 </resources>

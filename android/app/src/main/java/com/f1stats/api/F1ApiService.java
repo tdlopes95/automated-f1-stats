@@ -1,11 +1,13 @@
 package com.f1stats.api;
 
+import com.f1stats.models.CircuitPitHistory;
 import com.f1stats.models.ConstructorStanding;
 import com.f1stats.models.DriverStanding;
 import com.f1stats.models.LiveSession;
 import com.f1stats.models.NewsResponse;
 import com.f1stats.models.OnThisDayResponse;
 import com.f1stats.models.PitStop;
+import com.f1stats.models.RaceAnalysis;
 import com.f1stats.models.RaceResult;
 import com.f1stats.models.WeatherForecast;
 
@@ -110,6 +112,15 @@ public interface F1ApiService {
 
     @GET("circuit/{circuitId}/stats")
     Call<com.f1stats.models.CircuitStatsResponse> getCircuitStats(@Path("circuitId") String circuitId);
+
+    @GET("circuit/{circuitId}/pit-history")
+    Call<CircuitPitHistory> getCircuitPitHistory(@Path("circuitId") String circuitId,
+                                                 @Query("seasons") int seasons);
+
+    // ── Race analysis ─────────────────────────────────────────────────────────
+
+    @GET("race-analysis/{year}/{round}")
+    Call<RaceAnalysis> getRaceAnalysis(@Path("year") int year, @Path("round") int round);
 
     // ── Weather forecast (Open-Meteo) ─────────────────────────────────────────
 

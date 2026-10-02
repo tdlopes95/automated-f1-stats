@@ -17,6 +17,10 @@
     <dimen name="headshot_size_lg">64dp</dimen>
     <dimen name="card_corner_radius">8dp</dimen>
     <dimen name="hero_image_height">160dp</dimen>
+    <dimen name="chart_height_positions">300dp</dimen>
+    <dimen name="chart_height_lap_times">240dp</dimen>
+    <dimen name="chart_height_bars">180dp</dimen>
+    <dimen name="chart_pit_dot">7dp</dimen>
 
     <!-- ── Typography Scale ───────────────────────────────── -->
     <!-- Hero: countdowns, championship gaps, race-day numbers -->

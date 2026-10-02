@@ -277,6 +277,8 @@
 
         </ScrollView>
 
+        <include layout="@layout/view_race_analysis" />
+
         <TextView
             android:id="@+id/tv_strategy_empty"
             android:layout_width="match_parent"

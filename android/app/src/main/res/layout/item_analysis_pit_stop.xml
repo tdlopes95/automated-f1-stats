@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One pit stop in the Analysis tab; the driver column is filled on a driver's first stop only. -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:minHeight="32dp">
+
+    <View
+        android:id="@+id/view_pit_team"
+        android:layout_width="@dimen/team_strip_width"
+        android:layout_height="20dp" />
+
+    <TextView
+        android:id="@+id/tv_pit_driver"
+        android:layout_width="56dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/spacing_sm"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_body_sm"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tv_pit_stop"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="@color/text_secondary"
+        android:textSize="@dimen/text_metadata" />
+
+    <TextView
+        android:id="@+id/tv_pit_fastest"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/spacing_sm"
+        android:background="@drawable/bg_badge_fastest"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
+        android:paddingTop="1dp"
+        android:paddingBottom="1dp"
+        android:text="@string/analysis_fastest"
+        android:textAllCaps="true"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_label"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tv_pit_duration"
+        android:layout_width="64dp"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:fontFamily="monospace"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_body_sm" />
+
+</LinearLayout>

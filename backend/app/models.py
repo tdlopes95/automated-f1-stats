@@ -350,3 +350,61 @@ class OnThisDayResponse(BaseModel):
     date: str
     window: int
     items: list[OnThisDayItem] = []
+
+
+# ── Race analysis ──────────────────────────────────────────────────────────────
+
+class RaceAnalysisDriver(BaseModel):
+    driver_id: str
+    code: str | None = None
+    name: str
+    constructor_id: str | None = None
+    constructor_name: str | None = None
+    grid: int | None = None                 # 0 = pit lane start
+    final_position: int | None = None
+    status: str | None = None
+
+
+class RaceAnalysisPitStop(BaseModel):
+    driver_id: str
+    stop: int | None = None
+    lap: int | None = None
+    duration_ms: int | None = None
+
+
+class RaceAnalysisResponse(BaseModel):
+    year: int
+    round: int
+    race_name: str | None = None
+    total_laps: int
+    drivers: list[RaceAnalysisDriver] = []                     # classification order
+    positions: dict[str, list[int | None]] = {}                # index = lap - 1
+    lap_times_ms: dict[str, list[int | None]] = {}             # index = lap - 1
+    pit_stops: list[RaceAnalysisPitStop] = []
+    pit_data_available: bool
+    laps_available: bool
+    duration_note: str
+
+
+# ── Circuit pit history ────────────────────────────────────────────────────────
+
+class FastestPitStop(BaseModel):
+    driver_id: str
+    name: str
+    duration_ms: int
+    lap: int | None = None
+
+
+class CircuitPitRace(BaseModel):
+    season: int
+    round: int
+    race_name: str | None = None
+    avg_stops_per_finisher: float | None = None   # None when the race has no pit data
+    total_stops: int
+    fastest_stop: FastestPitStop | None = None
+
+
+class CircuitPitHistoryResponse(BaseModel):
+    circuit_id: str
+    races: list[CircuitPitRace] = []              # oldest first
+    duration_note: str

@@ -38,6 +38,15 @@
     <color name="color_fastest_lap">#B84FDB</color>
     <color name="color_race_live">#4CAF50</color>
 
+    <!-- ── Charts ──────────────────────────────────────────── -->
+    <color name="chart_grid">#14FFFFFF</color>
+    <color name="chart_axis_text">@color/text_tertiary</color>
+    <color name="chart_line_muted">#2EFFFFFF</color>
+    <color name="chart_bar">@color/f1_red</color>
+    <color name="chart_highlight">@color/text_secondary</color>
+    <color name="chart_pit_dot">@color/text_primary</color>
+    <color name="chart_marker_bg">@color/bg_elevated</color>
+
     <!-- ── Team Colors (team_<Jolpica constructorId>) ─────── -->
     <color name="team_mercedes">#27F4D2</color>
     <color name="team_ferrari">#E8002D</color>

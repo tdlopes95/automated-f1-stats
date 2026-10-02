@@ -27,6 +27,7 @@ from .database import Database
 from .errors import UpstreamError
 from .jolpica_client import JolpicaClient
 from .models import (
+    CircuitPitHistoryResponse,
     CircuitStatsResponse,
     ConstructorStandingsResponse,
     DriverInfo,
@@ -34,6 +35,7 @@ from .models import (
     MeetingInfo,
     NewsResponse,
     OnThisDayResponse,
+    RaceAnalysisResponse,
     RaceSchedule,
     ResultsResponse,
     WeatherForecastResponse,
@@ -990,6 +992,226 @@ async def get_circuit_stats(request: Request, circuit_id: str):
     else:
         cache_set_historical(cache_key, stats)
     return stats
+
+
+# ── Race analysis ─────────────────────────────────────────────────────────────
+
+LAPS_FIRST_SEASON = 1996
+PIT_STOPS_FIRST_SEASON = 2011
+PIT_HISTORY_MAX_SEASONS = 15
+PIT_DURATION_NOTE = (
+    "Pit stop durations are pit-lane times (entry to exit), not stationary times."
+)
+
+
+def parse_duration_ms(value) -> int | None:
+    """'1:23.456', '23.456' or '1:02:03.456' -> milliseconds; None if unparseable."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        total = 0.0
+        for part in value.strip().split(":"):
+            number = float(part)
+            if number < 0:
+                return None
+            total = total * 60 + number
+    except ValueError:
+        return None
+    return round(total * 1000)
+
+
+def _to_int(value) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _driver_name(driver: dict) -> str:
+    return f"{driver.get('givenName', '')} {driver.get('familyName', '')}".strip()
+
+
+def is_finisher(status: str | None) -> bool:
+    """Classified at the flag: 'Finished', '+1 Lap', '+2 Laps', 'Lapped'."""
+    status = status or ""
+    return status == "Finished" or status.startswith("+") or "Lap" in status
+
+
+def build_race_analysis(year: int, round_number: int, race_name: str | None,
+                        results: list, laps: list, pit_stops: list,
+                        laps_fetched: bool) -> dict:
+    ordered = sorted(results, key=lambda r: _to_int(r.get("position")) or 999)
+    drivers = []
+    for result in ordered:
+        driver = result.get("Driver", {})
+        constructor = result.get("Constructor", {})
+        drivers.append({
+            "driver_id": driver.get("driverId", ""),
+            "code": driver.get("code"),
+            "name": _driver_name(driver),
+            "constructor_id": constructor.get("constructorId"),
+            "constructor_name": constructor.get("name"),
+            "grid": _to_int(result.get("grid")),
+            "final_position": _to_int(result.get("position")),
+            "status": result.get("status"),
+        })
+
+    lap_numbers = [lap["number"] for lap in laps if lap.get("number", 0) > 0]
+    result_laps = [_to_int(r.get("laps")) or 0 for r in results]
+    total_laps = max(lap_numbers) if lap_numbers else max(result_laps, default=0)
+
+    positions: dict[str, list] = {}
+    lap_times: dict[str, list] = {}
+    laps_available = laps_fetched and bool(lap_numbers)
+    if laps_available:
+        # Classified drivers first, then anyone with timings but no result row
+        driver_ids = dict.fromkeys(d["driver_id"] for d in drivers if d["driver_id"])
+        for lap in laps:
+            for timing in lap.get("Timings", []):
+                if timing.get("driverId"):
+                    driver_ids.setdefault(timing["driverId"])
+        positions = {d: [None] * total_laps for d in driver_ids}
+        lap_times = {d: [None] * total_laps for d in driver_ids}
+        for lap in laps:
+            index = lap.get("number", 0) - 1
+            if not 0 <= index < total_laps:
+                continue
+            for timing in lap.get("Timings", []):
+                driver_id = timing.get("driverId")
+                if driver_id not in positions:
+                    continue
+                positions[driver_id][index] = _to_int(timing.get("position"))
+                lap_times[driver_id][index] = parse_duration_ms(timing.get("time"))
+
+    stops = [{
+        "driver_id": stop.get("driverId", ""),
+        "stop": _to_int(stop.get("stop")),
+        "lap": _to_int(stop.get("lap")),
+        "duration_ms": parse_duration_ms(stop.get("duration")),
+    } for stop in pit_stops]
+
+    return {
+        "year": year,
+        "round": round_number,
+        "race_name": race_name,
+        "total_laps": total_laps,
+        "drivers": drivers,
+        "positions": positions,
+        "lap_times_ms": lap_times,
+        "pit_stops": stops,
+        "pit_data_available": bool(stops),
+        "laps_available": laps_available,
+        "duration_note": PIT_DURATION_NOTE,
+    }
+
+
+async def _empty() -> list:
+    return []
+
+
+@app.get("/race-analysis/{year}/{round}", response_model=RaceAnalysisResponse)
+@limiter.limit("30/minute")
+async def get_race_analysis(request: Request, year: int, round: int):
+    cache_key = f"race_analysis_{year}_{round}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    # UpstreamError from any Jolpica call propagates -> 502 via the global handler.
+    schedule = await jolpica.get_schedule(year)
+    race = next((r for r in schedule if int(r.get("round", 0)) == round), None)
+    if race is None:
+        raise HTTPException(status_code=404, detail=f"No race {year} round {round}")
+    race_dt = race_datetime(race)
+    now = datetime.now(UTC)
+    if race_dt is not None and race_dt > now:
+        raise HTTPException(status_code=404, detail=f"{year} round {round} hasn't happened yet")
+
+    laps_fetched = year >= LAPS_FIRST_SEASON
+    results, laps, pit_stops = await asyncio.gather(
+        fetch_results(year, round, "Race"),
+        jolpica.get_race_laps(year, round) if laps_fetched else _empty(),
+        jolpica.get_race_pit_stops(year, round) if year >= PIT_STOPS_FIRST_SEASON else _empty(),
+    )
+
+    analysis = build_race_analysis(year, round, race.get("race_name"),
+                                   results, laps, pit_stops, laps_fetched)
+    # Empty results mean the data isn't published yet: serve, but don't cache.
+    if results:
+        if year >= now.year and race_dt is not None and now - race_dt < RESULTS_VOLATILE_WINDOW:
+            cache_set(cache_key, analysis, RESULTS_VOLATILE_MAX_AGE.total_seconds())
+        else:
+            cache_set_historical(cache_key, analysis)
+    return analysis
+
+
+# ── Circuit pit history ───────────────────────────────────────────────────────
+
+def summarize_pit_race(season: int, round_number: int, race_name: str | None,
+                       results: list, pit_stops: list) -> dict:
+    finishers = {r.get("Driver", {}).get("driverId") for r in results
+                 if is_finisher(r.get("status"))}
+    finishers.discard(None)
+    names = {r.get("Driver", {}).get("driverId"): _driver_name(r.get("Driver", {}))
+             for r in results}
+
+    finisher_stops = sum(1 for s in pit_stops if s.get("driverId") in finishers)
+    avg = None
+    if pit_stops and finishers:
+        avg = round(finisher_stops / len(finishers), 2)
+
+    fastest = None
+    timed = [(parse_duration_ms(s.get("duration")), s) for s in pit_stops]
+    timed = [(ms, s) for ms, s in timed if ms is not None]
+    if timed:
+        ms, stop = min(timed, key=lambda t: t[0])
+        driver_id = stop.get("driverId", "")
+        fastest = {"driver_id": driver_id, "name": names.get(driver_id) or driver_id,
+                   "duration_ms": ms, "lap": _to_int(stop.get("lap"))}
+
+    return {"season": season, "round": round_number, "race_name": race_name,
+            "avg_stops_per_finisher": avg, "total_stops": len(pit_stops),
+            "fastest_stop": fastest}
+
+
+async def _pit_race(season: int, round_number: int, race_name: str | None) -> dict:
+    results, pit_stops = await asyncio.gather(
+        jolpica.get_race_results(season, round_number),
+        jolpica.get_race_pit_stops(season, round_number),
+    )
+    return summarize_pit_race(season, round_number, race_name, results, pit_stops)
+
+
+@app.get("/circuit/{circuit_id}/pit-history", response_model=CircuitPitHistoryResponse)
+@limiter.limit("30/minute")
+async def get_circuit_pit_history(
+    request: Request,
+    circuit_id: str,
+    seasons: int = Query(default=10, ge=1, le=PIT_HISTORY_MAX_SEASONS),
+):
+    cache_key = f"circuit_pit_history:{circuit_id}:{seasons}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    winners = await jolpica.get_circuit_winners(circuit_id)
+    if not winners:
+        raise HTTPException(status_code=404, detail=f"No races found for circuit '{circuit_id}'")
+
+    races = [(season, rnd, race) for (season, rnd), race in _unique_races(winners).items()
+             if season >= PIT_STOPS_FIRST_SEASON]
+    recent = sorted(races, key=lambda r: (r[0], r[1]))[-seasons:]
+    summaries = await asyncio.gather(
+        *(_pit_race(season, rnd, race.get("raceName")) for season, rnd, race in recent)
+    )
+
+    response = {"circuit_id": circuit_id, "races": list(summaries),
+                "duration_note": PIT_DURATION_NOTE}
+    if recent and recent[-1][0] == datetime.now(UTC).year:
+        cache_set(cache_key, response, CIRCUIT_STATS_TTL_ACTIVE)
+    else:
+        cache_set_historical(cache_key, response)
+    return response
 
 
 # ── Weather forecast (Open-Meteo) ─────────────────────────────────────────────

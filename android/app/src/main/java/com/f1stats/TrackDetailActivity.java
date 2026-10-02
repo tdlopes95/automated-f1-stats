@@ -18,17 +18,29 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
 import com.f1stats.util.DebugLog;
 import com.f1stats.data.F1Repository;
+import com.f1stats.models.CircuitPitHistory;
 import com.f1stats.models.CircuitStatsResponse;
+import com.f1stats.ui.analysis.RaceAnalysisSection;
+import com.f1stats.ui.charts.ChartStyle;
 import com.f1stats.util.SystemBarInsets;
+import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.BarEntry;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 public class TrackDetailActivity extends AppCompatActivity {
 
@@ -117,6 +129,7 @@ public class TrackDetailActivity extends AppCompatActivity {
         if (circuitId != null && !circuitId.isEmpty()) {
             loadInteractiveTrack(circuitId);
             loadCircuitStats(circuitId);
+            loadPitHistory(circuitId);
         } else {
             tvStatsError.setText("Circuit ID unavailable — open schedule again to refresh.");
             tvStatsError.setVisibility(View.VISIBLE);
@@ -283,6 +296,88 @@ public class TrackDetailActivity extends AppCompatActivity {
             tvLapRecordTime.setText(stats.lapRecord.time);
             tvLapRecordDriver.setText(stats.lapRecord.name + " (" + stats.lapRecord.year + ")");
         }
+    }
+
+    // ── Pit strategy ──────────────────────────────────────────────────────────
+
+    private void loadPitHistory(String circuitId) {
+        repository.getCircuitPitHistory(circuitId, new F1Repository.RepositoryCallback<CircuitPitHistory>() {
+            @Override
+            public void onSuccess(CircuitPitHistory history) {
+                if (!isFinishing()) displayPitHistory(history);
+            }
+
+            @Override
+            public void onError(String message) {
+                // The section is optional: it stays hidden
+                DebugLog.d(TAG, "Pit history unavailable: " + message);
+            }
+        });
+    }
+
+    /** Average stops per finisher by season, and the most recent race's fastest stop. */
+    private void displayPitHistory(CircuitPitHistory history) {
+        List<BarEntry> bars = new ArrayList<>();
+        List<String> seasons = new ArrayList<>();
+        for (CircuitPitHistory.Race race : history.races) {
+            if (race.avgStopsPerFinisher == null) continue;
+            bars.add(new BarEntry(bars.size(), race.avgStopsPerFinisher.floatValue()));
+            seasons.add(String.valueOf(race.season));
+        }
+        View card = findViewById(R.id.card_pit_strategy);
+        if (bars.isEmpty()) {
+            card.setVisibility(View.GONE);
+            return;
+        }
+        card.setVisibility(View.VISIBLE);
+
+        BarChart chart = findViewById(R.id.chart_pit_stops);
+        ChartStyle.apply(chart);
+        chart.setScaleEnabled(false);
+        chart.setTouchEnabled(false);
+        chart.getAxisLeft().setAxisMinimum(0f);
+        chart.getAxisLeft().setGranularity(1f);
+        chart.getXAxis().setLabelCount(seasons.size());
+        chart.getXAxis().setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getAxisLabel(float value, com.github.mikephil.charting.components.AxisBase axis) {
+                int i = Math.round(value);
+                return i >= 0 && i < seasons.size() ? seasons.get(i) : "";
+            }
+        });
+        BarDataSet set = new BarDataSet(bars, "");
+        set.setColor(ContextCompat.getColor(this, R.color.chart_bar));
+        set.setValueTextColor(ContextCompat.getColor(this, R.color.chart_axis_text));
+        set.setHighlightEnabled(false);
+        set.setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                return String.format(Locale.getDefault(), "%.1f", value);
+            }
+        });
+        BarData data = new BarData(set);
+        data.setBarWidth(0.6f);
+        chart.setData(data);
+        chart.invalidate();
+
+        CircuitPitHistory.Race latest = history.races.get(history.races.size() - 1);
+        CircuitPitHistory.FastestStop fastest = latest.fastestStop;
+        View fastestLayout = findViewById(R.id.layout_pit_fastest);
+        if (fastest == null) {
+            fastestLayout.setVisibility(View.GONE);
+        } else {
+            fastestLayout.setVisibility(View.VISIBLE);
+            ((TextView) findViewById(R.id.tv_pit_fastest_label))
+                    .setText(getString(R.string.track_pit_fastest_label, latest.season));
+            ((TextView) findViewById(R.id.tv_pit_fastest_time))
+                    .setText(RaceAnalysisSection.durationText(this, fastest.durationMs));
+            ((TextView) findViewById(R.id.tv_pit_fastest_driver)).setText(fastest.lap != null
+                    ? getString(R.string.track_pit_fastest_driver_lap, fastest.name, fastest.lap)
+                    : fastest.name);
+        }
+        ((TextView) findViewById(R.id.tv_pit_note)).setText(
+                history.durationNote != null && !history.durationNote.isEmpty()
+                        ? history.durationNote : getString(R.string.pit_lane_note));
     }
 
     private String buildLocation(String locality, String country) {

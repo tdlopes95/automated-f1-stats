@@ -61,6 +61,16 @@
         <item name="android:background">@color/team_default</item>
     </style>
 
+    <!-- ── Race analysis ─────────────────────────────────── -->
+
+    <!-- Driver chip placeholder in the Analysis loading skeleton -->
+    <style name="Widget.F1.AnalysisChipSkeleton" parent="">
+        <item name="android:layout_width">56dp</item>
+        <item name="android:layout_height">32dp</item>
+        <item name="android:layout_marginEnd">@dimen/spacing_sm</item>
+        <item name="android:background">@color/bg_shimmer</item>
+    </style>
+
     <!-- ── About / credits ─────────────────────────────────── -->
 
     <!-- Clickable credit source name (opens website) -->

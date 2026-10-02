@@ -17,9 +17,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
         CachedDriver.class,
         CachedSessionKey.class,
         CachedMeeting.class,
-        CachedCircuitStats.class
+        CachedCircuitStats.class,
+        CachedRaceAnalysis.class
     },
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -32,6 +33,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract SessionKeyDao sessionKeyDao();
     public abstract MeetingDao meetingDao();
     public abstract CircuitStatsDao circuitStatsDao();
+    public abstract RaceAnalysisDao raceAnalysisDao();
 
     static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
@@ -54,7 +56,7 @@ public abstract class AppDatabase extends RoomDatabase {
                         "f1stats.db"
                     ).addMigrations(MIGRATION_1_2)
                      // Every table is a cache; v3 wiped rows poisoned by empty/future results,
-                     // v4 adds cached_meetings.dateStart
+                     // v4 adds cached_meetings.dateStart, v5 adds cached_race_analysis
                      .fallbackToDestructiveMigration()
                      .build();
                 }

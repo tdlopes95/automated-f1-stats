@@ -373,6 +373,100 @@
 
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Pit strategy card: hidden until the circuit has pit data (2011 onwards) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_pit_strategy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_row"
+                android:layout_marginEnd="@dimen/spacing_row"
+                android:layout_marginBottom="@dimen/spacing_row"
+                android:visibility="gone"
+                app:cardBackgroundColor="@color/bg_surface"
+                app:cardCornerRadius="10dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacing_md">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/track_pit_strategy_title"
+                        android:textColor="@color/text_hint"
+                        android:textSize="@dimen/text_small"
+                        android:letterSpacing="0.08" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/track_pit_avg_stops"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_metadata" />
+
+                    <com.github.mikephil.charting.charts.BarChart
+                        android:id="@+id/chart_pit_stops"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/chart_height_bars"
+                        android:layout_marginTop="@dimen/spacing_sm" />
+
+                    <LinearLayout
+                        android:id="@+id/layout_pit_fastest"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/bg_divider"
+                            android:layout_marginTop="@dimen/spacing_row"
+                            android:layout_marginBottom="@dimen/spacing_row" />
+
+                        <TextView
+                            android:id="@+id/tv_pit_fastest_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_hint"
+                            android:textSize="@dimen/text_small"
+                            android:letterSpacing="0.08"
+                            android:layout_marginBottom="@dimen/spacing_xs" />
+
+                        <TextView
+                            android:id="@+id/tv_pit_fastest_time"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_primary"
+                            android:textSize="@dimen/text_card_header"
+                            android:textStyle="bold"
+                            android:fontFamily="monospace" />
+
+                        <TextView
+                            android:id="@+id/tv_pit_fastest_driver"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="@dimen/text_metadata"
+                            android:layout_marginTop="2dp" />
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_pit_note"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacing_row"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="@dimen/text_metadata" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>

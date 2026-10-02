@@ -34,6 +34,7 @@ import com.f1stats.util.DebugLog;
 import com.f1stats.util.TeamColors;
 import com.f1stats.models.QualifyingResult;
 import com.f1stats.models.RaceResult;
+import com.f1stats.ui.analysis.RaceAnalysisSection;
 import com.f1stats.ui.results.PitStopAdapter;
 import com.f1stats.ui.results.ResultsAdapter;
 import com.f1stats.ui.results.QualifyingAdapter;
@@ -54,6 +55,9 @@ public class RoundDetailActivity extends AppCompatActivity {
     public static final String EXTRA_COUNTRY_FLAG  = "extra_country_flag";
     public static final String EXTRA_HAS_SPRINT    = "extra_has_sprint";
 
+    /** Jolpica lap-by-lap timing starts in 1996. */
+    private static final int ANALYSIS_FIRST_SEASON = 1996;
+
     private F1ViewModel viewModel;
     private ResultsAdapter resultsAdapter;
     private PitStopAdapter pitStopAdapter;
@@ -65,6 +69,9 @@ public class RoundDetailActivity extends AppCompatActivity {
     private LinearLayout llStrategyHeader;
     private TextView tvStrategyEmpty;
     private TextView tvLapTotal;
+    private View svAnalysis;
+    private RaceAnalysisSection analysisSection;
+    private String analysisTab;
 
     private Map<String, Integer> qualiPositionMap = new HashMap<>();
 
@@ -133,6 +140,10 @@ public class RoundDetailActivity extends AppCompatActivity {
         llStrategyHeader  = findViewById(R.id.ll_strategy_header);
         tvStrategyEmpty   = findViewById(R.id.tv_strategy_empty);
         tvLapTotal        = findViewById(R.id.tv_lap_total);
+        svAnalysis        = findViewById(R.id.sv_analysis);
+        analysisSection   = new RaceAnalysisSection(svAnalysis,
+                () -> viewModel.fetchRaceAnalysis(year, round, true));
+        analysisTab       = getString(R.string.analysis_tab);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         resultsAdapter  = new ResultsAdapter();
@@ -164,6 +175,7 @@ public class RoundDetailActivity extends AppCompatActivity {
         tabNames.add("Grid");
         tabNames.add("Pit Stops");
         tabNames.add("Strategy");
+        if (year >= ANALYSIS_FIRST_SEASON) tabNames.add(analysisTab);
 
         TabLayout tabs = findViewById(R.id.tab_layout_detail);
         for (String tab : tabNames) {
@@ -209,6 +221,16 @@ public class RoundDetailActivity extends AppCompatActivity {
     private void loadCurrentTab() {
         tvStrategyEmpty.setVisibility(View.GONE);
         llStrategyHeader.setVisibility(View.GONE);
+
+        svAnalysis.setVisibility(View.GONE);
+
+        if (analysisTab.equals(currentTab)) {
+            swipeRefresh.setVisibility(View.GONE);
+            svGrid.setVisibility(View.GONE);
+            svAnalysis.setVisibility(View.VISIBLE);
+            viewModel.fetchRaceAnalysis(year, round, false);
+            return;
+        }
 
         if ("Grid".equals(currentTab)) {
             swipeRefresh.setVisibility(View.GONE);
@@ -311,6 +333,18 @@ public class RoundDetailActivity extends AppCompatActivity {
     }
 
     private void observeViewModel() {
+        viewModel.getRaceAnalysis().observe(this, analysis -> {
+            if (analysis != null && analysis.year == year && analysis.round == round) {
+                analysisSection.bind(analysis);
+            }
+        });
+        viewModel.getRaceAnalysisLoading().observe(this, loading -> {
+            if (Boolean.TRUE.equals(loading)) analysisSection.showLoading();
+        });
+        viewModel.getRaceAnalysisError().observe(this, error -> {
+            if (error != null) analysisSection.showError();
+        });
+
         viewModel.getWeatherData().observe(this, weather -> {
             if (weather == null) return;
             LinearLayout bar = findViewById(R.id.ll_weather_bar);

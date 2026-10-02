@@ -16,13 +16,16 @@ import com.f1stats.db.AppDatabase;
 import com.f1stats.db.CachedCircuitStats;
 import com.f1stats.db.CachedDriver;
 import com.f1stats.db.CachedMeeting;
+import com.f1stats.db.CachedRaceAnalysis;
 import com.f1stats.db.CachedResult;
 import com.f1stats.db.CachedSchedule;
 import com.f1stats.db.CachedSessionKey;
 import com.f1stats.db.CachedStandings;
+import com.f1stats.models.CircuitPitHistory;
 import com.f1stats.models.CircuitStatsResponse;
 import com.f1stats.models.NewsResponse;
 import com.f1stats.models.OnThisDayResponse;
+import com.f1stats.models.RaceAnalysis;
 import com.f1stats.models.RaceResult;
 import com.f1stats.models.WeatherForecast;
 import com.f1stats.util.ResultStatus;
@@ -299,10 +302,14 @@ public class F1Repository {
      * current season is treated as recent.
      */
     private boolean isResultRowFresh(CachedResult row, int year, @Nullable Long sessionTime, long now) {
-        if (!hasResults(row.resultsJson)) return false;
+        return hasResults(row.resultsJson) && isStoredRowFresh(row.fetchedAt, year, sessionTime, now);
+    }
+
+    /** The results freshness rule for any non-empty row derived from a session's results. */
+    private boolean isStoredRowFresh(long fetchedAt, int year, @Nullable Long sessionTime, long now) {
         if (year < currentYear()) return true;
         boolean recent = sessionTime == null || now - (sessionTime + THREE_HOURS_MS) < RESULTS_SETTLE_MS;
-        return !recent || now - row.fetchedAt < ONE_HOUR_MS;
+        return !recent || now - fetchedAt < ONE_HOUR_MS;
     }
 
     private Map<String, Object> parseResultRow(CachedResult row) {
@@ -1085,7 +1092,80 @@ public class F1Repository {
         });
     }
 
-    // ── Weather forecast, news, history (memory cache only) ───────────────────
+    // ── Race analysis ─────────────────────────────────────────────────────────
+
+    /**
+     * Lap positions, lap times and pit stops for a race. Stored in Room under the same rules
+     * as results: only once the race has ended, permanent for past seasons, refetched after
+     * 1h while the race is under 72h old. A failed fetch serves the stored row if there is one.
+     */
+    public void getRaceAnalysis(int year, int round, RepositoryCallback<RaceAnalysis> callback) {
+        executor.execute(() -> {
+            long now = System.currentTimeMillis();
+            Long raceTime = getSessionTimeUtcMillis(year, round, "Race");
+            CachedRaceAnalysis row = db.raceAnalysisDao().get(year, round);
+            RaceAnalysis stored = parseRaceAnalysis(row);
+            if (stored != null && isStoredRowFresh(row.fetchedAt, year, raceTime, now)) {
+                mainHandler.post(() -> callback.onSuccess(stored));
+                return;
+            }
+            mainHandler.post(() -> api().getRaceAnalysis(year, round).enqueue(new Callback<RaceAnalysis>() {
+                @Override
+                public void onResponse(Call<RaceAnalysis> call, Response<RaceAnalysis> response) {
+                    RaceAnalysis body = response.body();
+                    if (!response.isSuccessful() || body == null) {
+                        serveStoredAnalysis(stored, "Could not load race analysis (HTTP "
+                                + response.code() + ")", callback);
+                        return;
+                    }
+                    if (body.drivers == null || body.drivers.isEmpty()) {
+                        // Not published yet, or an API hiccup: prefer what we already have
+                        callback.onSuccess(stored != null ? stored : body);
+                        return;
+                    }
+                    String json = gson.toJson(body);
+                    executor.execute(() -> {
+                        long fetchedAt = System.currentTimeMillis();
+                        if (!sessionEnded(year, raceTime, fetchedAt)) return;
+                        CachedRaceAnalysis entity = new CachedRaceAnalysis();
+                        entity.year      = year;
+                        entity.round     = round;
+                        entity.json      = json;
+                        entity.fetchedAt = fetchedAt;
+                        db.raceAnalysisDao().upsert(entity);
+                    });
+                    callback.onSuccess(body);
+                }
+
+                @Override
+                public void onFailure(Call<RaceAnalysis> call, Throwable t) {
+                    serveStoredAnalysis(stored, "Connection error: " + t.getMessage(), callback);
+                }
+            }));
+        });
+    }
+
+    private static void serveStoredAnalysis(@Nullable RaceAnalysis stored, String error,
+                                            RepositoryCallback<RaceAnalysis> callback) {
+        DebugLog.d("F1Repository", error + (stored != null ? "; serving stored analysis" : ""));
+        if (stored != null) callback.onSuccess(stored);
+        else callback.onError(error);
+    }
+
+    /** The stored analysis, or null if there is no usable row. */
+    @Nullable
+    private RaceAnalysis parseRaceAnalysis(@Nullable CachedRaceAnalysis row) {
+        if (row == null || row.json == null) return null;
+        try {
+            RaceAnalysis analysis = gson.fromJson(row.json, RaceAnalysis.class);
+            return analysis != null && analysis.drivers != null && !analysis.drivers.isEmpty()
+                    ? analysis : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // ── Weather forecast, news, history, pit history (memory cache only) ──────
 
     /** The backend's default "this week" window: ±3 days around the date. */
     private static final int HISTORY_WINDOW_DAYS = 3;
@@ -1095,6 +1175,17 @@ public class F1Repository {
     private final MemoryCache<NewsResponse> newsCache = new MemoryCache<>(NEWS_TTL_MS);
     // Keyed by date: valid until the date changes
     private final MemoryCache<OnThisDayResponse> historyCache = new MemoryCache<>(Long.MAX_VALUE);
+
+    /** Races at a circuit included in its pit strategy trend. */
+    private static final int PIT_HISTORY_SEASONS = 10;
+
+    private final MemoryCache<CircuitPitHistory> pitHistoryCache = new MemoryCache<>(ONE_DAY_MS);
+
+    /** Pit stop trend for a circuit's recent races; cached for 1 day. */
+    public void getCircuitPitHistory(String circuitId, RepositoryCallback<CircuitPitHistory> callback) {
+        fetchMemoryCached(pitHistoryCache, circuitId, false,
+                () -> api().getCircuitPitHistory(circuitId, PIT_HISTORY_SEASONS), "pit history", callback);
+    }
 
     /** Race weekend forecast; cached for 1 hour. */
     public void getWeatherForecast(int year, int round, boolean forceRefresh,
