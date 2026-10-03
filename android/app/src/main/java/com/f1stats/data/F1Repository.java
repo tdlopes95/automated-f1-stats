@@ -30,6 +30,7 @@ import com.f1stats.models.OnThisDayResponse;
 import com.f1stats.models.RaceAnalysis;
 import com.f1stats.models.RaceResult;
 import com.f1stats.models.WeatherForecast;
+import com.f1stats.notifications.ReminderScheduler;
 import com.f1stats.util.ResultStatus;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -169,6 +170,8 @@ public class F1Repository {
             rows.add(row);
         }
         db.scheduleDao().upsertAll(rows);
+        // Session times may have moved: reminders and result checks follow the new schedule
+        if (year >= currentYear()) ReminderScheduler.rescheduleAsync(appContext);
     }
 
     private List<Map<String, Object>> schedulesToMaps(List<CachedSchedule> rows) {
@@ -381,20 +384,31 @@ public class F1Repository {
     // ── Standings ─────────────────────────────────────────────────────────────
 
     public void getDriverStandings(int year, RepositoryCallback<Map<String, Object>> callback) {
-        getStandings(year, "driver", api().getDriverStandings(year), callback);
+        getDriverStandings(year, false, callback);
+    }
+
+    /** {@code forceRefresh} skips the Room row's freshness check (e.g. right after a race). */
+    public void getDriverStandings(int year, boolean forceRefresh,
+                                   RepositoryCallback<Map<String, Object>> callback) {
+        getStandings(year, "driver", api().getDriverStandings(year), forceRefresh, callback);
     }
 
     public void getConstructorStandings(int year, RepositoryCallback<Map<String, Object>> callback) {
-        getStandings(year, "constructor", api().getConstructorStandings(year), callback);
+        getConstructorStandings(year, false, callback);
+    }
+
+    public void getConstructorStandings(int year, boolean forceRefresh,
+                                        RepositoryCallback<Map<String, Object>> callback) {
+        getStandings(year, "constructor", api().getConstructorStandings(year), forceRefresh, callback);
     }
 
     private void getStandings(int year, String type, Call<Map<String, Object>> apiCall,
-                               RepositoryCallback<Map<String, Object>> callback) {
+                               boolean forceRefresh, RepositoryCallback<Map<String, Object>> callback) {
         executor.execute(() -> {
             CachedStandings cached = db.standingsDao().get(year, type);
             long now = System.currentTimeMillis();
             boolean isPast  = year < currentYear();
-            boolean isFresh = cached != null &&
+            boolean isFresh = !forceRefresh && cached != null &&
                     (isPast || (now - cached.fetchedAt) < ONE_HOUR_MS);
 
             if (isFresh) {

@@ -36,6 +36,7 @@ import com.f1stats.util.Flags;
 import com.f1stats.util.LinkOpener;
 import com.f1stats.util.MeetingMatcher;
 import com.f1stats.viewmodels.F1ViewModel;
+import com.f1stats.widget.FavouriteWidgetUpdater;
 import com.facebook.shimmer.ShimmerFrameLayout;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.snackbar.Snackbar;
@@ -364,6 +365,19 @@ public class HomeFragment extends Fragment {
         sourceErrors.remove(source);
         refreshCards();
         checkSettled();
+        if (source == Source.DRIVER_STANDINGS || source == Source.SEASON_RESULTS) updateWidget();
+    }
+
+    /** Hands the loaded standings (and season results, if Home needed them) to the widget. */
+    private void updateWidget() {
+        if (sourceStatus.get(Source.DRIVER_STANDINGS) != HomeCardState.Status.LOADED
+                || sourceStatus.get(Source.SEASON_RESULTS) == HomeCardState.Status.LOADING) {
+            return;   // the other one is on its way
+        }
+        boolean hasSeason = sourceStatus.get(Source.SEASON_RESULTS) == HomeCardState.Status.LOADED;
+        FavouriteWidgetUpdater.refreshAsync(requireContext(),
+                viewModel.getHomeDriverStandings().getValue(),
+                hasSeason ? viewModel.getHomeSeasonResults().getValue() : null);
     }
 
     private void sourceFailed(Source source, String error) {

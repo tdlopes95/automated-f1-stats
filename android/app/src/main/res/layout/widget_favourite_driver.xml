@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 4x2 favourite driver widget. Shares view ids with widget_favourite_driver_compact. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:padding="@dimen/spacing_row">
+
+    <LinearLayout
+        android:id="@+id/widget_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/widget_team_strip"
+                android:layout_width="4dp"
+                android:layout_height="@dimen/headshot_size_md"
+                android:importantForAccessibility="no"
+                android:scaleType="fitXY"
+                android:src="@drawable/widget_team_strip" />
+
+            <ImageView
+                android:id="@+id/widget_headshot"
+                android:layout_width="@dimen/headshot_size_md"
+                android:layout_height="@dimen/headshot_size_md"
+                android:layout_marginStart="@dimen/spacing_sm"
+                android:background="@drawable/bg_headshot_placeholder"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_row"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/widget_driver_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/widget_favourite_label"
+                    android:textColor="@color/text_primary"
+                    android:textSize="@dimen/text_subheading"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/widget_position_points"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/text_primary"
+                    android:textSize="@dimen/text_caption" />
+
+                <TextView
+                    android:id="@+id/widget_gap"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_metadata" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Pushes the race lines to the bottom when the widget is taller -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:minHeight="@dimen/spacing_xs" />
+
+        <TextView
+            android:id="@+id/widget_last_race"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_metadata" />
+
+        <TextView
+            android:id="@+id/widget_next_session"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_metadata" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_prompt"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="@string/widget_choose_driver"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_body_sm"
+        android:visibility="gone" />
+
+</FrameLayout>

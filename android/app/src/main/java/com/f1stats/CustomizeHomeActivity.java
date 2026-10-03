@@ -34,6 +34,7 @@ import com.f1stats.ui.customize.CustomizeHomeAdapter;
 import com.f1stats.ui.news.NewsActivity;
 import com.f1stats.util.SystemBarInsets;
 import com.f1stats.util.TeamColors;
+import com.f1stats.widget.FavouriteWidgetUpdater;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.gson.Gson;
@@ -263,6 +264,7 @@ public class CustomizeHomeActivity extends AppCompatActivity
                 return;
         }
         saveConfig(config);
+        if (pick == DriverPick.FAVOURITE) FavouriteWidgetUpdater.refreshAsync(this);
         bindH2hDialog();
     }
 

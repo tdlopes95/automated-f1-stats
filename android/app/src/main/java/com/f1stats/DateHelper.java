@@ -47,6 +47,13 @@ public class DateHelper {
         return formatForDisplay(isoUtcString, "EEE dd MMM yyyy, HH:mm");
     }
 
+    /** Local time of day of a UTC instant, e.g. "14:00" or "2:00 PM". */
+    public static String formatLocalTime(long utcMillis, boolean use24Hour) {
+        SimpleDateFormat output = new SimpleDateFormat(use24Hour ? "HH:mm" : "h:mm a",
+                Locale.getDefault());
+        return output.format(new Date(utcMillis));
+    }
+
     /** A calendar date (YYYY-MM-DD, no time zone) in the device's medium date format. */
     public static String formatLocalDate(String isoDate) {
         if (isoDate == null) return "--";

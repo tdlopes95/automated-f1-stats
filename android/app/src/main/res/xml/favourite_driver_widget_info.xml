@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- minWidth/minHeight are the default size below Android 12; targetCell* from 12 on.
+     updatePeriodMillis only re-renders the snapshot, so the next session rolls over. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="40dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_favourite_driver"
+    android:previewLayout="@layout/widget_favourite_driver"
+    android:description="@string/widget_favourite_description"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen" />

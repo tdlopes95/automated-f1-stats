@@ -117,6 +117,255 @@
 
     </LinearLayout>
 
+    <!-- ── Notifications ─────────────────────────────────── -->
+
+    <View
+        style="@style/Widget.F1.Divider"
+        android:layout_marginTop="@dimen/spacing_xl" />
+
+    <TextView
+        android:text="@string/settings_notifications_title"
+        android:textAllCaps="true"
+        android:textColor="@color/f1_red"
+        android:textSize="@dimen/text_small"
+        android:letterSpacing="0.1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_lg" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:gravity="center_vertical"
+        android:minHeight="56dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_reminders"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_body" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/settings_reminders_description"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_metadata" />
+
+        </LinearLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_reminders"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_md"
+            android:contentDescription="@string/settings_reminders" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/group_reminder_options"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:text="@string/settings_reminder_lead"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_metadata" />
+
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/toggle_lead_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_xs"
+            app:singleSelection="true"
+            app:selectionRequired="true">
+
+            <Button
+                android:id="@+id/btn_lead_15"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/settings_reminder_lead_15" />
+
+            <Button
+                android:id="@+id/btn_lead_30"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/settings_reminder_lead_30" />
+
+            <Button
+                android:id="@+id/btn_lead_60"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/settings_reminder_lead_60" />
+
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_md"
+            android:text="@string/settings_reminder_sessions"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_metadata" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_session_practice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_session_practice"
+            android:textColor="@color/text_primary" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_session_qualifying"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_session_qualifying"
+            android:textColor="@color/text_primary" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_session_sprint_qualifying"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_session_sprint_qualifying"
+            android:textColor="@color/text_primary" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_session_sprint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_session_sprint"
+            android:textColor="@color/text_primary" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_session_race"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_session_race"
+            android:textColor="@color/text_primary" />
+
+        <LinearLayout
+            android:id="@+id/row_exact_alarms"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_exact_alarms_off"
+                android:textColor="@color/text_tertiary"
+                android:textSize="@dimen/text_metadata" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_exact_alarms"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
+                android:text="@string/settings_exact_alarms_allow"
+                android:textColor="@color/f1_red" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/row_results"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_md"
+        android:background="?attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="56dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_results"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_body" />
+
+            <TextView
+                android:id="@+id/tv_results_description"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/settings_results_description"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_metadata" />
+
+        </LinearLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_results"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_md"
+            android:contentDescription="@string/settings_results" />
+
+    </LinearLayout>
+
+    <!-- Debug builds only -->
+    <LinearLayout
+        android:id="@+id/group_notification_debug"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            style="@style/Widget.F1.SectionLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_debug_title" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_debug_test_reminder"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_debug_test_reminder" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_debug_results_check"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_debug_results_check" />
+
+    </LinearLayout>
+
     <!-- ── About ─────────────────────────────────────────── -->
 
     <View

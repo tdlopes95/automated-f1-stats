@@ -87,6 +87,9 @@ dependencies {
     // MPAndroidChart (race analysis and pit strategy charts)
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
+    // WorkManager (favourite result notifications)
+    implementation("androidx.work:work-runtime:2.10.0")
+
     // Glide (image loading)
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")

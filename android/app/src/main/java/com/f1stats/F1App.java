@@ -3,6 +3,7 @@ package com.f1stats;
 import android.app.Application;
 
 import com.f1stats.db.AppDatabase;
+import com.f1stats.notifications.Notifications;
 
 public class F1App extends Application {
 
@@ -14,6 +15,7 @@ public class F1App extends Application {
         super.onCreate();
         instance = this;
         database = AppDatabase.getInstance(this);
+        Notifications.createChannels(this);
     }
 
     public static F1App get() {

@@ -247,4 +247,64 @@
     <string name="track_map_s1">S1</string>
     <string name="track_map_s2">S2</string>
     <string name="track_map_s3">S3</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_reminders">Session reminders</string>
+    <string name="notif_channel_results">Race results</string>
+    <string name="notif_reminder_title">%1$s in %2$d min</string>
+    <string name="notif_reminder_text">%1$s · %2$s</string>
+    <string name="notif_results_title_race">Race result</string>
+    <string name="notif_results_title_sprint">Sprint result</string>
+    <string name="notif_result_finished">%1$s finished P%2$s at the %3$s</string>
+    <string name="notif_result_finished_sprint">%1$s finished P%2$s in the %3$s sprint</string>
+    <string name="notif_result_retired">%1$s retired from the %2$s</string>
+    <string name="notif_result_did_not_start">%1$s did not start the %2$s</string>
+    <string name="notif_result_disqualified">%1$s was disqualified from the %2$s</string>
+    <string name="notif_result_sprint_ref">%1$s sprint</string>
+    <string name="notif_result_points">" (+%1$s pts)"</string>
+    <string name="notif_result_team">%1$s: %2$s</string>
+    <string name="notif_result_team_entry">%1$s P%2$s</string>
+    <string name="notif_result_team_entry_out">%1$s %2$s</string>
+    <string name="notif_result_label_dnf">DNF</string>
+    <string name="notif_result_label_dns">DNS</string>
+    <string name="notif_result_label_dsq">DSQ</string>
+
+    <string name="settings_notifications_title">Notifications</string>
+    <string name="settings_reminders">Session reminders</string>
+    <string name="settings_reminders_description">A notification before each selected session</string>
+    <string name="settings_reminder_lead">Remind me</string>
+    <string name="settings_reminder_lead_15">15 min</string>
+    <string name="settings_reminder_lead_30">30 min</string>
+    <string name="settings_reminder_lead_60">1 hour</string>
+    <string name="settings_reminder_sessions">Sessions</string>
+    <string name="settings_session_practice">Practice</string>
+    <string name="settings_session_qualifying">Qualifying</string>
+    <string name="settings_session_sprint_qualifying">Sprint Qualifying</string>
+    <string name="settings_session_sprint">Sprint</string>
+    <string name="settings_session_race">Race</string>
+    <string name="settings_exact_alarms_off">Reminders may arrive a few minutes early or late</string>
+    <string name="settings_exact_alarms_allow">Allow exact alarms</string>
+    <string name="settings_results">Favourite results</string>
+    <string name="settings_results_description">Race and sprint results for your favourite driver and team</string>
+    <string name="settings_results_no_favourite">Set a favourite driver or team on Home</string>
+    <string name="settings_notifications_denied">Notifications are blocked for F1 Stats. Allow them in system settings to get reminders and results.</string>
+    <string name="settings_debug_title">Debug</string>
+    <string name="settings_debug_test_reminder">Send test reminder</string>
+    <string name="settings_debug_results_check">Run results check for last race</string>
+    <string name="settings_debug_no_session">No upcoming session in the cached schedule</string>
+    <string name="settings_debug_no_race">No completed race in the cached schedule</string>
+    <string name="settings_debug_no_favourite">Set a favourite driver or team first</string>
+    <string name="settings_debug_notifications_off">Notifications are off for F1 Stats</string>
+    <string name="settings_debug_results_queued">Results check queued for the %1$s</string>
+
+    <!-- Favourite driver widget -->
+    <string name="widget_favourite_label">Favourite driver</string>
+    <string name="widget_favourite_description">Your favourite driver\'s standing, last race and the next session</string>
+    <string name="widget_choose_driver">Choose a favourite driver</string>
+    <string name="widget_position_points">P%1$d · %2$s pts</string>
+    <string name="widget_not_in_standings">Not in the standings yet</string>
+    <string name="widget_no_data">No data yet</string>
+    <string name="widget_last_race">Last race: %1$s · %2$s</string>
+    <string name="widget_next_session">Next: %1$s · %2$s</string>
+    <string name="widget_no_next_session">No upcoming sessions</string>
 </resources>

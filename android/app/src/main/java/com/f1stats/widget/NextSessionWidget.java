@@ -8,7 +8,11 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.SystemClock;
+import android.util.Log;
 import android.widget.RemoteViews;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.f1stats.DateHelper;
 import com.f1stats.MainActivity;
@@ -17,9 +21,8 @@ import com.f1stats.SeasonHelper;
 import com.f1stats.db.AppDatabase;
 import com.f1stats.db.CachedSchedule;
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
-import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -99,11 +102,39 @@ public class NextSessionWidget extends AppWidgetProvider {
 
     // ── DB lookup ─────────────────────────────────────────────────────────────
 
+    private static final String TAG = "NextSessionWidget";
     private static final Gson GSON = new Gson();
-    private static final Type SESSION_LIST_TYPE =
-            new TypeToken<List<Map<String, Object>>>() {}.getType();
 
+    /** Null (the widget's empty state) if there's no next session or the cache can't be read. */
+    @Nullable
     private static NextSessionInfo findNextSession(Context context) {
+        try {
+            return lookUpNextSession(context);
+        } catch (RuntimeException e) {
+            Log.e(TAG, "Could not read the cached schedule", e);
+            return null;
+        }
+    }
+
+    /**
+     * The sessions of a cached schedule row. {@code sessionsJson} holds the whole race object,
+     * as F1Repository.saveSchedule stores it; its "sessions" array is what we want.
+     *
+     * @throws com.google.gson.JsonParseException if the row isn't a JSON object
+     */
+    @NonNull
+    static List<Map<String, Object>> parseSessions(@Nullable String sessionsJson) {
+        if (sessionsJson == null) return new ArrayList<>();
+        StoredRace race = GSON.fromJson(sessionsJson, StoredRace.class);
+        return race != null && race.sessions != null ? race.sessions : new ArrayList<>();
+    }
+
+    /** The part of the stored race object the widget reads. */
+    private static class StoredRace {
+        List<Map<String, Object>> sessions;
+    }
+
+    private static NextSessionInfo lookUpNextSession(Context context) {
         AppDatabase db = AppDatabase.getInstance(context);
         long now = System.currentTimeMillis();
         int year = SeasonHelper.getCurrentYear();
@@ -111,21 +142,17 @@ public class NextSessionWidget extends AppWidgetProvider {
         List<CachedSchedule> rounds = db.scheduleDao().getByYear(year);
 
         for (CachedSchedule round : rounds) {
-            if (round.sessionsJson == null) continue;
-            List<Map<String, Object>> sessions =
-                    GSON.fromJson(round.sessionsJson, SESSION_LIST_TYPE);
-            if (sessions == null) continue;
-
+            List<Map<String, Object>> sessions = parseSessions(round.sessionsJson);
             for (Map<String, Object> session : sessions) {
-                String name = (String) session.get("name");
-                String datetime = (String) session.get("datetime");
+                Object name = session.get("name");
+                Object datetime = session.get("datetime");
                 if (name == null || datetime == null) continue;
 
-                long millis = DateHelper.toMillis(datetime);
+                long millis = DateHelper.toMillis(datetime.toString());
                 if (millis > now) {
                     NextSessionInfo info = new NextSessionInfo();
                     info.raceName = round.raceName != null ? round.raceName : "";
-                    info.sessionName = name;
+                    info.sessionName = name.toString();
                     info.millisUntil = millis - now;
                     return info;
                 }

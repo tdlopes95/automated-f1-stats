@@ -18,6 +18,7 @@ import androidx.navigation.ui.NavigationUI;
 import androidx.core.splashscreen.SplashScreen;
 
 import com.f1stats.models.LiveSession;
+import com.f1stats.notifications.ReminderScheduler;
 import com.f1stats.util.SystemBarInsets;
 import com.f1stats.viewmodels.F1ViewModel;
 import com.google.android.material.badge.BadgeDrawable;
@@ -29,6 +30,11 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 public class MainActivity extends AppCompatActivity {
+
+    /** Tab to select on launch, e.g. from a reminder notification. */
+    public static final String EXTRA_OPEN_TAB = "extra_open_tab";
+    public static final String TAB_WEEKEND = "weekend";
+    public static final String TAB_HOME = "home";
 
     private NavController navController;
     private BottomNavigationView bottomNav;
@@ -73,6 +79,27 @@ public class MainActivity extends AppCompatActivity {
         F1ViewModel viewModel = new ViewModelProvider(this).get(F1ViewModel.class);
         viewModel.getLiveSession().observe(this, session -> updateWeekendBadge(session));
         viewModel.fetchLiveSession();
+
+        if (savedInstanceState == null) {
+            ReminderScheduler.rescheduleAsync(this);
+            openRequestedTab(getIntent());
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        openRequestedTab(intent);
+    }
+
+    private void openRequestedTab(Intent intent) {
+        String tab = intent != null ? intent.getStringExtra(EXTRA_OPEN_TAB) : null;
+        int itemId = TAB_WEEKEND.equals(tab) ? R.id.nav_weekend
+                : TAB_HOME.equals(tab) ? R.id.nav_home : 0;
+        if (itemId != 0 && bottomNav.getSelectedItemId() != itemId) {
+            bottomNav.setSelectedItemId(itemId);
+        }
     }
 
     /**
