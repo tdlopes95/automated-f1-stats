@@ -364,6 +364,13 @@
             android:layout_height="wrap_content"
             android:text="@string/settings_debug_results_check" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_debug_request_stats"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_debug_request_stats" />
+
     </LinearLayout>
 
     <!-- ── About ─────────────────────────────────────────── -->

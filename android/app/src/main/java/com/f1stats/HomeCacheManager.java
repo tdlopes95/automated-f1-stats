@@ -25,6 +25,11 @@ public class HomeCacheManager {
     private static final String KEY_P2_NAME   = "p2_name";
     private static final String KEY_P2_TEAM   = "p2_team";
     private static final String KEY_P2_POINTS = "p2_points";
+    private static final String KEY_LEADER_CODE = "leader_code";
+    private static final String KEY_P2_CODE     = "p2_code";
+    private static final String KEY_LAST_CODE   = "last_code";
+    private static final String KEY_HEADSHOTS   = "headshots";
+    private static final String KEY_CIRCUIT_IMAGE = "next_race_circuit_image";
 
     private static HomeCacheManager instance;
     private final SharedPreferences prefs;
@@ -76,6 +81,24 @@ public class HomeCacheManager {
                 .apply();
     }
 
+    /** Driver codes for the cached leader, P2 and last winner, so their headshots can bind. */
+    public void saveCodes(String leaderCode, String p2Code, String lastWinnerCode) {
+        SharedPreferences.Editor editor = prefs.edit();
+        if (leaderCode != null) editor.putString(KEY_LEADER_CODE, leaderCode);
+        if (p2Code != null) editor.putString(KEY_P2_CODE, p2Code);
+        if (lastWinnerCode != null) editor.putString(KEY_LAST_CODE, lastWinnerCode);
+        editor.apply();
+    }
+
+    /** Driver code to headshot URL, so the first Home frame has them. */
+    public void saveHeadshots(Map<String, String> headshots) {
+        prefs.edit().putString(KEY_HEADSHOTS, gson.toJson(headshots)).apply();
+    }
+
+    public void saveCircuitImage(String url) {
+        prefs.edit().putString(KEY_CIRCUIT_IMAGE, url).apply();
+    }
+
     // ── Load ──────────────────────────────────────────────────────────────────
 
     public Map<String, Object> loadNextRace() {
@@ -98,7 +121,22 @@ public class HomeCacheManager {
     public String loadP2Team()   { return prefs.getString(KEY_P2_TEAM, null); }
     public String loadP2Points() { return prefs.getString(KEY_P2_POINTS, null); }
 
+    public String loadLeaderCode()     { return prefs.getString(KEY_LEADER_CODE, null); }
+    public String loadP2Code()         { return prefs.getString(KEY_P2_CODE, null); }
+    public String loadLastWinnerCode() { return prefs.getString(KEY_LAST_CODE, null); }
+    public String loadCircuitImage()   { return prefs.getString(KEY_CIRCUIT_IMAGE, null); }
+
+    /** Null if none were saved. */
+    public Map<String, String> loadHeadshots() {
+        String json = prefs.getString(KEY_HEADSHOTS, null);
+        if (json == null) return null;
+        Type type = new TypeToken<Map<String, String>>(){}.getType();
+        return gson.fromJson(json, type);
+    }
+
+    /** Whether any card has something to show before the network answers. */
     public boolean hasCache() {
-        return prefs.getString(KEY_LEADER_NAME, null) != null;
+        return prefs.contains(KEY_LEADER_NAME) || prefs.contains(KEY_NEXT_RACE)
+                || prefs.contains(KEY_LAST_WINNER);
     }
 }

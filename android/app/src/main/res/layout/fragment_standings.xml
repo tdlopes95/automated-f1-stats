@@ -33,7 +33,7 @@
             android:src="@drawable/ic_compare"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Compare Drivers"
-            android:tint="@color/text_secondary" />
+            app:tint="@color/text_secondary" />
 
         <View
             android:layout_width="0dp"
@@ -47,7 +47,7 @@
             android:src="@drawable/ic_chevron_left"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Previous year"
-            android:tint="@color/text_secondary" />
+            app:tint="@color/text_secondary" />
 
         <TextView
             android:id="@+id/tv_selected_year"
@@ -65,7 +65,7 @@
             android:src="@drawable/ic_chevron_right"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Next year"
-            android:tint="@color/text_secondary" />
+            app:tint="@color/text_secondary" />
 
     </LinearLayout>
 

@@ -16,9 +16,11 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
 import androidx.core.app.TaskStackBuilder;
+import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.load.resource.bitmap.CenterCrop;
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.f1stats.CustomizeHomeActivity;
 import com.f1stats.MainActivity;
 import com.f1stats.R;
@@ -29,6 +31,7 @@ import com.f1stats.home.HomeCardParams;
 import com.f1stats.home.HomeCardType;
 import com.f1stats.home.HomeLayoutStore;
 import com.f1stats.models.DriverStanding;
+import com.f1stats.models.RaceResult;
 import com.f1stats.notifications.ReminderPlanner;
 import com.f1stats.util.DebugLog;
 import com.f1stats.util.HeadToHead;
@@ -130,6 +133,7 @@ public final class FavouriteWidgetUpdater {
         if (favouriteId == null) return false;
         WidgetSnapshot snapshot = WidgetSnapshot.load(context);
         return snapshot == null || !favouriteId.equals(snapshot.driverId)
+                || snapshot.version < WidgetSnapshot.CURRENT_VERSION
                 || System.currentTimeMillis() - snapshot.updatedAt > STALE_AFTER_MS;
     }
 
@@ -168,9 +172,9 @@ public final class FavouriteWidgetUpdater {
                 } else {
                     if (season == null) season = loadSeason(app, year);
                     snapshot = newSnapshot(driverId, store);
-                    fillStanding(snapshot, driverId, standings);
-                    if (season != null) fillLastRace(snapshot, driverId, season);
-                    else if (sameDriver) copyLastRace(old, snapshot);
+                    List<String> teammateIds = fillStanding(snapshot, driverId, standings);
+                    if (season != null) fillSeason(snapshot, driverId, season, teammateIds, standings);
+                    else if (sameDriver) copySeason(old, snapshot);
                     fillOpenF1(app, snapshot, year, sameDriver ? old : null);
                 }
             }
@@ -190,7 +194,10 @@ public final class FavouriteWidgetUpdater {
         return s;
     }
 
-    private static void fillStanding(WidgetSnapshot s, String driverId, List<DriverStanding> standings) {
+    /** Fills the standing; returns the ids of drivers in the same team (possible teammates). */
+    private static List<String> fillStanding(WidgetSnapshot s, String driverId,
+                                             List<DriverStanding> standings) {
+        List<String> teammates = new ArrayList<>();
         for (int i = 0; i < standings.size(); i++) {
             DriverStanding d = standings.get(i);
             if (d.getDriver() == null || !driverId.equals(d.getDriver().getDriverId())) continue;
@@ -202,24 +209,67 @@ public final class FavouriteWidgetUpdater {
             s.position = parsePosition(d.getPosition(), i);
             s.points = parseNumber(d.getPoints());
             s.gapToAhead = i > 0 ? parseNumber(standings.get(i - 1).getPoints()) - s.points : 0;
-            return;
+            s.gapToLeader = i > 0 ? parseNumber(standings.get(0).getPoints()) - s.points : 0;
+            break;
         }
+        if (s.constructorId == null) return teammates;
+        for (DriverStanding d : standings) {
+            if (d.getDriver() == null || driverId.equals(d.getDriver().getDriverId())) continue;
+            if (s.constructorId.equals(d.getConstructorId())) teammates.add(d.getDriver().getDriverId());
+        }
+        return teammates;
     }
 
-    private static void fillLastRace(WidgetSnapshot s, String driverId, HeadToHead.Season season) {
-        List<HeadToHead.FormEntry> last =
-                HeadToHead.forDriver(season, HeadToHead.DriverRef.of(driverId), 1).lastResults;
-        if (last.isEmpty()) return;
-        HeadToHead.FormEntry entry = last.get(0);
-        s.lastRaceName = entry.raceName != null ? entry.raceName : "";
-        s.lastRacePosition = entry.position;
-        s.lastRaceStatus = entry.status;
+    /**
+     * Wins, podiums and form from the season results, and the race H2H against the teammate
+     * they shared the most races with (a team can field more than two drivers in a season).
+     */
+    private static void fillSeason(WidgetSnapshot s, String driverId, HeadToHead.Season season,
+                                   List<String> teammateIds, List<DriverStanding> standings) {
+        HeadToHead.DriverRef me = HeadToHead.DriverRef.of(driverId);
+        HeadToHead.DriverSeason ds = HeadToHead.forDriver(season, me, WidgetText.FORM_SIZE);
+        s.wins = ds.stats.wins;
+        s.podiums = ds.stats.podiums;
+        s.lastResults = new ArrayList<>();
+        for (HeadToHead.FormEntry e : ds.lastResults) {
+            s.lastResults.add(new WidgetSnapshot.Result(e.raceName, e.position, e.status));
+        }
+
+        String bestId = null;
+        HeadToHead.Comparison best = null;
+        for (String id : teammateIds) {
+            HeadToHead.Comparison c = HeadToHead.compare(season, me, HeadToHead.DriverRef.of(id));
+            int races = c.driver1.h2hWins + c.driver2.h2hWins;
+            if (best == null || races > best.driver1.h2hWins + best.driver2.h2hWins) {
+                best = c;
+                bestId = id;
+            }
+        }
+        if (best == null) return;
+        s.teammateCode = codeFor(bestId, standings);
+        s.h2hWins = best.driver1.h2hWins;
+        s.h2hLosses = best.driver2.h2hWins;
     }
 
-    private static void copyLastRace(WidgetSnapshot from, WidgetSnapshot to) {
-        to.lastRaceName = from.lastRaceName;
-        to.lastRacePosition = from.lastRacePosition;
-        to.lastRaceStatus = from.lastRaceStatus;
+    /** The driver's code, or their surname when Jolpica has no code (older seasons). */
+    @Nullable
+    private static String codeFor(String driverId, List<DriverStanding> standings) {
+        for (DriverStanding d : standings) {
+            RaceResult.Driver driver = d.getDriver();
+            if (driver == null || !driverId.equals(driver.getDriverId())) continue;
+            String code = driver.getCode();
+            return code != null && !code.isEmpty() ? code : driver.getLastName();
+        }
+        return null;
+    }
+
+    private static void copySeason(WidgetSnapshot from, WidgetSnapshot to) {
+        to.wins = from.wins;
+        to.podiums = from.podiums;
+        to.lastResults = from.lastResults;
+        to.teammateCode = from.teammateCode;
+        to.h2hWins = from.h2hWins;
+        to.h2hLosses = from.h2hLosses;
     }
 
     /** Headshot and team colour from OpenF1 (2023 on), matched by code then number. */
@@ -305,10 +355,13 @@ public final class FavouriteWidgetUpdater {
         });
         if (races == null) return null;
         List<ReminderPlanner.Session> sessions = new ArrayList<>();
+        // Each round's first session, including ones already started, for the weekend date
+        Map<Integer, Long> weekendStart = new HashMap<>();
         for (String json : races) {
             Map<String, Object> race = GSON.fromJson(json, new TypeToken<Map<String, Object>>() {}.getType());
             int round = race != null ? (int) parseNumber(String.valueOf(race.get("round"))) : 0;
             for (ReminderPlanner.Session s : ReminderPlanner.parseRound(year, round, null, json)) {
+                weekendStart.merge(round, s.startMillis, Math::min);
                 if (s.startMillis > now) sessions.add(s);
             }
         }
@@ -316,7 +369,9 @@ public final class FavouriteWidgetUpdater {
         List<WidgetSnapshot.Session> out = new ArrayList<>();
         for (ReminderPlanner.Session s : sessions) {
             if (out.size() == MAX_UPCOMING) break;
-            out.add(new WidgetSnapshot.Session(s.name, s.raceName, s.startMillis));
+            Long first = weekendStart.get(s.round);
+            out.add(new WidgetSnapshot.Session(s.name, s.raceName, s.startMillis,
+                    first != null ? first : s.startMillis));
         }
         return out;
     }
@@ -345,23 +400,27 @@ public final class FavouriteWidgetUpdater {
         Bitmap headshot = current ? loadHeadshot(app, snapshot.headshotUrl) : null;
         PendingIntent click = lines.chooseDriver ? chooseDriverIntent(app) : homeIntent(app);
 
-        RemoteViews full = bind(app, R.layout.widget_favourite_driver, true, lines, colour, headshot, click);
+        RemoteViews medium = bind(app, Size.MEDIUM, lines, colour, headshot, click);
         RemoteViews views;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            RemoteViews compact = bind(app, R.layout.widget_favourite_driver_compact, false,
-                    lines, colour, null, click);
             Map<SizeF, RemoteViews> sizes = new HashMap<>();
-            sizes.put(new SizeF(110f, 40f), compact);
-            sizes.put(new SizeF(180f, 100f), full);
+            sizes.put(new SizeF(110f, 40f), bind(app, Size.SMALL, lines, colour, null, click));
+            sizes.put(new SizeF(180f, 100f), medium);
+            sizes.put(new SizeF(250f, 190f), bind(app, Size.LARGE, lines, colour, headshot, click));
             views = new RemoteViews(sizes);
         } else {
-            views = full;
+            views = medium;
         }
         AppWidgetManager.getInstance(app).updateAppWidget(ids, views);
     }
 
-    private static RemoteViews bind(Context app, int layout, boolean full, WidgetText.Lines lines,
+    private enum Size { SMALL, MEDIUM, LARGE }
+
+    private static RemoteViews bind(Context app, Size size, WidgetText.Lines lines,
                                     int colour, @Nullable Bitmap headshot, PendingIntent click) {
+        int layout = size == Size.SMALL ? R.layout.widget_favourite_driver_compact
+                : size == Size.MEDIUM ? R.layout.widget_favourite_driver
+                : R.layout.widget_favourite_driver_large;
         RemoteViews v = new RemoteViews(app.getPackageName(), layout);
         v.setOnClickPendingIntent(R.id.widget_root, click);
         v.setViewVisibility(R.id.widget_prompt, lines.chooseDriver ? View.VISIBLE : View.GONE);
@@ -369,18 +428,76 @@ public final class FavouriteWidgetUpdater {
         if (lines.chooseDriver) return v;
 
         v.setInt(R.id.widget_team_strip, "setColorFilter", colour);
-        v.setTextViewText(R.id.widget_driver_name, lines.name);
-        v.setTextViewText(R.id.widget_position_points, lines.positionPoints);
-        if (!full) return v;
+        setText(v, R.id.widget_position, lines.position);
+        v.setTextViewText(R.id.widget_points, lines.points);
+        if (size == Size.SMALL) {
+            v.setTextViewText(R.id.widget_code, lines.code);
+            return v;
+        }
 
-        v.setTextViewText(R.id.widget_gap, lines.gap);
-        v.setViewVisibility(R.id.widget_gap, lines.gap.isEmpty() ? View.GONE : View.VISIBLE);
-        v.setTextViewText(R.id.widget_last_race, lines.lastRace);
-        v.setViewVisibility(R.id.widget_last_race, lines.lastRace.isEmpty() ? View.GONE : View.VISIBLE);
+        v.setTextViewText(R.id.widget_driver_name, lines.name);
+        setText(v, R.id.widget_team, lines.team);
+        v.setTextColor(R.id.widget_position, colour);
+        setText(v, R.id.widget_gap, lines.gap);
+        setText(v, R.id.widget_wins_podiums, lines.winsPodiums);
+        setText(v, R.id.widget_last_result, lines.lastResult);
         v.setTextViewText(R.id.widget_next_session, lines.nextSession);
-        if (headshot != null) v.setImageViewBitmap(R.id.widget_headshot, headshot);
-        else v.setImageViewResource(R.id.widget_headshot, 0);
+        if (headshot != null) {
+            v.setImageViewBitmap(R.id.widget_headshot, headshot);
+            v.setViewVisibility(R.id.widget_headshot_code, View.GONE);
+        } else {
+            v.setImageViewResource(R.id.widget_headshot, 0);
+            v.setTextViewText(R.id.widget_headshot_code, lines.code);
+            v.setViewVisibility(R.id.widget_headshot_code, View.VISIBLE);
+        }
+        if (size == Size.MEDIUM) return v;
+
+        bindForm(app, v, lines.form);
+        setText(v, R.id.widget_h2h, lines.h2h);
+        setText(v, R.id.widget_gap_to_leader, lines.gapToLeader);
+        v.setViewVisibility(R.id.widget_next_race_row,
+                lines.nextRaceName.isEmpty() ? View.GONE : View.VISIBLE);
+        v.setTextViewText(R.id.widget_next_race_name, lines.nextRaceName);
+        v.setTextViewText(R.id.widget_next_race_date, lines.nextRaceDate);
         return v;
+    }
+
+    private static final int[] FORM_CHIPS = {
+            R.id.widget_form_1, R.id.widget_form_2, R.id.widget_form_3,
+            R.id.widget_form_4, R.id.widget_form_5 };
+
+    /** Fills the chips from the left; unused ones stay as empty slots so widths don't jump. */
+    private static void bindForm(Context app, RemoteViews v, List<WidgetText.Chip> form) {
+        v.setViewVisibility(R.id.widget_form_row, form.isEmpty() ? View.GONE : View.VISIBLE);
+        for (int i = 0; i < FORM_CHIPS.length; i++) {
+            int id = FORM_CHIPS[i];
+            if (i >= form.size()) {
+                v.setViewVisibility(id, View.INVISIBLE);
+                continue;
+            }
+            WidgetText.Chip chip = form.get(i);
+            v.setViewVisibility(id, View.VISIBLE);
+            v.setTextViewText(id, chip.label);
+            v.setTextColor(id, ContextCompat.getColor(app, chipColour(chip.kind)));
+            if (chip.raceName != null) {
+                v.setContentDescription(id, chip.raceName + ": " + chip.label);
+            }
+        }
+    }
+
+    private static int chipColour(WidgetText.ChipKind kind) {
+        switch (kind) {
+            case PODIUM: return R.color.widget_form_podium;
+            case POINTS: return R.color.widget_form_points;
+            case FINISH: return R.color.widget_form_finish;
+            default:     return R.color.widget_form_retired;
+        }
+    }
+
+    /** Sets the text and hides the view when there is none. */
+    private static void setText(RemoteViews v, int id, String text) {
+        v.setTextViewText(id, text);
+        v.setViewVisibility(id, text.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
     /**
@@ -390,11 +507,14 @@ public final class FavouriteWidgetUpdater {
     @Nullable
     private static Bitmap loadHeadshot(Context app, @Nullable String url) {
         if (url == null || url.isEmpty()) return null;
-        int size = app.getResources().getDimensionPixelSize(R.dimen.headshot_size_md);
+        int width = app.getResources().getDimensionPixelSize(R.dimen.widget_headshot_width);
+        int height = app.getResources().getDimensionPixelSize(R.dimen.widget_headshot_height);
+        int radius = app.getResources().getDimensionPixelSize(R.dimen.widget_headshot_radius);
         try {
+            // Rounded here too: the layout's clipToOutline only applies from Android 12
             return Glide.with(app).asBitmap().load(url)
-                    .apply(RequestOptions.circleCropTransform())
-                    .submit(size, size)
+                    .transform(new CenterCrop(), new RoundedCorners(radius))
+                    .submit(width, height)
                     .get(HEADSHOT_TIMEOUT_S, TimeUnit.SECONDS);
         } catch (Exception e) {
             DebugLog.d(TAG, "headshot failed: " + e);

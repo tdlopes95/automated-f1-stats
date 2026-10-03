@@ -295,16 +295,39 @@
     <string name="settings_debug_no_race">No completed race in the cached schedule</string>
     <string name="settings_debug_no_favourite">Set a favourite driver or team first</string>
     <string name="settings_debug_notifications_off">Notifications are off for F1 Stats</string>
+    <string name="settings_debug_request_stats">Log request stats</string>
+    <string name="settings_debug_request_stats_logged">Request stats logged (tag REQ_STATS)</string>
     <string name="settings_debug_results_queued">Results check queued for the %1$s</string>
 
     <!-- Favourite driver widget -->
     <string name="widget_favourite_label">Favourite driver</string>
-    <string name="widget_favourite_description">Your favourite driver\'s standing, last race and the next session</string>
+    <string name="widget_favourite_description">Your favourite driver\'s standing, form, teammate head-to-head and the next session</string>
     <string name="widget_choose_driver">Choose a favourite driver</string>
-    <string name="widget_position_points">P%1$d · %2$s pts</string>
     <string name="widget_not_in_standings">Not in the standings yet</string>
     <string name="widget_no_data">No data yet</string>
-    <string name="widget_last_race">Last race: %1$s · %2$s</string>
+    <string name="widget_gap_to_leader">−%1$s to leader</string>
+    <string name="widget_wins_podiums">%1$s · %2$s</string>
+    <plurals name="widget_wins">
+        <item quantity="one">%d win</item>
+        <item quantity="other">%d wins</item>
+    </plurals>
+    <plurals name="widget_podiums">
+        <item quantity="one">%d podium</item>
+        <item quantity="other">%d podiums</item>
+    </plurals>
+    <string name="widget_last_result">Last: %1$s</string>
+    <string name="widget_form_dsq">DSQ</string>
+    <!-- teammate code, driver's race H2H wins, teammate's. A plain hyphen, not a dash. -->
+    <string name="widget_h2h">H2H vs %1$s: %2$d - %3$d</string>
     <string name="widget_next_session">Next: %1$s · %2$s</string>
     <string name="widget_no_next_session">No upcoming sessions</string>
+    <!-- Widget picker preview (previewLayout) -->
+    <string name="widget_preview_name">Your driver</string>
+    <string name="widget_preview_team">Team</string>
+    <string name="widget_preview_position">P1</string>
+    <string name="widget_preview_points">250 pts</string>
+    <string name="widget_preview_gap">Leader</string>
+    <string name="widget_preview_wins_podiums">5 wins · 9 podiums</string>
+    <string name="widget_preview_last_result">Last: P1</string>
+    <string name="widget_preview_next_session">Next: Qualifying · Sat 15:00</string>
 </resources>

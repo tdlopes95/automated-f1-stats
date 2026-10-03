@@ -7,6 +7,7 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -59,6 +60,7 @@ public class TrackDetailActivity extends AppCompatActivity {
     private static final String TAG = "TrackDetail";
 
     private WebView webTrackMap;
+    private FrameLayout flWebTrackMap;
     private FrameLayout flHero;
     private ImageView ivHero;
     private ScaleGestureDetector scaleDetector;
@@ -98,6 +100,7 @@ public class TrackDetailActivity extends AppCompatActivity {
         }
 
         webTrackMap = findViewById(R.id.web_track_map);
+        flWebTrackMap = findViewById(R.id.fl_web_track_map);
         flHero = findViewById(R.id.fl_hero);
         ivHero = findViewById(R.id.iv_hero_image);
 
@@ -184,7 +187,7 @@ public class TrackDetailActivity extends AppCompatActivity {
         attribution.setVisibility(hasAttribution ? View.VISIBLE : View.GONE);
 
         findViewById(R.id.layout_track_map).setVisibility(View.VISIBLE);
-        webTrackMap.setVisibility(View.GONE);
+        flWebTrackMap.setVisibility(View.GONE);
         flHero.setVisibility(View.GONE);
     }
 
@@ -233,7 +236,7 @@ public class TrackDetailActivity extends AppCompatActivity {
             Log.w(TAG, "No track metadata for " + circuitId);
         }
 
-        webTrackMap.setVisibility(View.VISIBLE);
+        flWebTrackMap.setVisibility(View.VISIBLE);
         flHero.setVisibility(View.GONE);
 
         WebSettings settings = webTrackMap.getSettings();
@@ -258,14 +261,38 @@ public class TrackDetailActivity extends AppCompatActivity {
         webTrackMap.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
-                view.evaluateJavascript("initTrack('" + finalPathData + "', '" + finalMetadata + "');", null);
+                view.evaluateJavascript("initTrack('" + finalPathData + "', '" + finalMetadata + "');",
+                        ignored -> fitWebTrackMapToPage(view));
             }
         });
         webTrackMap.loadUrl("file:///android_asset/interactive_track.html");
     }
 
+    /**
+     * Sizes the WebView's frame to the page (a width-sized square plus the legend), as
+     * wrap_content would, never below the frame's minimum height. CSS px are dp here.
+     */
+    private void fitWebTrackMapToPage(WebView view) {
+        view.evaluateJavascript("document.documentElement.scrollHeight", value -> {
+            if (isFinishing() || isDestroyed()) return;
+            try {
+                float pageDp = Float.parseFloat(value);
+                int minPx = getResources().getDimensionPixelSize(R.dimen.track_web_map_min_height);
+                int heightPx = Math.max(minPx,
+                        Math.round(pageDp * getResources().getDisplayMetrics().density));
+                ViewGroup.LayoutParams lp = flWebTrackMap.getLayoutParams();
+                if (lp.height != heightPx) {
+                    lp.height = heightPx;
+                    flWebTrackMap.setLayoutParams(lp);
+                }
+            } catch (NumberFormatException e) {
+                Log.w(TAG, "Unreadable track page height: " + value);
+            }
+        });
+    }
+
     private void showFallback() {
-        webTrackMap.setVisibility(View.GONE);
+        flWebTrackMap.setVisibility(View.GONE);
         flHero.setVisibility(View.VISIBLE);
     }
 

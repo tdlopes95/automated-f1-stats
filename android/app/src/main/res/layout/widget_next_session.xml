@@ -8,7 +8,7 @@
     android:padding="0dp">
 
     <!-- F1 red accent line -->
-    <View
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="3dp"
         android:background="@color/f1_red" />

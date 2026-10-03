@@ -112,14 +112,22 @@
                     android:textSize="@dimen/text_metadata" />
             </LinearLayout>
 
-            <!-- Interactive SVG track map (WebView, shown when bundled SVG exists) -->
-            <WebView
-                android:id="@+id/web_track_map"
+            <!-- Interactive SVG track map (WebView, shown when bundled SVG exists). The frame
+                 is resized in code to the page's height; a WebView mustn't wrap_content. -->
+            <FrameLayout
+                android:id="@+id/fl_web_track_map"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="300dp"
+                android:layout_height="@dimen/track_web_map_min_height"
                 android:visibility="gone"
-                android:background="@color/bg_surface" />
+                android:background="@color/bg_surface">
+
+                <WebView
+                    android:id="@+id/web_track_map"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/bg_surface" />
+
+            </FrameLayout>
 
             <!-- Fallback: hero circuit image from OpenF1 (shown when no bundled SVG) -->
             <FrameLayout

@@ -29,6 +29,7 @@ import com.f1stats.F1App;
 import com.f1stats.R;
 import com.f1stats.SettingsManager;
 import com.f1stats.api.F1ApiClient;
+import com.f1stats.api.RequestStats;
 import com.f1stats.home.HomeLayoutStore;
 import com.f1stats.notifications.NotificationSettings;
 import com.f1stats.notifications.Notifications;
@@ -191,6 +192,11 @@ public class SettingsFragment extends Fragment {
             view.findViewById(R.id.group_notification_debug).setVisibility(View.VISIBLE);
             view.findViewById(R.id.btn_debug_test_reminder).setOnClickListener(v -> sendTestReminder());
             view.findViewById(R.id.btn_debug_results_check).setOnClickListener(v -> runResultsCheck());
+            view.findViewById(R.id.btn_debug_request_stats).setOnClickListener(v -> {
+                RequestStats.log("on demand");
+                Toast.makeText(requireContext(), R.string.settings_debug_request_stats_logged,
+                        Toast.LENGTH_SHORT).show();
+            });
         }
     }
 

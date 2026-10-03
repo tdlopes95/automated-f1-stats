@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 2x1 favourite driver widget: name, position and points. -->
+<!-- 2x1 favourite driver widget: team strip, code, position and points. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
-    android:paddingStart="@dimen/spacing_row"
+    android:paddingStart="@dimen/spacing_sm"
     android:paddingEnd="@dimen/spacing_row"
     android:paddingTop="@dimen/spacing_xs"
     android:paddingBottom="@dimen/spacing_xs">
@@ -19,40 +19,60 @@
 
         <ImageView
             android:id="@+id/widget_team_strip"
-            android:layout_width="4dp"
-            android:layout_height="32dp"
+            android:layout_width="@dimen/widget_team_strip_width"
+            android:layout_height="match_parent"
+            android:layout_marginTop="@dimen/spacing_xs"
+            android:layout_marginBottom="@dimen/spacing_xs"
             android:importantForAccessibility="no"
             android:scaleType="fitXY"
             android:src="@drawable/widget_team_strip" />
 
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_marginStart="@dimen/spacing_sm"
             android:layout_weight="1"
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/widget_driver_name"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
+                android:id="@+id/widget_code"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:autoSizeMaxTextSize="@dimen/text_title"
+                android:autoSizeMinTextSize="@dimen/text_small"
+                android:autoSizeTextType="uniform"
+                android:gravity="bottom|start"
                 android:maxLines="1"
-                android:text="@string/widget_favourite_label"
                 android:textColor="@color/text_primary"
-                android:textSize="@dimen/text_body_sm"
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/widget_position_points"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
+                android:id="@+id/widget_points"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:autoSizeMaxTextSize="@dimen/text_body_sm"
+                android:autoSizeMinTextSize="@dimen/text_label"
+                android:autoSizeTextType="uniform"
+                android:gravity="top|start"
                 android:maxLines="1"
-                android:textColor="@color/text_secondary"
-                android:textSize="@dimen/text_metadata" />
+                android:textColor="@color/text_secondary" />
 
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/widget_position"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:autoSizeMaxTextSize="@dimen/text_countdown"
+            android:autoSizeMinTextSize="@dimen/text_body_sm"
+            android:autoSizeTextType="uniform"
+            android:gravity="center_vertical|end"
+            android:maxLines="1"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
 
     </LinearLayout>
 

@@ -87,8 +87,16 @@ public class F1ApiClient {
         Dispatcher dispatcher = new Dispatcher();
         dispatcher.setMaxRequestsPerHost(10);
 
-        OkHttpClient client = new OkHttpClient.Builder()
-                .dispatcher(dispatcher)
+        OkHttpClient.Builder builder = new OkHttpClient.Builder().dispatcher(dispatcher);
+        if (BuildConfig.DEBUG) {
+            // First, so each call counts once however many times RetryInterceptor retries it
+            builder.addInterceptor(chain -> {
+                okhttp3.Request request = chain.request();
+                RequestStats.record(request.url().encodedPath(), request.url().toString());
+                return chain.proceed(request);
+            });
+        }
+        OkHttpClient client = builder
                 .addInterceptor(new RetryInterceptor(3))
                 .addInterceptor(logging)
                 // Generous timeouts: the free Koyeb instance sleeps after 1h idle

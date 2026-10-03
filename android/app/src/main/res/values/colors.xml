@@ -83,6 +83,15 @@
     <color name="team_bmw_sauber">#6CA0DC</color>
     <color name="team_default">#8A8A8A</color>
 
+    <!-- ── Favourite driver widget ────────────────────────── -->
+    <color name="widget_background">@color/bg_elevated</color>
+    <color name="widget_headshot_placeholder">@color/no_session_gray</color>
+    <color name="widget_form_chip_bg">@color/bg_surface</color>
+    <color name="widget_form_podium">@color/status_yellow</color>
+    <color name="widget_form_points">@color/text_primary</color>
+    <color name="widget_form_finish">@color/text_secondary</color>
+    <color name="widget_form_retired">@color/text_tertiary</color>
+
     <!-- ── Home hero ──────────────────────────────────────── -->
     <color name="bg_hero_image">#101010</color>
 </resources>

@@ -308,15 +308,15 @@ public class HomeFragment extends Fragment {
                     viewModel.fetchMeetings(year);
                     break;
                 case LATEST_RESULTS:
-                    viewModel.fetchHomeLatestResults(year);
+                    viewModel.fetchHomeLatestResults(year, userInitiated);
                     needsHeadshots = true;
                     break;
                 case DRIVER_STANDINGS:
-                    viewModel.fetchHomeDriverStandings(year);
+                    viewModel.fetchHomeDriverStandings(year, userInitiated);
                     needsHeadshots = true;
                     break;
                 case CONSTRUCTOR_STANDINGS:
-                    viewModel.fetchHomeConstructorStandings(year);
+                    viewModel.fetchHomeConstructorStandings(year, userInitiated);
                     break;
                 case SEASON_RESULTS:
                     seasonResultsRequested = true;
@@ -514,14 +514,15 @@ public class HomeFragment extends Fragment {
         HomeCardState.Championship champ = state(HomeCardType.CHAMPIONSHIP_BATTLE);
         String leaderName = cache.loadLeaderName();
         if (leaderName != null) {
-            champ.leader = row(leaderName, cache.loadLeaderTeam(), cache.loadLeaderPoints(), null, null);
+            champ.leader = row(leaderName, cache.loadLeaderTeam(), cache.loadLeaderPoints(), null,
+                    cache.loadLeaderCode());
             champ.seasonStarted = cache.loadSeasonStarted();
             champ.gap = cache.loadLeaderGap();
             String insight = cache.loadLeaderInsight();
             champ.insight = insight != null && !insight.isEmpty() ? insight : insightFor(champ.gap);
             String p2Name = cache.loadP2Name();
             if (p2Name != null) {
-                champ.p2 = row(p2Name, cache.loadP2Team(), cache.loadP2Points(), null, null);
+                champ.p2 = row(p2Name, cache.loadP2Team(), cache.loadP2Points(), null, cache.loadP2Code());
             }
             champ.hasData = true;
         }
@@ -529,7 +530,7 @@ public class HomeFragment extends Fragment {
         String lastWinner = cache.loadLastWinner();
         if (lastWinner != null) {
             HomeCardState.LastWinner winner = state(HomeCardType.LAST_WINNER);
-            winner.winner = row(lastWinner, cache.loadLastTeam(), null, null, null);
+            winner.winner = row(lastWinner, cache.loadLastTeam(), null, null, cache.loadLastWinnerCode());
             winner.raceName = cache.loadLastRaceName();
             winner.hasData = true;
         }
@@ -538,8 +539,13 @@ public class HomeFragment extends Fragment {
         if (race != null) {
             HomeCardState.NextRace next = state(HomeCardType.NEXT_RACE);
             next.race = race;
+            next.circuitImageUrl = cache.loadCircuitImage();
             next.hasData = true;
         }
+
+        // Glide serves these from its disk cache, so faces show before any request returns
+        Map<String, String> headshots = cache.loadHeadshots();
+        if (headshots != null) adapter.setHeadshots(headshots);
     }
 
     // ── Observers ─────────────────────────────────────────────────────────────
@@ -652,7 +658,9 @@ public class HomeFragment extends Fragment {
         });
 
         viewModel.getDriverHeadshotMap().observe(getViewLifecycleOwner(), map -> {
-            if (map != null) adapter.setHeadshots(map);
+            if (map == null || map.isEmpty()) return;
+            adapter.setHeadshots(map);
+            cache.saveHeadshots(map);
         });
 
         viewModel.getNextRaceError().observe(getViewLifecycleOwner(), error -> {
@@ -694,6 +702,7 @@ public class HomeFragment extends Fragment {
                 state.gap, state.seasonStarted);
         cache.saveLeaderInsight(state.insight);
         if (state.p2 != null) cache.saveP2(state.p2.name, state.p2.team, state.p2.points);
+        cache.saveCodes(state.leader.code, state.p2 != null ? state.p2.code : null, null);
     }
 
     // ── Actions ───────────────────────────────────────────────────────────────
@@ -835,6 +844,7 @@ public class HomeFragment extends Fragment {
     private void saveLastWinner(HomeCardState.LastWinner state) {
         if (state.winner == null || state.raceName == null) return;
         cache.saveLastWinner(state.winner.name, state.winner.team, state.raceName);
+        cache.saveCodes(null, null, state.winner.code);
     }
 
     private void updateCircuitImage() {
@@ -845,6 +855,7 @@ public class HomeFragment extends Fragment {
         if (img != null && !img.toString().isEmpty()) {
             HomeCardState.NextRace state = state(HomeCardType.NEXT_RACE);
             state.circuitImageUrl = img.toString();
+            cache.saveCircuitImage(state.circuitImageUrl);
         }
     }
 

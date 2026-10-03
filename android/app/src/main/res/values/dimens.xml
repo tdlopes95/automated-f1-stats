@@ -21,6 +21,12 @@
     <dimen name="chart_height_lap_times">240dp</dimen>
     <dimen name="chart_height_bars">180dp</dimen>
     <dimen name="chart_pit_dot">7dp</dimen>
+    <!-- Favourite driver widget: headshot fills the height, so only its width is fixed -->
+    <dimen name="widget_headshot_width">84dp</dimen>
+    <dimen name="widget_headshot_height">112dp</dimen>
+    <dimen name="widget_headshot_radius">12dp</dimen>
+    <dimen name="widget_team_strip_width">4dp</dimen>
+    <dimen name="widget_form_chip_height">24dp</dimen>
 
     <!-- ── Typography Scale ───────────────────────────────── -->
     <!-- Hero: countdowns, championship gaps, race-day numbers -->
@@ -49,5 +55,8 @@
     <dimen name="text_small">11sp</dimen>
     <!-- Label: ALL-CAPS micro-labels, section eyebrows -->
     <dimen name="text_label">10sp</dimen>
+
+    <!-- Interactive (WebView) track map: minimum height until the page reports its own -->
+    <dimen name="track_web_map_min_height">300dp</dimen>
 
 </resources>

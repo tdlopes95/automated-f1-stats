@@ -6,25 +6,35 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
 public class WidgetTextTest {
 
     // Same templates as strings.xml
-    private static final WidgetText.Templates T = new WidgetText.Templates(
-            "Choose a favourite driver",
-            "P%1$d · %2$s pts",
-            "Not in the standings yet",
-            "No data yet",
-            "Leader",
-            "−%1$s to P%2$d",
-            "Last race: %1$s · %2$s",
-            "No races yet",
-            "P%1$d",
-            "DNF", "DNS",
-            "Next: %1$s · %2$s",
-            "No upcoming sessions");
+    private static final WidgetText.Templates T = new WidgetText.Templates();
+    static {
+        T.chooseDriver = "Choose a favourite driver";
+        T.notInStandings = "Not in the standings yet";
+        T.noData = "No data yet";
+        T.points = "%1$s pts";
+        T.leader = "Leader";
+        T.gapToAhead = "−%1$s to P%2$d";
+        T.gapToLeader = "−%1$s to leader";
+        T.winsPodiums = "%1$s · %2$s";
+        T.wins = n -> n + (n == 1 ? " win" : " wins");
+        T.podiums = n -> n + (n == 1 ? " podium" : " podiums");
+        T.lastResult = "Last: %1$s";
+        T.noRaces = "No races yet";
+        T.position = "P%1$d";
+        T.dnf = "DNF";
+        T.dns = "DNS";
+        T.dsq = "DSQ";
+        T.nextSession = "Next: %1$s · %2$s";
+        T.noNextSession = "No upcoming sessions";
+        T.h2h = "H2H vs %1$s: %2$d - %3$d";
+    }
 
     private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
     // Friday 2 October 2026, 12:00 UTC
@@ -35,13 +45,13 @@ public class WidgetTextTest {
         WidgetSnapshot s = new WidgetSnapshot();
         s.driverId = "norris";
         s.name = "Lando Norris";
+        s.code = "NOR";
+        s.teamName = "McLaren";
         s.inStandings = true;
         s.position = position;
         s.points = points;
         s.gapToAhead = gap;
-        s.lastRaceName = "Singapore Grand Prix";
-        s.lastRacePosition = 2;
-        s.lastRaceStatus = "Finished";
+        s.lastResults.add(new WidgetSnapshot.Result("Singapore Grand Prix", 2, "Finished"));
         return s;
     }
 
@@ -54,16 +64,83 @@ public class WidgetTextTest {
         WidgetText.Lines lines = build(snapshot(1, 341, 0), "norris");
         assertFalse(lines.chooseDriver);
         assertEquals("Lando Norris", lines.name);
-        assertEquals("P1 · 341 pts", lines.positionPoints);
+        assertEquals("NOR", lines.code);
+        assertEquals("McLaren", lines.team);
+        assertEquals("P1", lines.position);
+        assertEquals("341 pts", lines.points);
         assertEquals("Leader", lines.gap);
-        assertEquals("Last race: P2 · Singapore Grand Prix", lines.lastRace);
+        assertEquals("", lines.gapToLeader);
+        assertEquals("Last: P2", lines.lastResult);
     }
 
     @Test
     public void gapIsToTheDriverOnePlaceAhead() {
-        WidgetText.Lines lines = build(snapshot(3, 287.5, 12), "norris");
-        assertEquals("P3 · 287.5 pts", lines.positionPoints);
+        WidgetSnapshot s = snapshot(3, 287.5, 12);
+        s.gapToLeader = 53.5;
+        WidgetText.Lines lines = build(s, "norris");
+        assertEquals("P3", lines.position);
+        assertEquals("287.5 pts", lines.points);
         assertEquals("−12 to P2", lines.gap);
+        assertEquals("−53.5 to leader", lines.gapToLeader);
+    }
+
+    @Test
+    public void secondPlaceShowsOnlyTheGapAhead() {
+        WidgetSnapshot s = snapshot(2, 300, 41);
+        s.gapToLeader = 41;
+        WidgetText.Lines lines = build(s, "norris");
+        assertEquals("−41 to P1", lines.gap);
+        assertEquals("", lines.gapToLeader);
+    }
+
+    @Test
+    public void winsAndPodiumsArePluralised() {
+        WidgetSnapshot s = snapshot(1, 341, 0);
+        s.wins = 1;
+        s.podiums = 7;
+        assertEquals("1 win · 7 podiums", build(s, "norris").winsPodiums);
+        s.wins = 0;
+        s.podiums = 1;
+        assertEquals("0 wins · 1 podium", build(s, "norris").winsPodiums);
+    }
+
+    @Test
+    public void headToHeadAgainstTheTeammate() {
+        WidgetSnapshot s = snapshot(2, 300, 10);
+        s.teammateCode = "PIA";
+        s.h2hWins = 11;
+        s.h2hLosses = 6;
+        assertEquals("H2H vs PIA: 11 - 6", build(s, "norris").h2h);
+
+        s.teammateCode = null;
+        assertEquals("", build(s, "norris").h2h);
+    }
+
+    @Test
+    public void formChipsKeepTheLastFiveAndClassifyThem() {
+        WidgetSnapshot s = snapshot(4, 200, 5);
+        s.lastResults.clear();
+        s.lastResults.add(new WidgetSnapshot.Result("Bahrain Grand Prix", 1, "Finished"));
+        s.lastResults.add(new WidgetSnapshot.Result("Saudi Arabian Grand Prix", 3, "Finished"));
+        s.lastResults.add(new WidgetSnapshot.Result("Australian Grand Prix", 7, "Finished"));
+        s.lastResults.add(new WidgetSnapshot.Result("Japanese Grand Prix", 14, "+1 Lap"));
+        s.lastResults.add(new WidgetSnapshot.Result("Chinese Grand Prix", 18, "Engine"));
+        s.lastResults.add(new WidgetSnapshot.Result("Miami Grand Prix", 0, "Disqualified"));
+
+        List<WidgetText.Chip> form = build(s, "norris").form;
+        assertEquals(5, form.size());   // the oldest drops off
+        assertEquals("P3", form.get(0).label);
+        assertEquals(WidgetText.ChipKind.PODIUM, form.get(0).kind);
+        assertEquals("P7", form.get(1).label);
+        assertEquals(WidgetText.ChipKind.POINTS, form.get(1).kind);
+        assertEquals("P14", form.get(2).label);
+        assertEquals(WidgetText.ChipKind.FINISH, form.get(2).kind);
+        assertEquals("DNF", form.get(3).label);
+        assertEquals(WidgetText.ChipKind.RETIRED, form.get(3).kind);
+        assertEquals("Chinese Grand Prix", form.get(3).raceName);
+        assertEquals("DSQ", form.get(4).label);
+        assertEquals(WidgetText.ChipKind.RETIRED, form.get(4).kind);
+        assertEquals("Last: DSQ", build(s, "norris").lastResult);
     }
 
     @Test
@@ -72,8 +149,9 @@ public class WidgetTextTest {
         assertTrue(lines.chooseDriver);
         assertEquals("Choose a favourite driver", lines.prompt);
         assertEquals("", lines.name);
-        assertEquals("", lines.positionPoints);
+        assertEquals("", lines.points);
         assertEquals("", lines.nextSession);
+        assertTrue(lines.form.isEmpty());
 
         assertTrue(build(null, "").chooseDriver);
     }
@@ -82,30 +160,38 @@ public class WidgetTextTest {
     public void snapshotForAnotherDriverIsNotShown() {
         WidgetText.Lines lines = build(snapshot(1, 341, 0), "piastri");
         assertEquals("Lando Norris", lines.name);   // the cached favourite name
-        assertEquals("No data yet", lines.positionPoints);
+        assertEquals("Lando Norris", lines.code);
+        assertEquals("", lines.position);
+        assertEquals("No data yet", lines.points);
         assertEquals("", lines.gap);
-        assertEquals("", lines.lastRace);
+        assertEquals("", lines.lastResult);
+        assertEquals("", lines.h2h);
+        assertTrue(lines.form.isEmpty());
     }
 
     @Test
     public void notInStandings() {
         WidgetSnapshot s = snapshot(0, 0, 0);
         s.inStandings = false;
-        s.lastRaceName = null;
+        s.lastResults.clear();
         WidgetText.Lines lines = build(s, "norris");
-        assertEquals("Not in the standings yet", lines.positionPoints);
+        assertEquals("", lines.position);
+        assertEquals("Not in the standings yet", lines.points);
         assertEquals("", lines.gap);
-        assertEquals("No races yet", lines.lastRace);
+        assertEquals("No races yet", lines.lastResult);
+        assertTrue(lines.form.isEmpty());
     }
 
     @Test
     public void lastRaceNonFinishes() {
         WidgetSnapshot s = snapshot(4, 200, 5);
-        s.lastRacePosition = 18;
-        s.lastRaceStatus = "Engine";
-        assertEquals("Last race: DNF · Singapore Grand Prix", build(s, "norris").lastRace);
-        s.lastRaceStatus = "Did not start";
-        assertEquals("Last race: DNS · Singapore Grand Prix", build(s, "norris").lastRace);
+        s.lastResults.clear();
+        s.lastResults.add(new WidgetSnapshot.Result("Singapore Grand Prix", 18, "Engine"));
+        assertEquals("Last: DNF", build(s, "norris").lastResult);
+        s.lastResults.set(0, new WidgetSnapshot.Result("Singapore Grand Prix", 20, "Did not start"));
+        WidgetText.Lines lines = build(s, "norris");
+        assertEquals("Last: DNS", lines.lastResult);
+        assertEquals(WidgetText.ChipKind.RETIRED, lines.form.get(0).kind);
     }
 
     @Test
@@ -120,7 +206,25 @@ public class WidgetTextTest {
         assertEquals("Next: Race · Mon 12 Oct 12:00", build(s, "norris").nextSession);
 
         s.upcoming.remove(1);
-        assertEquals("No upcoming sessions", build(s, "norris").nextSession);
+        WidgetText.Lines none = build(s, "norris");
+        assertEquals("No upcoming sessions", none.nextSession);
+        assertEquals("", none.nextRaceName);
+    }
+
+    @Test
+    public void nextRaceShowsTheWeekendsFirstSession() {
+        WidgetSnapshot s = snapshot(1, 341, 0);
+        // Practice 1 was an hour ago; the race name and weekend start still come from it
+        s.upcoming.add(new WidgetSnapshot.Session("Qualifying", "Japanese Grand Prix",
+                NOW + 26 * HOUR, NOW - HOUR));
+        WidgetText.Lines lines = build(s, "norris");
+        assertEquals("Japanese Grand Prix", lines.nextRaceName);
+        assertEquals("Fri 2 Oct 11:00", lines.nextRaceDate);
+
+        // Snapshots from before the weekend start was kept fall back to the session itself
+        s.upcoming.set(0, new WidgetSnapshot.Session("Race", "Qatar Grand Prix", NOW + 24 * HOUR));
+        s.upcoming.get(0).weekendStartMillis = 0;
+        assertEquals("Sat 3 Oct 12:00", build(s, "norris").nextRaceDate);
     }
 
     @Test

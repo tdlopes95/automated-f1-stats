@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The driver block shared by the medium and large favourite driver widgets: team strip,
+     full-height headshot, then name, team, position and points, gap and wins, last result
+     and next session. The sample texts are the widget picker preview; binding replaces all. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:id="@+id/widget_team_strip"
+        android:layout_width="@dimen/widget_team_strip_width"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_team_strip" />
+
+    <FrameLayout
+        android:layout_width="@dimen/widget_headshot_width"
+        android:layout_height="match_parent"
+        android:layout_marginStart="@dimen/spacing_sm">
+
+        <ImageView
+            android:id="@+id/widget_headshot"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_widget_headshot"
+            android:clipToOutline="true"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            tools:targetApi="31" />
+
+        <!-- Shown on the placeholder when there is no headshot (before 2023) -->
+        <TextView
+            android:id="@+id/widget_headshot_code"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:maxLines="1"
+            android:textColor="@color/text_tertiary"
+            android:textSize="@dimen/text_title"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="@dimen/spacing_row"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_driver_name"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:autoSizeMaxTextSize="@dimen/text_display"
+            android:autoSizeMinTextSize="@dimen/text_metadata"
+            android:autoSizeTextType="uniform"
+            android:gravity="bottom|start"
+            android:maxLines="1"
+            android:text="@string/widget_preview_name"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_team"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_preview_team"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_small" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="2"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/widget_position"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:autoSizeMaxTextSize="@dimen/text_hero"
+                android:autoSizeMinTextSize="@dimen/text_card_header"
+                android:autoSizeTextType="uniform"
+                android:gravity="center_vertical|start"
+                android:maxLines="1"
+                android:text="@string/widget_preview_position"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_points"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="@dimen/spacing_xs"
+                android:layout_weight="1.3"
+                android:autoSizeMaxTextSize="@dimen/text_title"
+                android:autoSizeMinTextSize="@dimen/text_small"
+                android:autoSizeTextType="uniform"
+                android:gravity="center_vertical|start"
+                android:maxLines="1"
+                android:text="@string/widget_preview_points"
+                android:textColor="@color/text_primary" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/widget_gap"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="@string/widget_preview_gap"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_small"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_wins_podiums"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_sm"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/widget_preview_wins_podiums"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_small" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/widget_last_result"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="@string/widget_preview_last_result"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_small" />
+
+            <TextView
+                android:id="@+id/widget_next_session"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_sm"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/widget_preview_next_session"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_small" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

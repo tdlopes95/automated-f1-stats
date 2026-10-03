@@ -5,8 +5,9 @@ import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 
 /**
- * Home-screen widget for the favourite driver: standing, gap ahead, last race and the next
- * session. Renders from {@link WidgetSnapshot}; see {@link FavouriteWidgetUpdater}.
+ * Home-screen widget for the favourite driver, in three sizes (2x1, 4x2, 4x3+): standing,
+ * gap, wins and podiums, form, teammate H2H and the next session. Renders from
+ * {@link WidgetSnapshot}; see {@link FavouriteWidgetUpdater}.
  */
 public class FavouriteDriverWidget extends AppWidgetProvider {
 

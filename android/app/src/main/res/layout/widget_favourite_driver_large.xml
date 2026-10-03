@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 4x3 and bigger favourite driver widget: the medium driver block, then the last five
+     results, the teammate head-to-head and the next race weekend. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:padding="@dimen/spacing_row">
+
+    <LinearLayout
+        android:id="@+id/widget_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <include
+            layout="@layout/widget_favourite_driver_main"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:id="@+id/widget_form_row"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/widget_form_chip_height"
+            android:layout_marginTop="@dimen/spacing_row"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/widget_form_1"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="@dimen/spacing_xs"
+                android:layout_weight="1"
+                android:background="@drawable/bg_widget_form_chip"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="@dimen/text_metadata"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_form_2"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="@dimen/spacing_xs"
+                android:layout_weight="1"
+                android:background="@drawable/bg_widget_form_chip"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="@dimen/text_metadata"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_form_3"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="@dimen/spacing_xs"
+                android:layout_weight="1"
+                android:background="@drawable/bg_widget_form_chip"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="@dimen/text_metadata"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_form_4"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="@dimen/spacing_xs"
+                android:layout_weight="1"
+                android:background="@drawable/bg_widget_form_chip"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="@dimen/text_metadata"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_form_5"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/bg_widget_form_chip"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="@dimen/text_metadata"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/widget_h2h"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_metadata" />
+
+            <TextView
+                android:id="@+id/widget_gap_to_leader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_sm"
+                android:maxLines="1"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_metadata" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/widget_next_race_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_xs"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/widget_next_race_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_metadata"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_next_race_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_sm"
+                android:maxLines="1"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_metadata" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_prompt"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="@string/widget_choose_driver"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_body_sm"
+        android:visibility="gone" />
+
+</FrameLayout>

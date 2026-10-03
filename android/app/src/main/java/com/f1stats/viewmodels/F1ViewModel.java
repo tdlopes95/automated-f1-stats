@@ -5,10 +5,12 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.f1stats.F1App;
+import com.f1stats.SeasonHelper;
 import com.f1stats.api.F1ApiClient;
 import com.f1stats.api.F1ApiService;
 import com.f1stats.data.F1Repository;
 import com.f1stats.util.HeadToHead;
+import com.f1stats.util.ImagePreloader;
 import com.f1stats.db.CachedDriver;
 import com.f1stats.models.ConstructorStanding;
 import com.f1stats.models.DriverStanding;
@@ -148,8 +150,31 @@ public class F1ViewModel extends ViewModel {
 
     // ── Live Session (no caching — always live) ───────────────────────────────
 
+    /**
+     * Asks /live only while a stored session is near (started under 4h ago or starts within
+     * 30 min); otherwise publishes null, which hides the Weekend badge without a request.
+     */
     public void fetchLiveSession() {
         liveLoading.setValue(true);
+        repo.isLiveWindowOpen(new F1Repository.RepositoryCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean open) {
+                if (Boolean.TRUE.equals(open)) {
+                    requestLiveSession();
+                } else {
+                    liveLoading.setValue(false);
+                    liveSession.setValue(null);
+                }
+            }
+            @Override
+            public void onError(String error) {
+                liveLoading.setValue(false);
+                liveSession.setValue(null);
+            }
+        });
+    }
+
+    private void requestLiveSession() {
         api().getLiveSession().enqueue(new Callback<LiveSession>() {
             @Override
             public void onResponse(Call<LiveSession> call, Response<LiveSession> response) {
@@ -171,25 +196,23 @@ public class F1ViewModel extends ViewModel {
 
     // ── Results ───────────────────────────────────────────────────────────────
 
-    /** Home's last winner: the latest race of the season, into Home's own LiveData. */
-    public void fetchHomeLatestResults(int year) {
+    /**
+     * Home's last winner: the latest race of the season, into Home's own LiveData. The stored
+     * copy arrives at once, then the refreshed one if it changed; {@code forceRefresh}
+     * (pull-to-refresh) waits for the network instead.
+     */
+    public void fetchHomeLatestResults(int year, boolean forceRefresh) {
         latestResultsError.setValue(null);
-        api().getLatestResults("Race", year).enqueue(new Callback<Map<String, Object>>() {
+        repo.getLatestResults(year, forceRefresh, new F1Repository.UpdatingCallback<Map<String, Object>>() {
             @Override
-            public void onResponse(Call<Map<String, Object>> call,
-                                   Response<Map<String, Object>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    Map<String, Object> body = response.body();
-                    Object rn = body.get("race_name");
-                    if (rn != null) homeLastRaceName.setValue(rn.toString());
-                    homeLatestResults.setValue(parseRaceResults(body));
-                } else {
-                    latestResultsError.setValue(httpError(response.code()));
-                }
+            public void onSuccess(Map<String, Object> body) {
+                Object rn = body.get("race_name");
+                if (rn != null) homeLastRaceName.setValue(rn.toString());
+                homeLatestResults.setValue(parseRaceResults(body));
             }
             @Override
-            public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                latestResultsError.setValue(networkError(t));
+            public void onError(String error) {
+                latestResultsError.setValue(error);
             }
         });
     }
@@ -243,7 +266,7 @@ public class F1ViewModel extends ViewModel {
     public void fetchDriverStandings(int year) {
         standingsLoading.setValue(true);
         driverStandings.setValue(null);
-        repo.getDriverStandings(year, new F1Repository.RepositoryCallback<Map<String, Object>>() {
+        repo.getDriverStandings(year, new F1Repository.UpdatingCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> data) {
                 standingsLoading.setValue(false);
@@ -264,7 +287,7 @@ public class F1ViewModel extends ViewModel {
     public void fetchConstructorStandings(int year) {
         standingsLoading.setValue(true);
         constructorStandings.setValue(null);
-        repo.getConstructorStandings(year, new F1Repository.RepositoryCallback<Map<String, Object>>() {
+        repo.getConstructorStandings(year, new F1Repository.UpdatingCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> data) {
                 standingsLoading.setValue(false);
@@ -280,9 +303,13 @@ public class F1ViewModel extends ViewModel {
 
     // ── Home standings and season results ─────────────────────────────────────
 
-    public void fetchHomeDriverStandings(int year) {
+    /**
+     * Stored standings arrive at once, then the refreshed ones if they changed.
+     * {@code forceRefresh} (pull-to-refresh) waits for the network instead.
+     */
+    public void fetchHomeDriverStandings(int year, boolean forceRefresh) {
         homeStandingsError.setValue(null);
-        repo.getDriverStandings(year, new F1Repository.RepositoryCallback<Map<String, Object>>() {
+        repo.getDriverStandings(year, forceRefresh, new F1Repository.UpdatingCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> data) {
                 Object started = data.get("season_started");
@@ -298,9 +325,9 @@ public class F1ViewModel extends ViewModel {
         });
     }
 
-    public void fetchHomeConstructorStandings(int year) {
+    public void fetchHomeConstructorStandings(int year, boolean forceRefresh) {
         homeConstructorStandingsError.setValue(null);
-        repo.getConstructorStandings(year, new F1Repository.RepositoryCallback<Map<String, Object>>() {
+        repo.getConstructorStandings(year, forceRefresh, new F1Repository.UpdatingCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> data) {
                 homeConstructorStandings.setValue(parseConstructorStandings(data));
@@ -420,21 +447,17 @@ public class F1ViewModel extends ViewModel {
         });
     }
 
+    /** The next race from the stored schedule (null in the offseason); see F1Repository. */
     public void fetchNextRace() {
         nextRaceError.setValue(null);
-        api().getNextRace().enqueue(new Callback<Map<String, Object>>() {
+        repo.getNextRace(new F1Repository.RepositoryCallback<Map<String, Object>>() {
             @Override
-            public void onResponse(Call<Map<String, Object>> call,
-                                   Response<Map<String, Object>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    nextRace.setValue(response.body());
-                } else {
-                    nextRaceError.setValue(httpError(response.code()));
-                }
+            public void onSuccess(Map<String, Object> race) {
+                nextRace.setValue(race);
             }
             @Override
-            public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                nextRaceError.setValue(networkError(t));
+            public void onError(String error) {
+                nextRaceError.setValue(error);
             }
         });
     }
@@ -467,7 +490,7 @@ public class F1ViewModel extends ViewModel {
 
     public void fetchWeekendForecast(int year, int round, boolean forceRefresh) {
         weekendForecastError.setValue(null);
-        repo.getWeatherForecast(year, round, forceRefresh, new F1Repository.RepositoryCallback<WeatherForecast>() {
+        repo.getWeatherForecast(year, round, forceRefresh, new F1Repository.UpdatingCallback<WeatherForecast>() {
             @Override
             public void onSuccess(WeatherForecast data) {
                 weekendForecast.setValue(data);
@@ -481,7 +504,7 @@ public class F1ViewModel extends ViewModel {
 
     public void fetchNews(int limit, boolean forceRefresh) {
         newsError.setValue(null);
-        repo.getNews(limit, forceRefresh, new F1Repository.RepositoryCallback<NewsResponse>() {
+        repo.getNews(limit, forceRefresh, new F1Repository.UpdatingCallback<NewsResponse>() {
             @Override
             public void onSuccess(NewsResponse data) {
                 news.setValue(data);
@@ -496,7 +519,7 @@ public class F1ViewModel extends ViewModel {
     /** @param dateIso the local date, YYYY-MM-DD */
     public void fetchOnThisDay(String dateIso) {
         onThisDayError.setValue(null);
-        repo.getOnThisDay(dateIso, new F1Repository.RepositoryCallback<OnThisDayResponse>() {
+        repo.getOnThisDay(dateIso, new F1Repository.UpdatingCallback<OnThisDayResponse>() {
             @Override
             public void onSuccess(OnThisDayResponse data) {
                 onThisDay.setValue(data);
@@ -516,6 +539,14 @@ public class F1ViewModel extends ViewModel {
             @Override
             public void onSuccess(List<Map<String, Object>> data) {
                 meetings.setValue(data);
+                if (year == SeasonHelper.getCurrentYear()) {
+                    List<String> urls = new ArrayList<>();
+                    for (Map<String, Object> m : data) {
+                        Object img = m.get("circuit_image");
+                        if (img != null) urls.add(img.toString());
+                    }
+                    ImagePreloader.preload(F1App.get(), urls);
+                }
             }
             @Override
             public void onError(String error) {}
@@ -525,7 +556,7 @@ public class F1ViewModel extends ViewModel {
     // ── Driver Headshots ──────────────────────────────────────────────────────
 
     public void prefetchDrivers(int year) {
-        repo.fetchDrivers(year, new F1Repository.RepositoryCallback<List<CachedDriver>>() {
+        repo.fetchDrivers(year, new F1Repository.UpdatingCallback<List<CachedDriver>>() {
             @Override
             public void onSuccess(List<CachedDriver> drivers) {
                 Map<String, String> map = new java.util.HashMap<>();
@@ -534,7 +565,9 @@ public class F1ViewModel extends ViewModel {
                         map.put(d.code, d.headshotUrl);
                     }
                 }
-                driverHeadshotMap.setValue(map);
+                // A refresh that changed no headshot needn't rebind Home's cards
+                if (!map.equals(driverHeadshotMap.getValue())) driverHeadshotMap.setValue(map);
+                if (year == SeasonHelper.getCurrentYear()) ImagePreloader.preload(F1App.get(), map.values());
             }
             @Override
             public void onError(String error) {}

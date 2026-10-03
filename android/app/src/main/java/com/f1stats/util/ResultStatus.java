@@ -27,6 +27,11 @@ public final class ResultStatus {
                 || s.equalsIgnoreCase("Excluded");
     }
 
+    /** Disqualified after the race. Also a DNF by {@link #isDnf}, so check this first. */
+    public static boolean isDisqualified(@Nullable String status) {
+        return status != null && status.trim().equalsIgnoreCase("Disqualified");
+    }
+
     /** Started but not classified as a finisher. A missing status is never a DNF. */
     public static boolean isDnf(@Nullable String status) {
         if (status == null || status.trim().isEmpty()) return false;

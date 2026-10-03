@@ -14,6 +14,7 @@ import com.f1stats.api.F1ApiClient;
 import com.f1stats.api.F1ApiService;
 import com.f1stats.db.AppDatabase;
 import com.f1stats.db.CachedCircuitStats;
+import com.f1stats.db.CachedJson;
 import com.f1stats.db.CachedTrackMap;
 import com.f1stats.db.CachedDriver;
 import com.f1stats.db.CachedMeeting;
@@ -45,6 +46,9 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.LongSupplier;
+import java.util.function.LongUnaryOperator;
 import java.util.function.Supplier;
 
 import retrofit2.Call;
@@ -58,12 +62,19 @@ public class F1Repository {
         void onError(String error);
     }
 
+    /**
+     * A callback that may get {@code onSuccess} twice: the stored value at once, then the
+     * refreshed one if it changed (stale-while-revalidate). Plain callbacks get one delivery.
+     */
+    public interface UpdatingCallback<T> extends RepositoryCallback<T> {}
+
     public interface SeasonStatsCallback {
         void onSuccess(Map<String, Integer> dnfs, Map<String, Integer> podiums);
     }
 
     private static final long ONE_HOUR_MS  = 60 * 60 * 1000L;
     private static final long ONE_DAY_MS   = 24 * ONE_HOUR_MS;
+    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>(){}.getType();
 
     private static final long THREE_HOURS_MS = 3 * ONE_HOUR_MS;
     // Results can still change (post-race penalties) for this long after a session ends
@@ -78,6 +89,10 @@ public class F1Repository {
     private final Gson gson = new Gson();
     // In-flight getResults requests keyed by year/round/sessionType; guarded by itself
     private final Map<String, List<RepositoryCallback<Map<String, Object>>>> inFlightResults = new HashMap<>();
+    // In-flight getSchedule requests keyed by year; guarded by itself
+    private final Map<Integer, List<RepositoryCallback<List<Map<String, Object>>>>> inFlightSchedules = new HashMap<>();
+    // In-flight stale-while-revalidate refreshes keyed by store key; guarded by itself
+    private final Map<String, List<Waiter<?>>> inFlightRefreshes = new HashMap<>();
 
     public static synchronized F1Repository getInstance(Context ctx) {
         if (instance == null) {
@@ -117,6 +132,18 @@ public class F1Repository {
                 return;
             }
 
+            // Home's season results and the widget often ask at once (both on a cold start)
+            synchronized (inFlightSchedules) {
+                List<RepositoryCallback<List<Map<String, Object>>>> waiting = inFlightSchedules.get(year);
+                if (waiting != null) {
+                    waiting.add(callback);
+                    return;
+                }
+                List<RepositoryCallback<List<Map<String, Object>>>> first = new ArrayList<>();
+                first.add(callback);
+                inFlightSchedules.put(year, first);
+            }
+
             mainHandler.post(() ->
                 api().getScheduleByYear(year).enqueue(new Callback<List<Map<String, Object>>>() {
                     @Override
@@ -131,26 +158,54 @@ public class F1Repository {
                             List<String> snapshots = new ArrayList<>(races.size());
                             for (Map<String, Object> race : races) snapshots.add(gson.toJson(race));
                             executor.execute(() -> saveSchedule(year, snapshots, fetchedAt));
-                            callback.onSuccess(races);
+                            deliverSchedule(year, races, snapshots, null);
+                        } else if (!cached.isEmpty()) {
+                            deliverSchedule(year, schedulesToMaps(cached), null, null);
                         } else {
-                            if (!cached.isEmpty()) {
-                                callback.onSuccess(schedulesToMaps(cached));
-                            } else {
-                                callback.onError("Could not load schedule");
-                            }
+                            deliverSchedule(year, null, null, "Could not load schedule");
                         }
                     }
                     @Override
                     public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {
                         if (!cached.isEmpty()) {
-                            callback.onSuccess(schedulesToMaps(cached));
+                            deliverSchedule(year, schedulesToMaps(cached), null, null);
                         } else {
-                            callback.onError("Connection error: " + t.getMessage());
+                            deliverSchedule(year, null, null, "Connection error: " + t.getMessage());
                         }
                     }
                 })
             );
         });
+    }
+
+    /**
+     * Main thread only. The first waiter gets {@code races}; any others get their own copy
+     * (from {@code snapshots} when given), so no two callers share mutable maps.
+     */
+    private void deliverSchedule(int year, @Nullable List<Map<String, Object>> races,
+                                 @Nullable List<String> snapshots, @Nullable String error) {
+        List<RepositoryCallback<List<Map<String, Object>>>> waiting;
+        synchronized (inFlightSchedules) {
+            waiting = inFlightSchedules.remove(year);
+        }
+        if (waiting == null) return;
+        for (int i = 0; i < waiting.size(); i++) {
+            RepositoryCallback<List<Map<String, Object>>> cb = waiting.get(i);
+            if (races == null) {
+                cb.onError(error != null ? error : "Could not load schedule");
+            } else if (i == 0) {
+                cb.onSuccess(races);
+            } else {
+                List<String> json = snapshots;
+                if (json == null) {
+                    json = new ArrayList<>(races.size());
+                    for (Map<String, Object> race : races) json.add(gson.toJson(race));
+                }
+                List<Map<String, Object>> copy = new ArrayList<>(json.size());
+                for (String race : json) copy.add(gson.fromJson(race, MAP_TYPE));
+                cb.onSuccess(copy);
+            }
+        }
     }
 
     private void saveSchedule(int year, List<String> snapshots, long fetchedAt) {
@@ -183,7 +238,71 @@ public class F1Repository {
         return out;
     }
 
+    /**
+     * The next race, computed from the stored current-season schedule (first race whose Race
+     * session hasn't finished; null in the offseason). Asks /schedule/next only when no
+     * schedule is stored for the current season.
+     */
+    public void getNextRace(RepositoryCallback<Map<String, Object>> callback) {
+        executor.execute(() -> {
+            List<CachedSchedule> rows = db.scheduleDao().getByYear(currentYear());
+            if (!rows.isEmpty()) {
+                Map<String, Object> next = ScheduleClock.nextRace(schedulesToMaps(rows),
+                        System.currentTimeMillis());
+                mainHandler.post(() -> callback.onSuccess(next));
+                return;
+            }
+            mainHandler.post(() -> api().getNextRace().enqueue(new Callback<Map<String, Object>>() {
+                @Override
+                public void onResponse(Call<Map<String, Object>> call,
+                                       Response<Map<String, Object>> response) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        callback.onSuccess(response.body());
+                    } else {
+                        callback.onError("Could not load next race (HTTP " + response.code() + ")");
+                    }
+                }
+                @Override
+                public void onFailure(Call<Map<String, Object>> call, Throwable t) {
+                    callback.onError("Connection error: " + t.getMessage());
+                }
+            }));
+        });
+    }
+
+    /**
+     * Whether a session in the stored current-season schedule started less than 4 hours ago
+     * or starts within 30 minutes, i.e. whether /live is worth asking. False with no schedule.
+     */
+    public void isLiveWindowOpen(RepositoryCallback<Boolean> callback) {
+        executor.execute(() -> {
+            List<CachedSchedule> rows = db.scheduleDao().getByYear(currentYear());
+            boolean open = !rows.isEmpty() && ScheduleClock.liveWindowOpen(schedulesToMaps(rows),
+                    System.currentTimeMillis());
+            mainHandler.post(() -> callback.onSuccess(open));
+        });
+    }
+
     // ── Results ───────────────────────────────────────────────────────────────
+
+    private static final long LATEST_RESULTS_TTL_MS = 15 * 60 * 1000L;
+
+    /**
+     * Latest race results of a season (/results/latest), stale-while-revalidate: refreshed
+     * after 15 minutes, or once the latest race has settled (start + 3h) if the stored copy
+     * predates that. A past season's copy is permanent.
+     */
+    public void getLatestResults(int year, boolean forceRefresh,
+                                 RepositoryCallback<Map<String, Object>> callback) {
+        String key = "results-latest/Race/" + year;
+        revalidate(key, jsonStore(key, MAP_TYPE), fetchedAt -> {
+                    if (year < currentYear()) return StaleWhileRevalidate.FOREVER;
+                    long settledAt = ScheduleClock.latestRaceSettledAt(
+                            schedulesToMaps(db.scheduleDao().getByYear(year)), System.currentTimeMillis());
+                    return ScheduleClock.ttlUntil(fetchedAt, LATEST_RESULTS_TTL_MS, settledAt);
+                }, forceRefresh,
+                () -> api().getLatestResults("Race", year), body -> body, "results", callback);
+    }
 
     public void getResults(int year, int round, String sessionType,
                            RepositoryCallback<Map<String, Object>> callback) {
@@ -390,7 +509,7 @@ public class F1Repository {
     /** {@code forceRefresh} skips the Room row's freshness check (e.g. right after a race). */
     public void getDriverStandings(int year, boolean forceRefresh,
                                    RepositoryCallback<Map<String, Object>> callback) {
-        getStandings(year, "driver", api().getDriverStandings(year), forceRefresh, callback);
+        getStandings(year, "driver", () -> api().getDriverStandings(year), forceRefresh, callback);
     }
 
     public void getConstructorStandings(int year, RepositoryCallback<Map<String, Object>> callback) {
@@ -399,57 +518,48 @@ public class F1Repository {
 
     public void getConstructorStandings(int year, boolean forceRefresh,
                                         RepositoryCallback<Map<String, Object>> callback) {
-        getStandings(year, "constructor", api().getConstructorStandings(year), forceRefresh, callback);
+        getStandings(year, "constructor", () -> api().getConstructorStandings(year), forceRefresh, callback);
     }
 
-    private void getStandings(int year, String type, Call<Map<String, Object>> apiCall,
+    /**
+     * Stale-while-revalidate over the cached_standings row: a past season's row is permanent,
+     * the current season's is refetched after 1h (or when {@code forceRefresh}).
+     */
+    private void getStandings(int year, String type, Supplier<Call<Map<String, Object>>> request,
                                boolean forceRefresh, RepositoryCallback<Map<String, Object>> callback) {
-        executor.execute(() -> {
-            CachedStandings cached = db.standingsDao().get(year, type);
-            long now = System.currentTimeMillis();
-            boolean isPast  = year < currentYear();
-            boolean isFresh = !forceRefresh && cached != null &&
-                    (isPast || (now - cached.fetchedAt) < ONE_HOUR_MS);
+        revalidate("standings/" + type + "/" + year, standingsStore(year, type),
+                () -> seasonTtl(year, ONE_HOUR_MS), forceRefresh, request, body -> body,
+                "standings", callback);
+    }
 
-            if (isFresh) {
-                Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
-                Map<String, Object> data = gson.fromJson(cached.standingsJson, mapType);
+    private Store<Map<String, Object>> standingsStore(int year, String type) {
+        return new Store<Map<String, Object>>() {
+            @Nullable
+            @Override
+            public Stored<Map<String, Object>> load() {
+                CachedStandings row = db.standingsDao().get(year, type);
+                Map<String, Object> data = row != null ? parseMap(row.standingsJson) : null;
+                if (data == null) return null;
                 // Restore season_started so ViewModel parsers see it
-                data.put("season_started", cached.seasonStarted);
-                mainHandler.post(() -> callback.onSuccess(data));
-                return;
+                data.put("season_started", row.seasonStarted);
+                return new Stored<>(data, row.fetchedAt, row.standingsJson);
             }
 
-            mainHandler.post(() ->
-                apiCall.enqueue(new Callback<Map<String, Object>>() {
-                    @Override
-                    public void onResponse(Call<Map<String, Object>> call,
-                                           Response<Map<String, Object>> response) {
-                        if (response.isSuccessful() && response.body() != null) {
-                            Map<String, Object> body = response.body();
-                            executor.execute(() -> {
-                                CachedStandings row = new CachedStandings();
-                                row.year         = year;
-                                row.type         = type;
-                                row.standingsJson = gson.toJson(body);
-                                Object started    = body.get("season_started");
-                                row.seasonStarted = started instanceof Boolean && (Boolean) started;
-                                row.leaderGap    = 0;
-                                row.fetchedAt    = System.currentTimeMillis();
-                                db.standingsDao().upsert(row);
-                            });
-                            callback.onSuccess(body);
-                        } else {
-                            callback.onError("Could not load standings");
-                        }
-                    }
-                    @Override
-                    public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                        callback.onError("Connection error: " + t.getMessage());
-                    }
-                })
-            );
-        });
+            @Override
+            public void save(String json, long fetchedAt) {
+                Map<String, Object> body = parseMap(json);
+                if (body == null) return;
+                CachedStandings row = new CachedStandings();
+                row.year          = year;
+                row.type          = type;
+                row.standingsJson = json;
+                Object started    = body.get("season_started");
+                row.seasonStarted = started instanceof Boolean && (Boolean) started;
+                row.leaderGap     = 0;
+                row.fetchedAt     = fetchedAt;
+                db.standingsDao().upsert(row);
+            }
+        };
     }
 
     // ── Session Key ───────────────────────────────────────────────────────────
@@ -636,38 +746,45 @@ public class F1Repository {
 
     // ── Drivers (headshots) ───────────────────────────────────────────────────
 
-    /** OpenF1 drivers for a season (2023+): headshots and team colours. Ids are synthetic. */
+    /**
+     * OpenF1 drivers for a season (2023+): headshots and team colours. Ids are synthetic.
+     * Stored in cached_drivers: permanent for past seasons, refreshed daily for the current one.
+     */
     public void fetchDrivers(int year, RepositoryCallback<List<CachedDriver>> callback) {
-        executor.execute(() -> {
-            List<CachedDriver> cached = db.driverDao().getBySeason(year);
-            if (!cached.isEmpty()) {
-                mainHandler.post(() -> callback.onSuccess(cached));
-                return;
+        revalidate("drivers/" + year, driversStore(year), () -> seasonTtl(year, ONE_DAY_MS), false,
+                () -> api().getDriversByYear(year),
+                // An empty list is an API hiccup or a season not started: keep what's stored
+                raw -> {
+                    List<CachedDriver> drivers = parseOpenF1Drivers(raw, year);
+                    return drivers.isEmpty() ? null : drivers;
+                },
+                "drivers", callback);
+    }
+
+    private Store<List<CachedDriver>> driversStore(int year) {
+        return new Store<List<CachedDriver>>() {
+            @Nullable
+            @Override
+            public Stored<List<CachedDriver>> load() {
+                List<CachedDriver> rows = db.driverDao().getBySeason(year);
+                if (rows.isEmpty()) return null;
+                long fetchedAt = Long.MAX_VALUE;
+                for (CachedDriver row : rows) fetchedAt = Math.min(fetchedAt, row.fetchedAt);
+                return new Stored<>(rows, fetchedAt, null);
             }
 
-            mainHandler.post(() ->
-                api().getDriversByYear(year).enqueue(new Callback<List<Map<String, Object>>>() {
-                    @Override
-                    public void onResponse(Call<List<Map<String, Object>>> call,
-                                           Response<List<Map<String, Object>>> response) {
-                        if (response.isSuccessful() && response.body() != null) {
-                            List<Map<String, Object>> raw = response.body();
-                            executor.execute(() -> {
-                                List<CachedDriver> drivers = parseOpenF1Drivers(raw, year);
-                                db.driverDao().upsertAll(drivers);
-                                mainHandler.post(() -> callback.onSuccess(drivers));
-                            });
-                        } else {
-                            callback.onError("Could not load drivers");
-                        }
-                    }
-                    @Override
-                    public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {
-                        callback.onError("Connection error: " + t.getMessage());
-                    }
-                })
-            );
-        });
+            @Override
+            public void save(String json, long fetchedAt) {
+                List<CachedDriver> drivers = gson.fromJson(json, new TypeToken<List<CachedDriver>>(){}.getType());
+                if (drivers == null || drivers.isEmpty()) return;
+                for (CachedDriver d : drivers) d.fetchedAt = fetchedAt;
+                // Replace the season so a driver dropped from the grid doesn't linger
+                db.runInTransaction(() -> {
+                    db.driverDao().deleteBySeason(year);
+                    db.driverDao().upsertAll(drivers);
+                });
+            }
+        };
     }
 
     // ── Drivers for a season (Jolpica identity, OpenF1 enrichment) ────────────
@@ -1232,86 +1349,255 @@ public class F1Repository {
         }
     }
 
-    // ── Weather forecast, news, history, pit history (memory cache only) ──────
+    // ── Weather forecast, news, history, pit history (cached_json) ────────────
 
     /** The backend's default "this week" window: ±3 days around the date. */
     private static final int HISTORY_WINDOW_DAYS = 3;
     private static final long NEWS_TTL_MS = 15 * 60 * 1000L;
-
-    private final MemoryCache<WeatherForecast> weatherCache = new MemoryCache<>(ONE_HOUR_MS);
-    private final MemoryCache<NewsResponse> newsCache = new MemoryCache<>(NEWS_TTL_MS);
-    // Keyed by date: valid until the date changes
-    private final MemoryCache<OnThisDayResponse> historyCache = new MemoryCache<>(Long.MAX_VALUE);
+    private static final String HISTORY_KEY_PREFIX = "history/";
 
     /** Races at a circuit included in its pit strategy trend. */
     private static final int PIT_HISTORY_SEASONS = 10;
 
-    private final MemoryCache<CircuitPitHistory> pitHistoryCache = new MemoryCache<>(ONE_DAY_MS);
-
-    /** Pit stop trend for a circuit's recent races; cached for 1 day. */
+    /**
+     * Pit stop trend for a circuit's recent races. Refreshed daily while the circuit is on the
+     * current calendar (it may gain a race), otherwise permanent.
+     */
     public void getCircuitPitHistory(String circuitId, RepositoryCallback<CircuitPitHistory> callback) {
-        fetchMemoryCached(pitHistoryCache, circuitId, false,
-                () -> api().getCircuitPitHistory(circuitId, PIT_HISTORY_SEASONS), "pit history", callback);
+        String key = "pit-history/" + circuitId;
+        revalidate(key, jsonStore(key, CircuitPitHistory.class),
+                () -> isOnCurrentCalendar(circuitId) ? ONE_DAY_MS : StaleWhileRevalidate.FOREVER, false,
+                () -> api().getCircuitPitHistory(circuitId, PIT_HISTORY_SEASONS), body -> body,
+                "pit history", callback);
     }
 
-    /** Race weekend forecast; cached for 1 hour. */
+    /** Race weekend forecast; refreshed after 1 hour. */
     public void getWeatherForecast(int year, int round, boolean forceRefresh,
                                    RepositoryCallback<WeatherForecast> callback) {
-        fetchMemoryCached(weatherCache, year + "/" + round, forceRefresh,
-                () -> api().getWeatherForecast(year, round), "forecast", callback);
+        String key = "weather/" + year + "/" + round;
+        revalidate(key, jsonStore(key, WeatherForecast.class), () -> ONE_HOUR_MS, forceRefresh,
+                () -> api().getWeatherForecast(year, round), body -> body, "forecast", callback);
     }
 
-    /** Latest headlines, newest first; cached for 15 minutes per limit. */
+    /** Latest headlines, newest first; refreshed after 15 minutes. */
     public void getNews(int limit, boolean forceRefresh, RepositoryCallback<NewsResponse> callback) {
-        fetchMemoryCached(newsCache, String.valueOf(limit), forceRefresh,
-                () -> api().getNews(limit), "news", callback);
+        String key = "news/" + limit;
+        revalidate(key, jsonStore(key, NewsResponse.class), () -> NEWS_TTL_MS, forceRefresh,
+                () -> api().getNews(limit), body -> body, "news", callback);
     }
 
-    /** Race winners from this week in past seasons; cached until the date changes. */
+    /** Race winners from this week in past seasons; permanent per date, other dates dropped. */
     public void getOnThisDay(String dateIso, RepositoryCallback<OnThisDayResponse> callback) {
-        historyCache.retainOnly(dateIso);
-        fetchMemoryCached(historyCache, dateIso, false,
-                () -> api().getOnThisDay(dateIso, HISTORY_WINDOW_DAYS), "history", callback);
+        String key = HISTORY_KEY_PREFIX + dateIso;
+        executor.execute(() -> db.cachedJsonDao().deleteOthersWithPrefix(HISTORY_KEY_PREFIX, key));
+        revalidate(key, jsonStore(key, OnThisDayResponse.class), () -> StaleWhileRevalidate.FOREVER, false,
+                () -> api().getOnThisDay(dateIso, HISTORY_WINDOW_DAYS), body -> body, "history", callback);
     }
 
-    /**
-     * Serves a fresh cached value, otherwise fetches. A failed fetch falls back to the last
-     * good value for the key, if there is one. Callbacks always run on the main thread.
-     */
-    private <T> void fetchMemoryCached(MemoryCache<T> cache, String key, boolean forceRefresh,
-                                       Supplier<Call<T>> request, String what,
-                                       RepositoryCallback<T> callback) {
-        T fresh = forceRefresh ? null : cache.getFresh(key, System.currentTimeMillis());
-        if (fresh != null) {
-            mainHandler.post(() -> callback.onSuccess(fresh));
-            return;
+    /** Whether the current season's stored schedule visits the circuit; true if unknown. */
+    @WorkerThread
+    private boolean isOnCurrentCalendar(String circuitId) {
+        List<CachedSchedule> rows = db.scheduleDao().getByYear(currentYear());
+        if (rows.isEmpty()) return true;
+        for (CachedSchedule row : rows) {
+            Map<String, Object> race = parseMap(row.sessionsJson);
+            if (race != null && circuitId.equals(race.get("circuit_id"))) return true;
         }
-        mainHandler.post(() -> request.get().enqueue(new Callback<T>() {
+        return false;
+    }
+
+    // ── Stale-while-revalidate ────────────────────────────────────────────────
+
+    /** A stored value; {@code json}, when known, detects a refresh that changed nothing. */
+    private static final class Stored<T> {
+        final T value;
+        final long fetchedAt;
+        @Nullable final String json;
+
+        Stored(T value, long fetchedAt, @Nullable String json) {
+            this.value = value;
+            this.fetchedAt = fetchedAt;
+            this.json = json;
+        }
+    }
+
+    /** Where a value lives between launches. Both methods run on the executor. */
+    private interface Store<T> {
+        @WorkerThread @Nullable Stored<T> load();
+        /** {@code json} is the fetched value, serialized on the main thread. */
+        @WorkerThread void save(String json, long fetchedAt);
+    }
+
+    /** A caller waiting on a refresh, with what it was (or wasn't) already served. */
+    private static final class Waiter<T> {
+        final RepositoryCallback<T> callback;
+        @Nullable final Stored<T> stored;
+        final boolean storedServed;
+
+        Waiter(RepositoryCallback<T> callback, @Nullable Stored<T> stored, boolean storedServed) {
+            this.callback = callback;
+            this.stored = stored;
+            this.storedServed = storedServed;
+        }
+    }
+
+    /** A {@link CachedJson} row holding a value of {@code type}. */
+    private <T> Store<T> jsonStore(String key, Type type) {
+        return new Store<T>() {
+            @Nullable
             @Override
-            public void onResponse(Call<T> call, Response<T> response) {
-                T body = response.body();
-                if (response.isSuccessful() && body != null) {
-                    cache.put(key, body, System.currentTimeMillis());
-                    callback.onSuccess(body);
-                } else {
-                    deliverLastGood(cache, key, "Could not load " + what
-                            + " (HTTP " + response.code() + ")", callback);
+            public Stored<T> load() {
+                CachedJson row = db.cachedJsonDao().get(key);
+                if (row == null || row.json == null) return null;
+                try {
+                    T value = gson.fromJson(row.json, type);
+                    return value != null ? new Stored<>(value, row.fetchedAt, row.json) : null;
+                } catch (RuntimeException e) {
+                    return null;   // unreadable (model changed): treat as missing
                 }
             }
 
             @Override
-            public void onFailure(Call<T> call, Throwable t) {
-                deliverLastGood(cache, key, "Connection error: " + t.getMessage(), callback);
+            public void save(String json, long fetchedAt) {
+                CachedJson row = new CachedJson();
+                row.key       = key;
+                row.json      = json;
+                row.fetchedAt = fetchedAt;
+                db.cachedJsonDao().put(row);
             }
-        }));
+        };
     }
 
-    private static <T> void deliverLastGood(MemoryCache<T> cache, String key, String error,
-                                            RepositoryCallback<T> callback) {
-        T last = cache.getLast(key);
-        DebugLog.d("F1Repository", error + (last != null ? "; serving last good value" : ""));
-        if (last != null) callback.onSuccess(last);
-        else callback.onError(error);
+    /** {@code currentTtl} for this season (or a future one), permanent for past seasons. */
+    private long seasonTtl(int year, long currentTtl) {
+        return year < currentYear() ? StaleWhileRevalidate.FOREVER : currentTtl;
+    }
+
+    /**
+     * Serves the stored value at once if there is one (even stale), then fetches when it is
+     * older than {@code ttlMs} (evaluated on the executor) or {@code forceRefresh}. A fetched
+     * value is stored before delivery; {@link UpdatingCallback}s that already got the stored
+     * value get it too if it changed. A failed fetch keeps the stored value and only reports
+     * an error when nothing was stored. Concurrent refreshes of one key share a request.
+     *
+     * @param fromResponse runs on the main thread; null means the response is unusable and
+     *                     counts as a failure (the stored value is kept)
+     */
+    private <R, T> void revalidate(String key, Store<T> store, LongSupplier ttlMs, boolean forceRefresh,
+                                   Supplier<Call<R>> request, Function<R, T> fromResponse,
+                                   String what, RepositoryCallback<T> callback) {
+        revalidate(key, store, fetchedAt -> ttlMs.getAsLong(), forceRefresh, request, fromResponse,
+                what, callback);
+    }
+
+    /** As above, with a TTL that depends on when the stored value was fetched. */
+    private <R, T> void revalidate(String key, Store<T> store, LongUnaryOperator ttlForFetchedAt,
+                                   boolean forceRefresh, Supplier<Call<R>> request,
+                                   Function<R, T> fromResponse, String what,
+                                   RepositoryCallback<T> callback) {
+        executor.execute(() -> {
+            Stored<T> stored = store.load();
+            StaleWhileRevalidate.Plan plan = StaleWhileRevalidate.plan(stored != null,
+                    stored != null ? stored.fetchedAt : 0,
+                    stored != null ? ttlForFetchedAt.applyAsLong(stored.fetchedAt) : 0,
+                    System.currentTimeMillis(), forceRefresh);
+            if (plan != StaleWhileRevalidate.Plan.FETCH) {
+                T value = stored.value;
+                mainHandler.post(() -> callback.onSuccess(value));
+                if (plan == StaleWhileRevalidate.Plan.SERVE_STORED) return;
+            }
+
+            Waiter<T> waiter = new Waiter<>(callback, stored, plan != StaleWhileRevalidate.Plan.FETCH);
+            synchronized (inFlightRefreshes) {
+                List<Waiter<?>> waiting = inFlightRefreshes.get(key);
+                if (waiting != null) {
+                    waiting.add(waiter);
+                    return;
+                }
+                List<Waiter<?>> first = new ArrayList<>();
+                first.add(waiter);
+                inFlightRefreshes.put(key, first);
+            }
+
+            mainHandler.post(() -> request.get().enqueue(new Callback<R>() {
+                @Override
+                public void onResponse(Call<R> call, Response<R> response) {
+                    R body = response.body();
+                    T value = null;
+                    String json = null;
+                    if (response.isSuccessful() && body != null) {
+                        try {
+                            value = fromResponse.apply(body);
+                            // Snapshot on the main thread — Gson's LinkedTreeMap is not thread-safe
+                            if (value != null) json = gson.toJson(value);
+                        } catch (RuntimeException e) {
+                            DebugLog.d("F1Repository", key + ": unreadable response: " + e);
+                            value = null;
+                        }
+                    }
+                    if (value == null) {
+                        completeRefresh(key, null, null, "Could not load " + what
+                                + " (HTTP " + response.code() + ")");
+                        return;
+                    }
+                    T fetched = value;
+                    String snapshot = json;
+                    executor.execute(() -> {
+                        store.save(snapshot, System.currentTimeMillis());
+                        mainHandler.post(() -> completeRefresh(key, fetched, snapshot, null));
+                    });
+                }
+
+                @Override
+                public void onFailure(Call<R> call, Throwable t) {
+                    completeRefresh(key, null, null, "Connection error: " + t.getMessage());
+                }
+            }));
+        });
+    }
+
+    /** Main thread only. Delivers the fetched value, or on failure each waiter's fallback. */
+    @SuppressWarnings("unchecked")
+    private <T> void completeRefresh(String key, @Nullable T value, @Nullable String json,
+                                     @Nullable String error) {
+        List<Waiter<?>> waiting;
+        synchronized (inFlightRefreshes) {
+            waiting = inFlightRefreshes.remove(key);
+        }
+        if (waiting == null) return;
+        for (Waiter<?> w : waiting) {
+            Waiter<T> waiter = (Waiter<T>) w;
+            if (value != null) {
+                boolean unchanged = waiter.stored != null && json != null && json.equals(waiter.stored.json);
+                if (StaleWhileRevalidate.deliverFetched(waiter.storedServed,
+                        waiter.callback instanceof UpdatingCallback, unchanged)) {
+                    waiter.callback.onSuccess(value);
+                }
+                continue;
+            }
+            switch (StaleWhileRevalidate.onFailure(waiter.stored != null, waiter.storedServed)) {
+                case SERVE_STORED:
+                    DebugLog.d("F1Repository", error + "; serving stored value");
+                    waiter.callback.onSuccess(waiter.stored.value);
+                    break;
+                case REPORT_ERROR:
+                    waiter.callback.onError(error != null ? error : "Could not load data");
+                    break;
+                case KEEP_SERVED:
+                    DebugLog.d("F1Repository", error + "; keeping stored value");
+                    break;
+            }
+        }
+    }
+
+    @Nullable
+    private Map<String, Object> parseMap(@Nullable String json) {
+        if (json == null) return null;
+        try {
+            return gson.fromJson(json, MAP_TYPE);
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     // ── Misc helpers ──────────────────────────────────────────────────────────
